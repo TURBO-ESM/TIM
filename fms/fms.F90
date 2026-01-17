@@ -65,8 +65,6 @@ module fms_mod
 !                      terminates program for error messages.
 !                      (use error levels NOTE,WARNING,FATAL)
 !
-!  close_file          Closes a file that was opened
-!
 !  read_data           Reads distributed data from a single threaded file.
 !
 !  write_data          Writes distributed data to a single threaded file.
@@ -137,9 +135,8 @@ use       mpp_io_mod, only:  mpp_io_init, mpp_open, mpp_close,         &
                        fieldtype, mpp_get_atts, mpp_get_info, mpp_get_fields, &
                        do_cf_compliance
 
-use fms_io_mod, only : fms_io_init, fms_io_exit, &
+use fms_io_mod, only : fms_io_init, &
                        read_data, &
-                       close_file, &
                        get_mosaic_tile_file, get_global_att_value, file_exist, field_exist
 use fms2_io_mod, only: fms2_io_init
 use memutils_mod, only: print_memuse_stats, memutils_init
@@ -153,9 +150,6 @@ private
 
 ! routines for initialization and termination of module
 public :: fms_init, fms_end
-
-! routines for opening/closing specific types of file
-public :: close_file
 
 ! routines for reading/writing distributed data
 public :: read_data
@@ -418,7 +412,6 @@ end subroutine fms_init
 subroutine fms_end ( )
 
     if (.not.module_is_initialized) return  ! return silently
-!    call fms_io_exit  ! now called from coupler_end
     call grid_end
     call mpp_io_exit
     call mpp_domains_exit

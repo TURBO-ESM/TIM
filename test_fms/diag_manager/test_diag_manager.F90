@@ -211,11 +211,11 @@ PROGRAM test
   USE mpp_domains_mod, ONLY: domain2d, mpp_define_domains, mpp_get_compute_domain
   USE mpp_domains_mod, ONLY: mpp_define_io_domain, mpp_define_layout
   USE mpp_domains_mod, ONLY: mpp_domains_init, mpp_domains_set_stack_size
-  USE fms_mod, ONLY: fms_init, fms_end, mpp_npes, file_exist, check_nml_error, open_file
+  USE fms_mod, ONLY: fms_init, fms_end, mpp_npes, file_exist, check_nml_error
   USE fms_mod, ONLY: error_mesg, FATAL, WARNING, NOTE, stdlog, stdout
   USE mpp_mod, ONLY: input_nml_file
   USE fms_io_mod, ONLY: fms_io_init
-  USE fms_io_mod, ONLY: fms_io_exit, set_filename_appendix
+  USE fms_io_mod, ONLY: set_filename_appendix
   USE constants_mod, ONLY: constants_init, PI, RAD_TO_DEG
 
   USE time_manager_mod, ONLY: time_type, set_calendar_type, set_date, decrement_date, OPERATOR(+), set_time
@@ -895,7 +895,6 @@ SELECT CASE ( test_number ) ! Closes just before the CONTAINS block.
   CALL diag_manager_end(Time)
 END SELECT ! End of case handling opened for test 12.
 
-  CALL fms_io_exit
   CALL fms_end
 
 CONTAINS

@@ -310,7 +310,6 @@ end interface
 !> @ingroup fms_io_mod
 interface get_global_att_value
   module procedure get_global_att_value_text
-  module procedure get_global_att_value_real
 end interface
 
 !> @ingroup fms_io_mod
@@ -348,16 +347,13 @@ type(restart_file_type), dimension(:), allocatable, target :: files_write !< sto
 type(domain2d), dimension(max_domains), target, save  :: array_domain
 type(domain1d), dimension(max_domains), save       :: domain_x, domain_y
 public  :: read_data
-public  :: fms_io_init, fms_io_exit
-public  :: close_file
+public  :: fms_io_init
 public  :: string
 public  :: get_mosaic_tile_file, get_file_name
 public  :: get_global_att_value
 public  :: file_exist, field_exist
 public  :: restart_file_type
-private :: unique_axes
 public  :: set_filename_appendix, get_instance_filename
-public  :: get_great_circle_algorithm
 character(len=32), save :: filename_appendix = ''
 
 !--- public interface ---
@@ -508,271 +504,6 @@ subroutine fms_io_init()
 
 end subroutine fms_io_init
 
-! </SUBROUTINE>
-! <SUBROUTINE NAME="fms_io_exit">
-!   <DESCRIPTION>
-! This routine is called after ALL fields have been written to temporary files
-! The result NETCDF files are created here.
-!   </DESCRIPTION>
-!   <TEMPLATE>
-! call fms_io_exit
-!   </TEMPLATE>
-
-subroutine fms_io_exit()
-    integer                             :: num_x_axes, num_y_axes, num_z_axes
-    integer                             :: unit
-    real, dimension(max_axis_size)      :: axisdata
-    real                                :: tlev
-    integer,        dimension(max_axes) :: id_x_axes, siz_x_axes
-    integer,        dimension(max_axes) :: id_y_axes, siz_y_axes
-    integer,        dimension(max_axes) :: id_z_axes, siz_z_axes
-    type(axistype), dimension(max_axes) :: x_axes, y_axes, z_axes
-    type(axistype)                      :: t_axes
-    type(var_type), pointer, save       :: cur_var=>NULL()
-    integer                             :: i, j, k, kk
-    character(len=256)                  :: filename
-    character(len=10)                   :: axisname
-    logical                             :: domain_present
-    logical                             :: write_on_this_pe
-    type(domain2d), pointer :: io_domain =>NULL()
-
-    if( .NOT.module_is_initialized )return !make sure it's only called once per PE
-
-    do i=1,max_axis_size
-       axisdata(i) = i
-    enddo
-
-    ! each field has an associated domain type (may be undefined).
-    ! each file only needs to write unique axes (i.e. if 2 fields share an identical axis,
-    ! then only write the axis once)
-    ! unique axes are defined by the global size and domain decomposition (i.e. can support identical axis sizes with
-    ! different domain decomposition)
-
-    do i = 1, num_files_w
-       filename = files_write(i)%name
-
-       !--- check if any field in this file present domain.
-       domain_present = .false.
-       do j = 1, files_write(i)%nvar
-          if (files_write(i)%var(j)%domain_present) then
-              domain_present = .true.
-              exit
-          end if
-       end do
-
-       !--- get the unique axes for all the fields.
-       num_x_axes = unique_axes(files_write(i), 1, id_x_axes, siz_x_axes, domain_x)
-       num_y_axes = unique_axes(files_write(i), 2, id_y_axes, siz_y_axes, domain_y)
-       num_z_axes = unique_axes(files_write(i), 3, id_z_axes, siz_z_axes          )
-
-       if( domain_present ) then
-          call mpp_open(unit,trim(filename),action=MPP_OVERWR,form=form, &
-               is_root_pe=files_write(i)%is_root_pe, domain=array_domain(files_write(i)%var(j)%domain_idx))
-       else  ! global data
-          call mpp_open(unit,trim(filename),action=MPP_OVERWR,form=form,threading=MPP_SINGLE,&
-               fileset=MPP_SINGLE, is_root_pe=files_write(i)%is_root_pe)
-       end if
-
-       write_on_this_pe = .false.
-       if(domain_present) then
-          io_domain => mpp_get_io_domain(array_domain(files_write(i)%var(j)%domain_idx))
-          if(associated(io_domain)) then
-             if(mpp_domain_is_tile_root_pe(io_domain)) write_on_this_pe = .true.
-          endif
-       endif
-       !--- always write out from root pe
-       if( files_write(i)%is_root_pe ) write_on_this_pe = .true.
-
-       do j = 1, num_x_axes
-         if (j < 10) then
-             write(axisname,'(a,i1)') 'xaxis_',j
-          else
-             write(axisname,'(a,i2)') 'xaxis_',j
-          endif
-          if(id_x_axes(j) > 0) then
-             call mpp_write_meta(unit,x_axes(j),axisname,'none',axisname, &
-                  data=axisdata(1:siz_x_axes(j)),domain=domain_x(id_x_axes(j)),cartesian='X')
-          else
-             call mpp_write_meta(unit,x_axes(j),axisname,'none',axisname, &
-                  data=axisdata(1:siz_x_axes(j)),cartesian='X')
-          endif
-       end do
-
-       do j = 1, num_y_axes
-         if (j < 10) then
-             write(axisname,'(a,i1)') 'yaxis_',j
-          else
-             write(axisname,'(a,i2)') 'yaxis_',j
-          endif
-          if(id_y_axes(j) > 0) then
-             call mpp_write_meta(unit,y_axes(j),axisname,'none',axisname, &
-                  data=axisdata(1:siz_y_axes(j)),domain=domain_y(id_y_axes(j)),cartesian='Y')
-          else
-             call mpp_write_meta(unit,y_axes(j),axisname,'none',axisname, &
-                  data=axisdata(1:siz_y_axes(j)),cartesian='Y')
-          endif
-       end do
-
-       do j = 1, num_z_axes
-          if (j < 10) then
-             write(axisname,'(a,i1)') 'zaxis_',j
-          else
-             write(axisname,'(a,i2)') 'zaxis_',j
-          endif
-          call mpp_write_meta(unit,z_axes(j),axisname,'none',axisname, &
-               data=axisdata(1:siz_z_axes(j)),cartesian='Z')
-       end do
-
-
-       ! write time axis  (comment out if no time axis)
-       call mpp_write_meta(unit,t_axes,&
-            'Time','time level','Time',cartesian='T')
-
-       ! write metadata for fields
-       do j = 1, files_write(i)%nvar
-          cur_var => files_write(i)%var(j)
-          call mpp_write_meta(unit,cur_var%field, (/x_axes(cur_var%id_axes(1)), &
-               y_axes(cur_var%id_axes(2)), z_axes(cur_var%id_axes(3)), t_axes/), cur_var%name, &
-               'none',cur_var%name,pack=pack_size)
-       enddo
-
-       ! write values for ndim of spatial axes
-       do j = 1, num_x_axes
-          call mpp_write(unit,x_axes(j))
-       enddo
-       do j = 1, num_y_axes
-          call mpp_write(unit,y_axes(j))
-       enddo
-       do j = 1, num_z_axes
-          call mpp_write(unit,z_axes(j))
-       enddo
-
-       ! write data of each field
-       do k = 1, files_write(i)%max_ntime
-          do j = 1, files_write(i)%nvar
-             cur_var => files_write(i)%var(j)
-             tlev=k
-             ! If some fields only have one time level, we do not need to write the second level, just keep
-             ! the data missing.
-             ! If some fields only have one time level, we just write out 0 to the other level
-             if(k > cur_var%siz(4)) then
-                cur_var%buffer(:,:,:,1) = 0.0
-                kk = 1
-             else
-                kk = k
-             end if
-             if(cur_var%domain_present) then
-                call mpp_write(unit, cur_var%field,array_domain(cur_var%domain_idx), cur_var%buffer(:,:,:,kk), tlev, &
-                               default_data=cur_var%default_data)
-             else if (write_on_this_pe) then
-                call mpp_write(unit, cur_var%field, cur_var%buffer(:,:,:,kk), tlev)
-             end if
-          enddo ! end j loop
-       enddo ! end k loop
-       call mpp_close(unit)
-    enddo ! end i loop
-
-    !--- release the memory
-
-    do i = 1,  num_files_w
-       do j = 1, files_write(i)%nvar
-          deallocate(files_write(i)%var(j)%buffer)
-       end do
-    end do
-
-  cur_var=>NULL()
-  module_is_initialized = .false.
-  num_files_w = 0
-  num_files_r = 0
-
-end subroutine fms_io_exit
-!.....................................................................
-! </SUBROUTINE>
-
-!-------------------------------------------------------------------------------
-!    This subroutine will calculate chksum and print out chksum information.
-!
-subroutine write_chksum(fileObj, action)
-  type(restart_file_type), intent(inout) :: fileObj
-  integer,                 intent(in)    :: action
-  integer(LONG_KIND)                     :: data_chksum
-  integer                                :: j, k, outunit
-  integer                                :: isc, iec, jsc, jec
-  integer                                :: isg, ieg, jsg, jeg
-  integer                                :: ishift, jshift, iadd, jadd
-  type(var_type), pointer, save          :: cur_var=>NULL()
-  character(len=32)                      :: routine_name
-
-  if(action == MPP_OVERWR) then
-     routine_name = "save_restart"
-  else if(action == MPP_RDONLY) then
-     routine_name = "restore_state"
-  else
-     call mpp_error(FATAL, "fms_io_mod(write_chksum): action should be MPP_OVERWR or MPP_RDONLY")
-  endif
-
-  do j=1,fileObj%nvar
-     cur_var => fileObj%var(j)
-
-     if ( cur_var%domain_idx > 0) then
-        call mpp_get_compute_domain(array_domain(cur_var%domain_idx), isc, iec, jsc, jec)
-        call mpp_get_global_domain(array_domain(cur_var%domain_idx), isg, ieg, jsg, jeg)
-        call mpp_get_domain_shift(array_domain(cur_var%domain_idx), ishift, jshift, cur_var%position)
-     else if (ASSOCIATED(Current_domain)) then
-        call mpp_get_compute_domain(Current_domain, isc, iec, jsc, jec)
-        call mpp_get_global_domain(Current_domain, isg, ieg, jsg, jeg)
-        call mpp_get_domain_shift(Current_domain, ishift, jshift, cur_var%position)
-     else
-        iec = cur_var%ie
-        isc = cur_var%is
-        ieg = cur_var%ie
-        jec = cur_var%je
-        jsc = cur_var%js
-        jeg = cur_var%je
-        ishift = 0
-        jshift = 0
-     endif
-     iadd = iec-isc ! Size of the i-dimension on this processor (-1 as it is an increment)
-     jadd = jec-jsc ! Size of the j-dimension on this processor
-     if(iec == ieg) iadd = iadd + ishift
-     if(jec == jeg) jadd = jadd + jshift
-
-     if(action == MPP_OVERWR .OR. (action == MPP_RDONLY .AND. cur_var%initialized) ) then
-        do k = 1, cur_var%siz(4)
-           if ( Associated(fileObj%p0dr(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p0dr(k,j)%p, (/mpp_pe()/) )
-           else if ( Associated(fileObj%p1dr(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p1dr(k,j)%p, (/mpp_pe()/) )
-           else if ( Associated(fileObj%p2dr(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p2dr(k,j)%p(cur_var%is:cur_var%is+iadd,cur_var%js:cur_var%js+jadd) )
-           else if ( Associated(fileObj%p3dr(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p3dr(k,j)%p(cur_var%is:cur_var%is+iadd,cur_var%js:cur_var%js+jadd, :) )
-           else if ( Associated(fileObj%p4dr(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p4dr(k,j)%p(cur_var%is:cur_var%is+iadd, &
-                                      & cur_var%js:cur_var%js+jadd, :, :) )
-           else if ( Associated(fileObj%p0di(k,j)%p) ) then
-              data_chksum = fileObj%p0di(k,j)%p
-           else if ( Associated(fileObj%p1di(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p1di(k,j)%p, (/mpp_pe()/) )
-           else if ( Associated(fileObj%p2di(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p2di(k,j)%p(cur_var%is:cur_var%is+iadd,cur_var%js:cur_var%js+jadd) )
-           else if ( Associated(fileObj%p3di(k,j)%p) ) then
-              data_chksum = mpp_chksum(fileObj%p3di(k,j)%p(cur_var%is:cur_var%is+iadd,cur_var%js:cur_var%js+jadd, :))
-           else
-              call mpp_error(FATAL, "fms_io(write_chksum): There is no pointer associated with the data of  field "// &
-                   trim(cur_var%name)//" of file "//trim(fileObj%name) )
-           end if
-           outunit = stdout()
-           write(outunit,'(a, I1, a, Z16)')'fms_io('//trim(routine_name)//'): At time level = ', k, ', chksum for "'//&
-                trim(cur_var%name)// '" of "'// trim(fileObj%name)// '" = ', data_chksum
-
-        enddo
-     endif
-  enddo
-  cur_var =>NULL()
-
-end subroutine write_chksum
-
 !=====================================================================================
 !--- we assume any text data are at most 2-dimensional and level is for first dimension
 subroutine read_data_text(filename,fieldname,data,level)
@@ -881,74 +612,6 @@ function unique_axes(file, index, id_axes, siz_axes, dom)
   return
 
 end function unique_axes
-
-  !#######################################################################
-  !#######################################################################
-  !   --------- routines for reading distributed data ---------
-  ! before calling these routines the domain decompostion must be set
-  ! by calling "set_domain" with the appropriate domain2d data type
-  !
-  ! reading can be done either by all PEs (default) or by only the root PE
-  ! this is controlled by namelist variable "read_all_pe".
-
-  ! By default, array data is expected to be declared in data domain and no_halo
-  !is NOT needed, however IF data is decalared in COMPUTE domain then optional NO_HALO should be .true.
-
-  !#######################################################################
-
-!#######################################################################
-! private routines (read_eof,do_read)
-! this routine is called when an EOF is found while
-! reading a distributed data file using read_data
-
-subroutine read_eof (end_found)
-  logical, intent(out), optional :: end_found
-
-  if (present(end_found))then
-     end_found = .true.
-  else
-     call mpp_error(FATAL,'fms_io(read_eof): unexpected EOF')
-  endif
-end subroutine read_eof
-
-!#######################################################################
-! <FUNCTION NAME=" close_file">
-!   <DESCRIPTION>
-!  Closes files that are opened by: open_namelist_file, open restart_file,
-! and open_ieee32_file. Users should use mpp_close for other cases.
-!   </DESCRIPTION>
-!<IN NAME="unit" TYPE="integer">
-! unit number of the file to be closed
-! </IN>
-!<IN NAME="status" TYPE="character, optional">
-! action to be performed: can be 'delete'
-! </IN>
-
-subroutine close_file (unit, status, dist)
-  integer,          intent(in)           :: unit
-  character(len=*), intent(in), optional :: status
-  logical,          intent(in), optional :: dist
-
-  if (.not.module_is_initialized) call fms_io_init ( )
-  if(PRESENT(dist))then
-    ! If distributed, return if not I/O root
-    if(dist)then
-      if(.not. mpp_is_dist_ioroot(dr_set_size)) return
-    endif
-  endif
-
-  if (unit == stdlog()) return
-  if (present(status)) then
-     if (lowercase(trim(status)) == 'delete') then
-        call mpp_close (unit, action=MPP_DELETE)
-     else
-        call mpp_error(FATAL,'fms_io(close_file): status should be DELETE')
-     endif
-  else
-     call mpp_close (unit)
-  endif
-end subroutine close_file
-! </FUNCTION>
 
 !#######################################################################
 
@@ -1088,34 +751,6 @@ end subroutine close_file
     return
 
   end function get_global_att_value_text
-
-  !#############################################################################
-  ! return false if the attribute is not found in the file.
-  function get_global_att_value_real(file, att, attvalue)
-    character(len=*), intent(in)    :: file
-    character(len=*), intent(in)    :: att
-    real,             intent(inout) :: attvalue
-    logical                         :: get_global_att_value_real
-    integer                         :: unit, ndim, nvar, natt, ntime, i
-    type(atttype), allocatable      :: global_atts(:)
-
-    get_global_att_value_real = .false.
-    call mpp_open(unit,trim(file),MPP_RDONLY,MPP_NETCDF,threading=MPP_MULTI,fileset=MPP_SINGLE)
-    call mpp_get_info(unit, ndim, nvar, natt, ntime)
-    allocate(global_atts(natt))
-    call mpp_get_atts(unit,global_atts)
-    do i=1,natt
-       if( trim(mpp_get_att_name(global_atts(i))) == trim(att) ) then
-          attvalue = mpp_get_att_real_scalar(global_atts(i))
-          get_global_att_value_real = .true.
-          exit
-       end if
-    end do
-    deallocate(global_atts)
-
-    return
-
-  end function get_global_att_value_real
 
   !#############################################################################
   ! This routine will get the actual file name, as well as if read_dist is true or false.
@@ -1557,18 +1192,6 @@ subroutine get_instance_filename(name_in,name_out)
   end if
 
 end subroutine get_instance_filename
-
-function get_great_circle_algorithm()
-   logical :: get_great_circle_algorithm
-
-   if(.NOT. module_is_initialized) call mpp_error(FATAL, &
-        "fms_io(use_great_circle_algorithm): fms_io_init is not called yet")
-
-   get_great_circle_algorithm = great_circle_algorithm
-
-end function get_great_circle_algorithm
-
-! </SUBROUTINE>
 
 end module fms_io_mod
 !> @}

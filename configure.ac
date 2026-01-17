@@ -434,7 +434,6 @@ AC_CONFIG_FILES([
   test_fms/field_manager/Makefile
   test_fms/axis_utils/Makefile
   test_fms/affinity/Makefile
-  test_fms/coupler/Makefile
   test_fms/string_utils/Makefile
   FMS.pc
   ])

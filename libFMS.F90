@@ -83,7 +83,7 @@ module fms
   use coupler_types_mod, only: coupler_types_init, coupler_type_copy, &
                                coupler_type_spawn, coupler_type_set_diags, &
                                coupler_type_write_chksums, coupler_type_send_data, &
-                               coupler_type_data_override, coupler_type_register_restarts, &
+                               coupler_type_data_override, &
                                coupler_type_restore_state, coupler_type_increment_data, &
                                coupler_type_rescale_data, coupler_type_copy_data, &
                                coupler_type_redistribute_data, coupler_type_destructor, &

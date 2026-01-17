@@ -32,7 +32,7 @@ module coupler_types_mod
   use fms2_io_mod,       only: register_variable_attribute, get_variable_dimension_names
   use fms2_io_mod,       only: get_variable_num_dimensions
   use fms_io_mod,        only: restart_file_type
-  use fms_io_mod,        only: query_initialized, restore_state
+  use fms_io_mod,        only: query_initialized
   use time_manager_mod,  only: time_type
   use diag_manager_mod,  only: register_diag_field, send_data
   use data_override_mod, only: data_override
@@ -51,7 +51,6 @@ module coupler_types_mod
   public coupler_types_init
   public coupler_type_copy, coupler_type_spawn, coupler_type_set_diags
   public coupler_type_write_chksums, coupler_type_send_data, coupler_type_data_override
-  public coupler_type_restore_state
   public coupler_type_increment_data, coupler_type_rescale_data
   public coupler_type_copy_data, coupler_type_redistribute_data
   public coupler_type_destructor, coupler_type_initialized
@@ -314,14 +313,6 @@ module coupler_types_mod
   interface coupler_type_data_override
     module procedure CT_data_override_2d, CT_data_override_3d
   end interface coupler_type_data_override
-
-  !> This is the interface to read in the fields in a coupler_bc_type that have
-  !! been saved in restart files.
-  !> @ingroup coupler_types_mod
-  interface coupler_type_restore_state
-    module procedure mpp_io_CT_restore_state_2d, mpp_io_CT_restore_state_3d
-    module procedure CT_restore_state_2d, CT_restore_state_3d
-  end interface coupler_type_restore_state
 
   !> This function interface indicates whether a coupler_bc_type has been initialized.
   !> @ingroup coupler_types_mod
@@ -3229,136 +3220,6 @@ contains
 
   end subroutine register_axis_wrapper
 
-  subroutine CT_restore_state_2d(var, use_fms2_io, directory, all_or_nothing, all_required, test_by_field)
-    type(coupler_2d_bc_type), intent(inout) :: var  !< BC_type structure to restore from restart files
-    character(len=*), optional, intent(in)  :: directory !< A directory where the restart files should
-                                                    !! be found.  The default for FMS is 'INPUT'.
-    logical,        optional, intent(in)    :: all_or_nothing !< If true and there are non-mandatory
-                                                    !! restart fields, it is still an error if some
-                                                    !! fields are read successfully but others are not.
-    logical,        optional, intent(in)    :: all_required !< If true, all fields must be successfully
-                                                    !! read from the restart file, even if they were
-                                                    !! registered as not mandatory.
-    logical,        optional, intent(in)    :: test_by_field !< If true, all or none of the variables
-                                                    !! in a single field must be read successfully.
-    logical,        intent(in)    :: use_fms2_io !< This is just to distinguish the interfaces
-
-    integer :: n, m, num_fld
-    character(len=80) :: unset_varname
-    logical :: any_set, all_set, all_var_set, any_var_set, var_set
-
-    any_set = .false.
-    all_set = .true.
-    num_fld = 0
-    unset_varname = ""
-
-    do n = 1, var%num_bcs
-      any_var_set = .false.
-      all_var_set = .true.
-      do m = 1, var%bc(n)%num_fields
-        var_set = .false.
-        if (check_if_open(var%bc(n)%fms2_io_rest_type)) then
-            var_set = variable_exists(var%bc(n)%fms2_io_rest_type, var%bc(n)%field(m)%name)
-        endif
-
-        if (.not.var_set) unset_varname = trim(var%bc(n)%field(m)%name)
-        if (var_set) any_set = .true.
-        if (all_set) all_set = var_set
-        if (var_set) any_var_set = .true.
-        if (all_var_set) all_var_set = var_set
-      enddo
-
-      num_fld = num_fld + var%bc(n)%num_fields
-      if ((var%bc(n)%num_fields > 0) .and. present(test_by_field)) then
-        if (test_by_field .and. (all_var_set .neqv. any_var_set)) call mpp_error(FATAL,&
-            & "CT_restore_state_2d: test_by_field is true, and "//&
-            & trim(unset_varname)//" was not read but some other fields in "//&
-            & trim(trim(var%bc(n)%name))//" were.")
-      endif
-    enddo
-
-    if ((num_fld > 0) .and. present(all_or_nothing)) then
-      if (all_or_nothing .and. (all_set .neqv. any_set)) call mpp_error(FATAL,&
-          & "CT_restore_state_2d: all_or_nothing is true, and "//&
-          & trim(unset_varname)//" was not read but some other fields were.")
-    endif
-
-    if (present(all_required)) then
-      if (all_required .and. .not.all_set) then
-        call mpp_error(FATAL, "CT_restore_state_2d: all_required is true, but "//&
-            & trim(unset_varname)//" was not read from its restart file.")
-      endif
-    endif
-  end subroutine CT_restore_state_2d
-
-  !> @brief Read in fields from restart files into a coupler_3d_bc_type
-  !!
-  !! This subroutine reads in the fields in a coupler_3d_bc_type that have been saved in restart
-  !! files.
-  subroutine CT_restore_state_3d(var, use_fms2_io, directory, all_or_nothing, all_required, test_by_field)
-    type(coupler_3d_bc_type), intent(inout) :: var  !< BC_type structure to restore from restart files
-    character(len=*), optional, intent(in)  :: directory !< A directory where the restart files should
-                                                    !! be found.  The default for FMS is 'INPUT'.
-    logical,        intent(in)              :: use_fms2_io !< This is just to distinguish the interfaces
-    logical,        optional, intent(in)    :: all_or_nothing !< If true and there are non-mandatory
-                                                    !! restart fields, it is still an error if some
-                                                    !! fields are read successfully but others are not.
-    logical,        optional, intent(in)    :: all_required !< If true, all fields must be successfully
-                                                    !! read from the restart file, even if they were
-                                                    !! registered as not mandatory.
-    logical,        optional, intent(in)    :: test_by_field !< If true, all or none of the variables
-                                                    !! in a single field must be read successfully.
-
-    integer :: n, m, num_fld
-    character(len=80) :: unset_varname
-    logical :: any_set, all_set, all_var_set, any_var_set, var_set
-
-    any_set = .false.
-    all_set = .true.
-    num_fld = 0
-    unset_varname = ""
-
-    do n = 1, var%num_bcs
-      any_var_set = .false.
-      all_var_set = .true.
-      do m = 1, var%bc(n)%num_fields
-        var_set = .false.
-        if (check_if_open(var%bc(n)%fms2_io_rest_type)) then
-            var_set = variable_exists(var%bc(n)%fms2_io_rest_type, var%bc(n)%field(m)%name)
-        endif
-
-        if (.not.var_set) unset_varname = trim(var%bc(n)%field(m)%name)
-
-        if (var_set) any_set = .true.
-        if (all_set) all_set = var_set
-        if (var_set) any_var_set = .true.
-        if (all_var_set) all_var_set = var_set
-      enddo
-
-      num_fld = num_fld + var%bc(n)%num_fields
-      if ((var%bc(n)%num_fields > 0) .and. present(test_by_field)) then
-        if (test_by_field .and. (all_var_set .neqv. any_var_set)) call mpp_error(FATAL,&
-            & "CT_restore_state_3d: test_by_field is true, and "//&
-            & trim(unset_varname)//" was not read but some other fields in "//&
-            & trim(trim(var%bc(n)%name))//" were.")
-      endif
-    enddo
-
-    if ((num_fld > 0) .and. present(all_or_nothing)) then
-      if (all_or_nothing .and. (all_set .neqv. any_set)) call mpp_error(FATAL,&
-          & "CT_restore_state_3d: all_or_nothing is true, and "//&
-          & trim(unset_varname)//" was not read but some other fields were.")
-    endif
-
-    if (present(all_required)) then
-      if (all_required .and. .not.all_set) then
-        call mpp_error(FATAL, "CT_restore_state_3d: all_required is true, but "//&
-            & trim(unset_varname)//" was not read from its restart file.")
-      endif
-    endif
-  end subroutine CT_restore_state_3d
-
-
   !> @brief Potentially override the values in a coupler_2d_bc_type
   subroutine CT_data_override_2d(gridname, var, Time)
     character(len=3),         intent(in)    :: gridname !< 3-character long model grid ID
@@ -3519,147 +3380,6 @@ contains
     var%num_bcs = 0
     var%set = .false.
   end subroutine CT_destructor_3d
-
-  !> @brief Reads in fields from restart files into a coupler_2d_bc_type
-  !!
-  !! This subroutine reads in the fields in a coupler_2d_bc_type that have been saved in restart
-  !! files.
-  subroutine mpp_io_CT_restore_state_2d(var, directory, all_or_nothing, all_required, test_by_field)
-    type(coupler_2d_bc_type), intent(inout) :: var  !< BC_type structure to restore from restart files
-    character(len=*), optional, intent(in)  :: directory !< A directory where the restart files should
-                                                    !! be found.  The default for FMS is 'INPUT'.
-    logical,        optional, intent(in)    :: all_or_nothing !< If true and there are non-mandatory
-                                                    !! restart fields, it is still an error if some
-                                                    !! fields are read successfully but others are not.
-    logical,        optional, intent(in)    :: all_required !< If true, all fields must be successfully
-                                                    !! read from the restart file, even if they were
-                                                    !! registered as not mandatory.
-    logical,        optional, intent(in)    :: test_by_field !< If true, all or none of the variables
-                                                    !! in a single field must be read successfully.
-
-    integer :: n, m, num_fld
-    character(len=80) :: unset_varname
-    logical :: any_set, all_set, all_var_set, any_var_set, var_set
-
-    any_set = .false.
-    all_set = .true.
-    num_fld = 0
-    unset_varname = ""
-
-    do n = 1, var%num_bcs
-      any_var_set = .false.
-      all_var_set = .true.
-      do m = 1, var%bc(n)%num_fields
-        var_set = .false.
-        if (var%bc(n)%field(m)%id_rest > 0) then
-          var_set = query_initialized(var%bc(n)%rest_type, var%bc(n)%field(m)%id_rest)
-          if (.not.var_set) then
-            call restore_state(var%bc(n)%rest_type, var%bc(n)%field(m)%id_rest,&
-                & directory=directory, nonfatal_missing_files=.true.)
-            var_set = query_initialized(var%bc(n)%rest_type, var%bc(n)%field(m)%id_rest)
-          endif
-        endif
-
-        if (.not.var_set) unset_varname = trim(var%bc(n)%field(m)%name)
-        if (var_set) any_set = .true.
-        if (all_set) all_set = var_set
-        if (var_set) any_var_set = .true.
-        if (all_var_set) all_var_set = var_set
-      enddo
-
-      num_fld = num_fld + var%bc(n)%num_fields
-      if ((var%bc(n)%num_fields > 0) .and. present(test_by_field)) then
-        if (test_by_field .and. (all_var_set .neqv. any_var_set)) call mpp_error(FATAL,&
-            & "mpp_io_CT_restore_state_2d: test_by_field is true, and "//&
-            & trim(unset_varname)//" was not read but some other fields in "//&
-            & trim(trim(var%bc(n)%name))//" were.")
-      endif
-    enddo
-
-    if ((num_fld > 0) .and. present(all_or_nothing)) then
-      if (all_or_nothing .and. (all_set .neqv. any_set)) call mpp_error(FATAL,&
-          & "mpp_io_CT_restore_state_2d: all_or_nothing is true, and "//&
-          & trim(unset_varname)//" was not read but some other fields were.")
-    endif
-
-    if (present(all_required)) then
-      if (all_required .and. .not.all_set) then
-        call mpp_error(FATAL, "mpp_io_CT_restore_state_2d: all_required is true, but "//&
-            & trim(unset_varname)//" was not read from its restart file.")
-      endif
-    endif
-  end subroutine mpp_io_CT_restore_state_2d
-
-  !> @brief Read in fields from restart files into a coupler_3d_bc_type
-  !!
-  !! This subroutine reads in the fields in a coupler_3d_bc_type that have been saved in restart
-  !! files.
-  subroutine mpp_io_CT_restore_state_3d(var, directory, all_or_nothing, all_required, test_by_field)
-    type(coupler_3d_bc_type), intent(inout) :: var  !< BC_type structure to restore from restart files
-    character(len=*), optional, intent(in)  :: directory !< A directory where the restart files should
-                                                    !! be found.  The default for FMS is 'INPUT'.
-    logical,        optional, intent(in)    :: all_or_nothing !< If true and there are non-mandatory
-                                                    !! restart fields, it is still an error if some
-                                                    !! fields are read successfully but others are not.
-    logical,        optional, intent(in)    :: all_required !< If true, all fields must be successfully
-                                                    !! read from the restart file, even if they were
-                                                    !! registered as not mandatory.
-    logical,        optional, intent(in)    :: test_by_field !< If true, all or none of the variables
-                                                    !! in a single field must be read successfully.
-
-    integer :: n, m, num_fld
-    character(len=80) :: unset_varname
-    logical :: any_set, all_set, all_var_set, any_var_set, var_set
-
-    any_set = .false.
-    all_set = .true.
-    num_fld = 0
-    unset_varname = ""
-
-    do n = 1, var%num_bcs
-      any_var_set = .false.
-      all_var_set = .true.
-      do m = 1, var%bc(n)%num_fields
-        var_set = .false.
-        if (var%bc(n)%field(m)%id_rest > 0) then
-          var_set = query_initialized(var%bc(n)%rest_type, var%bc(n)%field(m)%id_rest)
-          if (.not.var_set) then
-            call restore_state(var%bc(n)%rest_type, var%bc(n)%field(m)%id_rest,&
-                & directory=directory, nonfatal_missing_files=.true.)
-            var_set = query_initialized(var%bc(n)%rest_type, var%bc(n)%field(m)%id_rest)
-          endif
-        endif
-
-        if (.not.var_set) unset_varname = trim(var%bc(n)%field(m)%name)
-
-        if (var_set) any_set = .true.
-        if (all_set) all_set = var_set
-        if (var_set) any_var_set = .true.
-        if (all_var_set) all_var_set = var_set
-      enddo
-
-      num_fld = num_fld + var%bc(n)%num_fields
-      if ((var%bc(n)%num_fields > 0) .and. present(test_by_field)) then
-        if (test_by_field .and. (all_var_set .neqv. any_var_set)) call mpp_error(FATAL,&
-            & "mpp_io_CT_restore_state_3d: test_by_field is true, and "//&
-            & trim(unset_varname)//" was not read but some other fields in "//&
-            & trim(trim(var%bc(n)%name))//" were.")
-      endif
-    enddo
-
-    if ((num_fld > 0) .and. present(all_or_nothing)) then
-      if (all_or_nothing .and. (all_set .neqv. any_set)) call mpp_error(FATAL,&
-          & "mpp_io_CT_restore_state_3d: all_or_nothing is true, and "//&
-          & trim(unset_varname)//" was not read but some other fields were.")
-    endif
-
-    if (present(all_required)) then
-      if (all_required .and. .not.all_set) then
-        call mpp_error(FATAL, "mpp_io_CT_restore_state_3d: all_required is true, but "//&
-            & trim(unset_varname)//" was not read from its restart file.")
-      endif
-    endif
-  end subroutine mpp_io_CT_restore_state_3d
 
 end module coupler_types_mod
 !> @}

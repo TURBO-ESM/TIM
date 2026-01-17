@@ -65,17 +65,7 @@ module fms_mod
 !                      terminates program for error messages.
 !                      (use error levels NOTE,WARNING,FATAL)
 !
-!  open_namelist_file  Opens namelist file for reading only.
-!
-!  open_restart_file   Opens a file that will be used for reading or writing
-!                      restart files with native unformatted data.
-!
-!  open_ieee32_file    Opens a file that will be used for reading or writing
-!                      unformatted 32-bit ieee data.
-!
-!  close_file          Closes a file that was opened using
-!                      open_namelist_file, open_restart_file, or
-!                      open_ieee32_file.
+!  close_file          Closes a file that was opened
 !
 !  read_data           Reads distributed data from a single threaded file.
 !
@@ -149,8 +139,7 @@ use       mpp_io_mod, only:  mpp_io_init, mpp_open, mpp_close,         &
 
 use fms_io_mod, only : fms_io_init, fms_io_exit, &
                        read_data, &
-                       open_namelist_file, open_restart_file, open_ieee32_file, close_file, &
-                       open_file, open_direct_file, &
+                       close_file, &
                        get_mosaic_tile_file, get_global_att_value, file_exist, field_exist
 use fms2_io_mod, only: fms2_io_init
 use memutils_mod, only: print_memuse_stats, memutils_init
@@ -166,9 +155,7 @@ private
 public :: fms_init, fms_end
 
 ! routines for opening/closing specific types of file
-public :: open_namelist_file, open_restart_file, &
-          open_ieee32_file, close_file, &
-          open_file, open_direct_file
+public :: close_file
 
 ! routines for reading/writing distributed data
 public :: read_data

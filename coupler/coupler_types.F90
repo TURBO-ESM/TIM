@@ -32,7 +32,6 @@ module coupler_types_mod
   use fms2_io_mod,       only: register_variable_attribute, get_variable_dimension_names
   use fms2_io_mod,       only: get_variable_num_dimensions
   use fms_io_mod,        only: restart_file_type
-  use fms_io_mod,        only: query_initialized
   use time_manager_mod,  only: time_type
   use diag_manager_mod,  only: register_diag_field, send_data
   use data_override_mod, only: data_override

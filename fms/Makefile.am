@@ -33,16 +33,10 @@ noinst_LTLIBRARIES = libfms.la
 libfms_la_SOURCES = \
   fms.F90 \
   fms_io.F90 \
-  read_data_2d.inc \
-  write_data.inc \
-  read_data_3d.inc \
-  read_data_4d.inc
+  write_data.inc
 
 fms_mod.$(FC_MODEXT): fms_io_mod.$(FC_MODEXT)
-fms_io_mod.$(FC_MODEXT): read_data_2d.inc \
-  write_data.inc \
-  read_data_3d.inc \
-  read_data_4d.inc
+fms_io_mod.$(FC_MODEXT): write_data.inc
 
 # Mod files are built and then installed as headers.
 MODFILES = \

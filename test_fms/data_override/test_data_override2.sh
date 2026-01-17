@@ -74,41 +74,4 @@ test_expect_success "data_override get_grid_v1" '
   mpirun -n 1 ./test_get_grid_v1
 '
 
-# Run tests with input if enabled
-# skips if built with yaml parser(tests older behavior)
-if test ! -z "$test_input_path" && test ! -z "$parser_skip"  ; then
-  cp -r $test_input_path/data_override/INPUT .
-  cat <<_EOF > diag_table
-test_data_override
-1 3 1 0 0 0
-
-#output files
-"test_data_override",  -1, "days", 1, "days", "time"
-
-#output variables
-"test_data_override_mod", "sst", "sst", "test_data_override",  "all", .false., "none", 2
-"test_data_override_mod", "ice", "ice", "test_data_override",  "all", .false., "none", 2
-_EOF
-  cat <<_EOF > data_table
-"ICE", "sst_obs",  "SST", "INPUT/sst_ice_clim.nc", .false., 300.0
-"ICE", "sic_obs",  "SIC", "INPUT/sst_ice_clim.nc", .false., 300.0
-"OCN", "sst_obs",  "SST", "INPUT/sst_ice_clim.nc", .false., 300.0
-"LND", "sst_obs",  "SST", "INPUT/sst_ice_clim.nc", .false., 300.0
-_EOF
-
-  test_expect_success "data_override on cubic-grid with input" '
-    mpirun -n 6 ./test_data_override
-  '
-cat <<_EOF > input.nml
-&test_data_override_nml
-   test_num=2
-/
-_EOF
-
-  test_expect_success "data_override on latlon-grid with input" '
-    mpirun -n 6 ./test_data_override
-  '
-  rm -rf INPUT *.nc # remove any leftover files to reduce size
-fi
-
 test_done

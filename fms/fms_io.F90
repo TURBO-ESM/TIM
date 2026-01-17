@@ -317,15 +317,6 @@ interface query_initialized
 end interface
 
 !> @ingroup fms_io_mod
-interface set_initialized
-   module procedure set_initialized_id
-   module procedure set_initialized_name
-   module procedure set_initialized_r2d
-   module procedure set_initialized_r3d
-   module procedure set_initialized_r4d
-end interface
-
-!> @ingroup fms_io_mod
 interface get_global_att_value
   module procedure get_global_att_value_text
   module procedure get_global_att_value_real
@@ -379,14 +370,12 @@ type(domain1d), dimension(max_domains), save       :: domain_x, domain_y
 public  :: read_data
 public  :: fms_io_init, fms_io_exit
 public  :: open_namelist_file, open_restart_file, open_ieee32_file, close_file
-public  :: set_domain, get_domain_decomp, return_domain
 public  :: open_file, open_direct_file
-public  :: get_tile_string, string
-public  :: get_mosaic_tile_grid, get_mosaic_tile_file, get_file_name
+public  :: string
+public  :: get_mosaic_tile_file, get_file_name
 public  :: get_global_att_value, get_var_att_value
 public  :: file_exist, field_exist
-public  :: restart_file_type, query_initialized, set_initialized
-public  :: reset_field_name
+public  :: restart_file_type, query_initialized
 private :: lookup_field_r, lookup_axis, unique_axes
 public  :: set_filename_appendix, get_instance_filename
 public  :: get_filename_appendix, nullify_filename_appendix
@@ -1035,24 +1024,6 @@ function do_read ( )
   do_read = mpp_pe() == mpp_root_pe() .or. read_all_pe
 end function do_read
 
-!!#######################################################################
-
-subroutine reset_field_name(fileObj, id_field, name)
-  type(restart_file_type), intent(inout)      :: fileObj
-  integer,                 intent(in)         :: id_field
-  character(len=*),        intent(in)         :: name
-
-  if (.not.associated(fileObj%var)) call mpp_error(FATAL, "fms_io(reset_field_name): " // &
-      "restart_file_type data must be initialized by calling register_restart_field before using it")
-
-  if(id_field < 0 .OR. id_field > fileObj%nvar) call mpp_error(FATAL, &
-         "fms_io(reset_field_name): id_field should be positive integer and "// &
-         "no larger than number of fields in the file "//trim(fileObj%name) )
-
-  fileObj%var(id_field)%name = trim(name)
-
-end subroutine reset_field_name
-
 !#######################################################################
 !   This function returns .true. if the field referred to by id has
 ! initialized from a restart file, and .false. otherwise.
@@ -1238,213 +1209,6 @@ function query_initialized_r4d(fileObj, f_ptr, name)
   return
 
 end function query_initialized_r4d
-
-!#########################################################################
-!   This function sets that a variable has been initialized for future queries.
-!
-! Arguments: name - A pointer to the field whose initialization status is being set.
-!  (in)  fileObj - The control structure returned by a previous call to
-!                  register_restart_field
-subroutine set_initialized_id(fileObj, id, is_set)
-  type(restart_file_type), intent(inout) :: fileObj
-  integer         ,           intent(in) :: id
-  logical,          optional, intent(in) :: is_set
-
-  logical :: set_val
-  integer :: m
-
-  set_val = .true.
-  if (present(is_set)) set_val = is_set
-
-  if (.not.associated(fileObj%var)) call mpp_error(FATAL, "fms_io(set_initialized_id): " // &
-      "restart_file_type data must be initialized by calling set_restart_field before using it")
-
-  if(id < 1 .OR. id > fileObj%nvar) call mpp_error(FATAL, "fms_io(set_initialized_id): " // &
-      "argument id must be between 1 and nvar in the restart_file_type object")
-
-  fileObj%var(id)%initialized = set_val
-
-
-end subroutine set_initialized_id
-
-!#########################################################################
-!   This function sets that a variable has been initialized for future queries.
-!
-! Arguments: name - A pointer to the field whose initialization status is being set.
-!  (in)  fileObj - The control structure returned by a previous call to
-!                  register_restart_field
-subroutine set_initialized_name(fileObj, name, is_set)
-  type(restart_file_type), intent(inout) :: fileObj
-  character(len=*),           intent(in) :: name
-  logical,          optional, intent(in) :: is_set
-
-  logical :: set_val
-  integer :: m
-
-  set_val = .true.
-  if (present(is_set)) set_val = is_set
-
-  if (.not.associated(fileObj%var)) call mpp_error(FATAL, "fms_io(set_initialized_name): " // &
-      "restart_file_type data must be initialized by calling set_restart_field before using it")
-
-  do m=1,fileObj%nvar
-    if (trim(name) == fileObj%var(m)%name) then
-      fileObj%var(m)%initialized = set_val
-      exit
-    endif
-  enddo
-
-  if (m>fileObj%nvar) then
-    call mpp_error(NOTE,"fms_io(set_initialized_name): Unknown restart variable "//name// &
-                        " attempted to set initialization.")
-  end if
-
-end subroutine set_initialized_name
-
-!#########################################################################
-!   This function sets that a variable has been initialized for future queries.
-!
-! Arguments: name - A pointer to the field whose initialization status is being set.
-!  (in)  fileObj - The control structure returned by a previous call to
-!                  register_restart_field
-subroutine set_initialized_r2d(fileObj, f_ptr, name, is_set)
-  type(restart_file_type),   intent(inout) :: fileObj
-  real, dimension(:,:), target, intent(in) :: f_ptr
-  character(len=*),             intent(in) :: name
-  logical,          optional,   intent(in) :: is_set
-  logical :: set_val
-  integer :: m
-
-  set_val = .true.
-  if (present(is_set)) set_val = is_set
-
-  if (.not.associated(fileObj%var)) call mpp_error(FATAL, "fms_io(set_initialized_r2d): " // &
-      "restart_file_type data must be initialized by calling set_restart_field before using it")
-
-  do m=1, fileObj%nvar
-     if (ASSOCIATED(fileObj%p2dr(1,m)%p,f_ptr)) then
-        fileObj%var(m)%initialized = set_val
-        return
-     endif
-  enddo
-
-  if (m>fileObj%nvar .AND. mpp_pe() == mpp_root_pe() ) then
-    call mpp_error(NOTE,"fms_io(set_initialized_r2d): Unable to find "// &
-          & trim(name)//" queried by pointer, "//&
-          & "probably because of the suspect comparison of pointers by ASSOCIATED"//&
-          & " when attempting to set initialization.")
-  end if
-
-  do m=1,fileObj%nvar
-    if (trim(name) == fileObj%var(m)%name) then
-      fileObj%var(m)%initialized = set_val
-      return
-    endif
-  enddo
-
-  if (m>fileObj%nvar .AND. mpp_pe() == mpp_root_pe() ) then
-    call mpp_error(NOTE,"fms_io(set_initialized_r2d): Unknown restart variable "//name// &
-                        " attempted to set initialization.")
-  end if
-
-end subroutine set_initialized_r2d
-
-!#########################################################################
-!   This function sets that a variable has been initialized for future queries.
-!
-! Arguments: name - A pointer to the field whose initialization status is being set.
-!  (in)  fileObj - The control structure returned by a previous call to
-!                  register_restart_field
-subroutine set_initialized_r3d(fileObj, f_ptr, name, is_set)
-  type(restart_file_type),     intent(inout) :: fileObj
-  real, dimension(:,:,:), target, intent(in) :: f_ptr
-  character(len=*),               intent(in) :: name
-  logical,          optional,     intent(in) :: is_set
-  logical :: set_val
-  integer :: m
-
-  set_val = .true.
-  if (present(is_set)) set_val = is_set
-
-  if (.not.associated(fileObj%var)) call mpp_error(FATAL, "fms_io(set_initialized_r3d): " // &
-      "restart_file_type data must be initialized by calling set_restart_field before using it")
-
-  do m=1, fileObj%nvar
-     if (ASSOCIATED(fileObj%p3dr(1,m)%p,f_ptr)) then
-        fileObj%var(m)%initialized = set_val
-        return
-     endif
-  enddo
-
-  if (m>fileObj%nvar .AND. mpp_pe() == mpp_root_pe() ) then
-    call mpp_error(NOTE,"fms_io(set_initialized_r3d): Unable to find "// &
-          & trim(name)//" queried by pointer, "// &
-          & "probably because of the suspect comparison of pointers by ASSOCIATED"//&
-          & " when attempting to set initialization.")
-  end if
-
-  do m=1,fileObj%nvar
-    if (trim(name) == fileObj%var(m)%name) then
-      fileObj%var(m)%initialized = set_val
-      return
-    endif
-  enddo
-
-  if (m>fileObj%nvar .AND. mpp_pe() == mpp_root_pe() ) then
-    call mpp_error(NOTE,"fms_io(set_initialized_r3d): Unknown restart variable "//name// &
-                        " attempted to set initialization.")
-  end if
-
-end subroutine set_initialized_r3d
-
-
-!#########################################################################
-!   This function sets that a variable has been initialized for future queries.
-!
-! Arguments: name - A pointer to the field whose initialization status is being set.
-!  (in)  fileObj - The control structure returned by a previous call to
-!                  register_restart_field
-subroutine set_initialized_r4d(fileObj, f_ptr, name, is_set)
-  type(restart_file_type),       intent(inout) :: fileObj
-  real, dimension(:,:,:,:), target, intent(in) :: f_ptr
-  character(len=*),                 intent(in) :: name
-  logical,          optional,       intent(in) :: is_set
-  logical :: set_val
-  integer :: m
-
-  set_val = .true.
-  if (present(is_set)) set_val = is_set
-
-  if (.not.associated(fileObj%var)) call mpp_error(FATAL, "fms_io(set_initialized_r4d): " // &
-      "restart_file_type data must be initialized by calling set_restart_field before using it")
-
-  do m=1, fileObj%nvar
-     if (ASSOCIATED(fileObj%p4dr(1,m)%p,f_ptr)) then
-        fileObj%var(m)%initialized = set_val
-        return
-     endif
-  enddo
-
-  if (m>fileObj%nvar .AND. mpp_pe() == mpp_root_pe() ) then
-    call mpp_error(NOTE,"fms_io(set_initialized_r4d): Unable to find "// &
-          & trim(name)//" queried by pointer, "// &
-          & "probably because of the suspect comparison of pointers by ASSOCIATED"//&
-          & " when attempting to set initialization.")
-  end if
-
-  do m=1,fileObj%nvar
-    if (trim(name) == fileObj%var(m)%name) then
-      fileObj%var(m)%initialized = set_val
-      return
-    endif
-  enddo
-
-  if (m>fileObj%nvar .AND. mpp_pe() == mpp_root_pe() ) then
-    call mpp_error(NOTE,"fms_io(set_initialized_r4d): Unknown restart variable "//name// &
-                        " attempted to set initialization.")
-  end if
-
-end subroutine set_initialized_r4d
 
 !#######################################################################
 !#######################################################################
@@ -1659,145 +1423,6 @@ end subroutine close_file
 !#######################################################################
 
 
-! <SUBROUTINE NAME="set_domain">
-!   <DESCRIPTION>
-! set_domain is called to save the domain2d data type prior to
-! calling the distributed data I/O routines, read_data and write_data.
-!   </DESCRIPTION>
-! <IN NAME="Domain2" TYPE="domain2D">
-! domain to be passed to routines in fms_io_mod, Current_domain will point to
-! this Domain2
-! </IN>
-subroutine set_domain (Domain2)
-
-  type(domain2D), intent(in), target :: Domain2
-  if (.NOT.module_is_initialized) call fms_io_init ( )
-
-!  --- set_domain must be called before a read_data or write_data ---
-  if (associated(Current_domain)) nullify (Current_domain)
-  Current_domain => Domain2
-
-  !  --- module indexing to shorten read/write routines ---
-
-  call mpp_get_compute_domain (Current_domain,is ,ie ,js ,je )
-  call mpp_get_data_domain    (Current_domain,isd,ied,jsd,jed)
-  call mpp_get_global_domain  (Current_domain,isg,ieg,jsg,jeg)
-end subroutine set_domain
-!#######################################################################
-! </SUBROUTINE>
-
-! <SUBROUTINE NAME="return_domain">
-!   <DESCRIPTION>
-! This routine is the reverse of set_domain above. This routine is called when
-! users want to retrieve the domain2d that is used in fms_io_mod
-!   </DESCRIPTION>
-! <OUT NAME="domain2" TYPE="domain2D">
-! domain returned from  fms_io_mod.
-! </OUT>
-subroutine return_domain(domain2)
-  type(domain2D), intent(inout) :: domain2
-
-  if (associated(Current_domain)) then
-     domain2 = Current_domain
-  else
-     domain2 = NULL_DOMAIN2D
-  endif
-end subroutine return_domain
-! </SUBROUTINE>
-
-!#######################################################################
-! this will be a private routine with the next release
-! users should get the domain decomposition from the domain2d data type
-
-!#######################################################################
-! <SUBROUTINE NAME="get_domain_decomp">
-!   <DESCRIPTION>
-! This will be a private routine with the next release.
-! Users should get the domain decomposition from the domain2d data type.
-!   </DESCRIPTION>
-! <OUT NAME="x" TYPE="integer">
-! array containing beginning and ending indices of global and compute domain in x direction
-! </OUT>
-! <OUT NAME="y" TYPE="integer">
-! array containing beginning and ending indices of global and compute domain in y direction
-! </OUT>
-subroutine get_domain_decomp ( x, y )
-
-  integer, intent(out), dimension(4) :: x, y
-
-  if (mpp_pe() == mpp_root_pe())  call mpp_error(NOTE, &
-       'subroutine get_domain_decomp will be removed with the next release')
-  x = (/ isg, ieg, is, ie /)
-  y = (/ jsg, jeg, js, je /)
-
-end subroutine get_domain_decomp
-! </SUBROUTINE>
-
-subroutine get_axis_cart(axis, cart)
-
-  type(axistype), intent(in) :: axis
-  character(len=1), intent(out) :: cart
-  character(len=1) :: axis_cart
-  character(len=16), dimension(2) :: lon_names, lat_names
-  character(len=16), dimension(3) :: z_names
-  character(len=16), dimension(2) :: t_names
-  character(len=16), dimension(2) :: lon_units, lat_units
-  character(len=8) , dimension(4) :: z_units
-  character(len=3) , dimension(4) :: t_units
-  character(len=32) :: name
-  integer :: i
-
-  lon_names = (/'lon','x  '/)
-  lat_names = (/'lat','y  '/)
-  z_names = (/'depth ','height','z     '/)
-  t_names = (/'time','t   '/)
-  lon_units = (/'degrees_e   ', 'degrees_east'/)
-  lat_units = (/'degrees_n    ', 'degrees_north'/)
-  z_units = (/'cm ','m  ','pa ','hpa'/)
-  t_units = (/'sec', 'min','hou','day'/)
-  call mpp_get_atts(axis,cartesian=axis_cart)
-  cart = 'N'
-  if (axis_cart == 'x' ) cart = 'X'
-  if (axis_cart == 'y' ) cart = 'Y'
-  if (axis_cart == 'z' ) cart = 'Z'
-  if (axis_cart == 't' ) cart = 'T'
-  if (cart /= 'X' .and. cart /= 'Y' .and. cart /= 'Z' .and. cart /= 'T') then
-     call mpp_get_atts(axis,name=name)
-     name = lowercase(name)
-     do i=1,size(lon_names(:))
-        if (lowercase(name(1:3)) == trim(lon_names(i))) cart = 'X'
-     enddo
-     do i=1,size(lat_names(:))
-        if (name(1:3) == trim(lat_names(i))) cart = 'Y'
-     enddo
-     do i=1,size(z_names(:))
-        if (name == trim(z_names(i))) cart = 'Z'
-     enddo
-     do i=1,size(t_names(:))
-        if (name(1:3) == t_names(i)) cart = 'T'
-     enddo
-  end if
-
-  if (cart /= 'X' .and. cart /= 'Y' .and. cart /= 'Z' .and. cart /= 'T') then
-     call mpp_get_atts(axis,units=name)
-     name = lowercase(name)
-     do i=1,size(lon_units(:))
-        if (trim(name) == trim(lon_units(i))) cart = 'X'
-     enddo
-     do i=1,size(lat_units(:))
-        if (trim(name) == trim(lat_units(i))) cart = 'Y'
-     enddo
-     do i=1,size(z_units(:))
-        if (trim(name) == trim(z_units(i))) cart = 'Z'
-     enddo
-     do i=1,size(t_units(:))
-        if (name(1:3) == trim(t_units(i))) cart = 'T'
-     enddo
-  end if
-
-  return
-end subroutine get_axis_cart
-
 ! The following function is here as a last resort.
 ! This is copied from what was utilities_mod in order that redundant code
 ! could be deleted.
@@ -1991,27 +1616,6 @@ function open_file(file, form, action, access, threading, recl, dist) result(uni
   end function string_from_real
 
   !#######################################################################
-
- subroutine get_tile_string(str_out, str_in, tile, str2_in)
-    character(len=*), intent(inout)        :: str_out
-    character(len=*), intent(in)           :: str_in
-    integer,          intent(in)           :: tile
-    character(len=*), intent(in), optional :: str2_in
-
-    if(tile > 0 .AND. tile <= 9) then
-       write(str_out,'(a,i1)') trim(str_in), tile
-    else if(tile >= 10 .AND. tile <= 99) then
-       write(str_out,'(a,i2)') trim(str_in), tile
-    else
-       call mpp_error(FATAL, "FMS_IO: get_tile_string: tile must be a positive number less than 100")
-    end if
-
-    if(present(str2_in)) str_out=trim(str_out)//trim(str2_in)
-
- end subroutine get_tile_string
-
-
-  !#####################################################################
   subroutine get_mosaic_tile_file_sg(file_in, file_out, is_no_domain, domain, tile_count)
     character(len=*), intent(in)                   :: file_in
     character(len=*), intent(out)                  :: file_out
@@ -2069,31 +1673,6 @@ function open_file(file, form, action, access, threading, recl, dist) result(uni
     d_ptr =>NULL()
 
   end subroutine get_mosaic_tile_file_sg
-
-  !#############################################################################
-  subroutine get_mosaic_tile_grid(grid_file, mosaic_file, domain, tile_count, custom_path)
-    character(len=*), intent(out)          :: grid_file
-    character(len=*), intent(in)           :: mosaic_file
-    type(domain2D),   intent(in)           :: domain
-    integer,          intent(in), optional :: tile_count
-    character(len=*), intent(in), optional :: custom_path
-    integer                                :: tile, ntileMe
-    integer, dimension(:), allocatable     :: tile_id
-
-    tile = 1
-    if(present(tile_count)) tile = tile_count
-    ntileMe = mpp_get_current_ntile(domain)
-    allocate(tile_id(ntileMe))
-    tile_id = mpp_get_tile_id(domain)
-    call read_data(mosaic_file, "gridfiles", grid_file, level=tile_id(tile) )
-    if (.not. present(custom_path)) then
-      grid_file = 'INPUT/'//trim(grid_file)
-    else
-      grid_file = trim(custom_path)//'/'//trim(grid_file)
-    endif
-    deallocate(tile_id)
-
-  end subroutine get_mosaic_tile_grid
 
   subroutine get_var_att_value_text(file, varname, attname, attvalue)
     character(len=*), intent(in)    :: file

@@ -77,10 +77,6 @@ module fms_mod
 !                      open_namelist_file, open_restart_file, or
 !                      open_ieee32_file.
 !
-!  set_domain          Call this routine to internally store in fms_mod the
-!                      domain2d data type prior to calling the distributed
-!                      data I/O routines read_data and write_data.
-!
 !  read_data           Reads distributed data from a single threaded file.
 !
 !  write_data          Writes distributed data to a single threaded file.
@@ -154,10 +150,8 @@ use       mpp_io_mod, only:  mpp_io_init, mpp_open, mpp_close,         &
 use fms_io_mod, only : fms_io_init, fms_io_exit, &
                        read_data, &
                        open_namelist_file, open_restart_file, open_ieee32_file, close_file, &
-                       get_domain_decomp, &
-                       open_file, open_direct_file, get_mosaic_tile_grid, &
-                       get_mosaic_tile_file, get_global_att_value, file_exist, field_exist, &
-                       set_domain
+                       open_file, open_direct_file, &
+                       get_mosaic_tile_file, get_global_att_value, file_exist, field_exist
 use fms2_io_mod, only: fms2_io_init
 use memutils_mod, only: print_memuse_stats, memutils_init
 use grid2_mod, only: grid_init, grid_end
@@ -178,11 +172,10 @@ public :: open_namelist_file, open_restart_file, &
 
 ! routines for reading/writing distributed data
 public :: read_data
-public :: get_domain_decomp
 public :: get_global_att_value
 
 ! routines for get mosaic information
-public :: get_mosaic_tile_grid, get_mosaic_tile_file
+public :: get_mosaic_tile_file
 
 ! miscellaneous i/o routines
 public :: file_exist, check_nml_error, field_exist,     &
@@ -192,8 +185,7 @@ public :: write_version_number
 
 ! miscellaneous utilities (non i/o)
 public :: lowercase, uppercase,        &
-          string_array_index, monotonic_array, &
-          set_domain
+          string_array_index, monotonic_array
 
 ! public mpp interfaces
 public :: mpp_error, NOTE, WARNING, FATAL, &

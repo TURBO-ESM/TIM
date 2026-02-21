@@ -235,7 +235,6 @@ use platform_mod
   USE diag_table_mod, ONLY: parse_diag_table
   USE diag_output_mod, ONLY: get_diag_global_att
   USE constants_mod, ONLY: SECONDS_PER_DAY
-  USE fms_diag_outfield_mod, ONLY: fmsDiagOutfieldIndex_type, fmsDiagOutfield_type
   USE fms_diag_fieldbuff_update_mod, ONLY: fieldbuff_update, fieldbuff_copy_missvals, &
    & fieldbuff_copy_fieldvals
   use netcdf_io_mod, ONLY: filepath_list_type, partitioned_global_files
@@ -1492,8 +1491,6 @@ CONTAINS
     REAL(kind=r4_kind), POINTER, DIMENSION(:,:,:) :: rmask_ptr_r4 !< A pointer to r4 type of rmask
     REAL(kind=r8_kind), POINTER, DIMENSION(:,:,:) :: rmask_ptr_r8 !<A pointer to r8 type of rmask
 
-    TYPE(fmsDiagOutfieldIndex_type), ALLOCATABLE:: ofield_index_cfg !<Instance used in calling math functions.
-    TYPE(fmsDiagOutfield_type), ALLOCATABLE:: ofield_cfg !<Instance  used in calling math functions.
     LOGICAL :: mf_result !<Logical result returned from some math (buffer udate) functions.
 
     REAL :: rmask_threshold !< Holds the values 0.5_r4_kind or 0.5_r8_kind, or related threhold values

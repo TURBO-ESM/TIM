@@ -111,7 +111,6 @@ list(APPEND fms_fortran_src_files
   diag_manager/diag_output.F90
   diag_manager/diag_table.F90
   diag_manager/diag_util.F90
-  diag_manager/fms_diag_time_reduction.F90
   diag_manager/fms_diag_elem_weight_procs.F90
   diag_manager/fms_diag_bbox.F90
   field_manager/field_manager.F90

@@ -235,8 +235,6 @@ use platform_mod
   USE diag_table_mod, ONLY: parse_diag_table
   USE diag_output_mod, ONLY: get_diag_global_att
   USE constants_mod, ONLY: SECONDS_PER_DAY
-  USE fms_diag_fieldbuff_update_mod, ONLY: fieldbuff_update, fieldbuff_copy_missvals, &
-   & fieldbuff_copy_fieldvals
   use netcdf_io_mod, ONLY: filepath_list_type, partitioned_global_files
   use netcdf_io_mod, ONLY: partitioned_section_files, append_to_filepath_list
 

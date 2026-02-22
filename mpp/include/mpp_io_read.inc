@@ -58,8 +58,6 @@
 #define MPP_TYPE_ real(KIND=r4_kind)
 #include <mpp_read_2Ddecomp.fh>
 
-#include <mpp_read_distributed_ascii.inc>
-
 ! <SUBROUTINE NAME="mpp_read_r4D_r8" INTERFACE="mpp_read">
 !   <IN NAME="unit" TYPE="integer"></IN>
 !   <IN NAME="field" TYPE="type(fieldtype)"></IN>

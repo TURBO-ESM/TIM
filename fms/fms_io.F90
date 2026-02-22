@@ -92,7 +92,7 @@ module fms_io_mod
 use mpp_io_mod,      only: mpp_open, mpp_io_init, mpp_io_exit, mpp_read, mpp_write
 use mpp_io_mod,      only: mpp_write_meta, mpp_get_info, mpp_get_atts, mpp_get_fields
 use mpp_io_mod,      only: mpp_write_compressed, mpp_def_dim
-use mpp_io_mod,      only: mpp_write_unlimited_axis, mpp_read_distributed_ascii
+use mpp_io_mod,      only: mpp_write_unlimited_axis
 use mpp_io_mod,      only: mpp_get_axes, mpp_get_att_char, mpp_get_att_name
 use mpp_io_mod,      only: mpp_get_att_real_scalar, mpp_attribute_exist, mpp_is_dist_ioroot
 use mpp_io_mod,      only: fieldtype, axistype, atttype, default_field, default_axis, default_att

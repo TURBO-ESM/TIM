@@ -380,7 +380,7 @@ private
 
   !--- public interface from mpp_io_read.h ---------------------
   public :: mpp_read, mpp_read_meta, mpp_get_tavg_info
-  public :: mpp_write_compressed, mpp_read_distributed_ascii, mpp_write_unlimited_axis
+  public :: mpp_write_compressed, mpp_write_unlimited_axis
 
   !--- public interface from mpp_io_switch.h ---------------------
   public :: mpp_open
@@ -594,42 +594,6 @@ type :: atttype
      module procedure mpp_read_r4D_r8
      module procedure mpp_read_text
   end interface
-
-!***********************************************************************
-!
-!      public interfaces from mpp_io_read_distributed_ascii.inc
-!
-!***********************************************************************
-! <INTERFACE NAME="mpp_read_distributed_ascii">
-!   <OVERVIEW>
-!     Read from an opened, ascii file, translating data to the desired format
-!   </OVERVIEW>
-!   <DESCRIPTION>
-!     These routines are part of the mpp_read family. It is intended to
-!     provide a general purpose, distributed, list directed read
-!  </DESCRIPTION>
-!   <TEMPLATE>
-!     call mpp_read_distributed_ascii(unit,fmt,ssize,data,iostat)
-!   </TEMPLATE>
-!  <IN NAME="unit"></IN>
-!  <IN NAME="fmt"></IN>
-!  <IN NAME="ssize"></IN>
-!  <INOUT NAME="data"></IN>
-!  <OUT NAME="iostat">
-!  </IN>
-!  <NOTE>
-!     <TT>mpp_read_distributed_ascii</TT>
-!     The stripe size must be greater than or equal to 1. The stripe
-!     size does not have to be a common denominator of the number of
-!     MPI ranks.
-!  </NOTE>
-! </INTERFACE>
-  interface mpp_read_distributed_ascii
-     module procedure mpp_read_distributed_ascii_r1d
-     module procedure mpp_read_distributed_ascii_i1d
-     module procedure mpp_read_distributed_ascii_a1d
-  end interface
-
 
 !***********************************************************************
 !

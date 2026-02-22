@@ -82,8 +82,6 @@ libmpp_la_SOURCES = \
   include/mpp_io_util.inc \
   include/mpp_io_write.inc \
   include/mpp_read_2Ddecomp.fh \
-  include/mpp_read_distributed_ascii.fh \
-  include/mpp_read_distributed_ascii.inc \
   include/mpp_reduce_mpi.fh \
   include/mpp_reduce_nocomm.fh \
   include/mpp_scatter.fh \
@@ -186,8 +184,6 @@ mpp_io_mod.$(FC_MODEXT): \
   include/mpp_io_connect.inc \
   include/mpp_io_read.inc \
   include/mpp_read_2Ddecomp.fh \
-  include/mpp_read_distributed_ascii.inc \
-  include/mpp_read_distributed_ascii.fh \
   include/mpp_io_write.inc \
   include/mpp_write.fh \
   include/mpp_write_2Ddecomp.fh \

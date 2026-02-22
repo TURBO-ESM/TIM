@@ -127,7 +127,7 @@ use  mpp_domains_mod, only:  domain2D, mpp_define_domains, &
                              mpp_get_compute_domain, mpp_get_global_domain, &
                              mpp_get_data_domain
 
-use       mpp_io_mod, only:  mpp_io_init, mpp_open, mpp_close,         &
+use       mpp_io_mod, only:  mpp_io_init, mpp_open,          &
                        MPP_ASCII, MPP_NATIVE, MPP_IEEE32, MPP_NETCDF,  &
                        MPP_RDONLY, MPP_WRONLY, MPP_APPEND, MPP_OVERWR, &
                        MPP_SEQUENTIAL, MPP_DIRECT,                     &

@@ -363,27 +363,27 @@ private
   !--- public interface from mpp_io_util.h ----------------------
   public :: mpp_get_id, mpp_get_ncid, mpp_is_valid
   public :: mpp_get_info, mpp_get_atts, mpp_get_fields
-  public :: mpp_get_times, mpp_get_axes, mpp_get_recdimid, mpp_get_axis_data, mpp_get_axis_by_name
+  public :: mpp_get_axes, mpp_get_recdimid, mpp_get_axis_by_name
   public :: mpp_io_set_stack_size, mpp_get_field_index, mpp_get_axis_index
-  public :: mpp_get_field_name, mpp_get_att_value, mpp_get_att_length
+  public :: mpp_get_field_name, mpp_get_att_length
   public :: mpp_get_att_type, mpp_get_att_name, mpp_get_att_real, mpp_get_att_char
   public :: mpp_get_att_real_scalar, mpp_get_axis_length, mpp_is_dist_ioroot
   public :: mpp_get_file_name, mpp_file_is_opened, mpp_attribute_exist
-  public :: mpp_io_clock_on, mpp_get_time_axis, mpp_get_default_calendar
+  public :: mpp_io_clock_on, mpp_get_default_calendar
   public :: mpp_get_dimension_length, mpp_get_axis_bounds
 
   !--- public interface from mpp_io_misc.h ----------------------
-  public :: mpp_io_init, mpp_io_exit, netcdf_err, mpp_flush, mpp_get_maxunits, do_cf_compliance
+  public :: mpp_io_init, mpp_io_exit, netcdf_err, mpp_get_maxunits, do_cf_compliance
 
   !--- public interface from mpp_io_write.h ---------------------
   public :: mpp_write, mpp_write_meta, mpp_copy_meta, mpp_modify_meta, mpp_write_axis_data, mpp_def_dim
 
   !--- public interface from mpp_io_read.h ---------------------
   public :: mpp_read, mpp_read_meta, mpp_get_tavg_info
-  public :: mpp_read_compressed, mpp_write_compressed, mpp_read_distributed_ascii, mpp_write_unlimited_axis
+  public :: mpp_write_compressed, mpp_read_distributed_ascii, mpp_write_unlimited_axis
 
   !--- public interface from mpp_io_switch.h ---------------------
-  public :: mpp_open, mpp_close
+  public :: mpp_open
   public :: fillin_fieldtype
   !-----------------------------------------------------------------------------
   !--- mpp_io data types
@@ -510,11 +510,6 @@ type :: atttype
      module procedure mpp_get_axis_atts
   end interface
 
-  interface mpp_get_att_value
-     module procedure mpp_get_field_att_text
-  end interface
-
-
 !***********************************************************************
 !
 !      public interface from mpp_io_read.h
@@ -634,51 +629,6 @@ type :: atttype
      module procedure mpp_read_distributed_ascii_i1d
      module procedure mpp_read_distributed_ascii_a1d
   end interface
-
-
-!***********************************************************************
-!
-!      public interfaces from mpp_io_read_compressed.h
-!
-!***********************************************************************
-! <INTERFACE NAME="mpp_read_compressed">
-!   <OVERVIEW>
-!     Read from an opened, sparse data, compressed file (e.g. land_model)
-!   </OVERVIEW>
-!   <DESCRIPTION>
-!     These routines are similar to mpp_read except that they are designed
-!     to handle sparse, compressed vectors of data such as from the
-!     land model. Currently, the sparse vector may vary in z. Hence
-!     the need for the rank 2 treatment.
-!  </DESCRIPTION>
-!   <TEMPLATE>
-!     call mpp_read_compressed( unit, field, domain, data, time_index )
-!   </TEMPLATE>
-!  <IN NAME="unit"></IN>
-!  <IN NAME="field"></IN>
-!  <IN NAME="domain"></IN>
-!  <INOUT NAME="data"></INOUT>
-!  <IN NAME="time_index">
-!     time_index is an optional argument. It is to be omitted if the
-!     field was defined not to be a function of time. Results are
-!     unpredictable if the argument is supplied for a time- independent
-!     field, or omitted for a time-dependent field.
-!  </IN>
-!  <NOTE>
-!     <TT>mpp_read_meta</TT> must be called prior to calling
-!     <TT>mpp_read_compressed.</TT>
-!     Since in general, the vector is distributed across the io-domain
-!     The read expects the io_domain to be defined.
-!  </NOTE>
-! </INTERFACE>
-  interface mpp_read_compressed
-     module procedure mpp_read_compressed_r1d_r4
-     module procedure mpp_read_compressed_r2d_r4
-     module procedure mpp_read_compressed_r3d_r4
-     module procedure mpp_read_compressed_r1d_r8
-     module procedure mpp_read_compressed_r2d_r8
-     module procedure mpp_read_compressed_r3d_r8
-  end interface mpp_read_compressed
 
 
 !***********************************************************************

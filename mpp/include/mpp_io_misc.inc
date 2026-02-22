@@ -273,26 +273,6 @@
     end subroutine netcdf_err
 
 
-    subroutine mpp_flush(unit)
-!flush the output on a unit, syncing with disk
-      integer, intent(in) :: unit
-
-      if( .NOT.module_is_initialized )call mpp_error( FATAL, 'MPP_FLUSH: must first call mpp_io_init.' )
-      if( .NOT.mpp_file(unit)%write_on_this_pe) return
-      if( .NOT.mpp_file(unit)%opened ) call mpp_error( FATAL, 'MPP_FLUSH: invalid unit number.' )
-      if( .NOT.mpp_file(unit)%initialized )call mpp_error( FATAL, &
-         &  'MPP_FLUSH: cannot flush a file during writing of metadata.' )
-
-      if( mpp_file(unit)%format.EQ.MPP_NETCDF )then
-#ifdef use_netCDF
-          error = NF_SYNC(mpp_file(unit)%ncid); call netcdf_err( error, mpp_file(unit) )
-#endif
-      else
-          FLUSH(unit)
-      end if
-      return
-    end subroutine mpp_flush
-
    !> Return the maximum number of MPP file units available.
    !!
    !! maxunits is a mpp_io_mod module variable and defines the maximum number

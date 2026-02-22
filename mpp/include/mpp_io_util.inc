@@ -277,21 +277,6 @@
 
    end function mpp_get_dimension_length
 
-   !#####################################################################
-    !> @brief Copy variable information from file (excluding data)
-    subroutine mpp_get_time_axis( unit, time_axis )
-      integer, intent(in) :: unit
-      type(axistype), intent(inout) :: time_axis
-
-      if( .NOT.module_is_initialized )call mpp_error( FATAL, 'MPP_GET_AXES: must first call mpp_io_init.' )
-      if( .NOT.mpp_file(unit)%opened )&
-           call mpp_error( FATAL, 'MPP_GET_AXES: invalid unit number, file '//trim(mpp_file(unit)%name))
-
-      time_axis = mpp_file(unit)%Axis(mpp_file(unit)%recdimid)
-
-      return
-   end subroutine mpp_get_time_axis
-
   !####################################################################
   !> @brief Copy variable information from file (excluding data)
   function mpp_get_default_calendar( )
@@ -300,44 +285,6 @@
      mpp_get_default_calendar = default_axis%calendar
 
   end function mpp_get_default_calendar
-
-   !> @brief Get file time data.
-   !!
-   !> Copy time information from file and convert to time_type
-   !! <br>Example usage:
-   !! @code{.F90}
-   !! call mpp_get_times( unit, time_values)
-   !! @endcode
-   subroutine mpp_get_times( unit, time_values )
-      integer, intent(in) :: unit
-      real, intent(inout) :: time_values(:)
-
-      integer :: ntime,i
-
-      if( .NOT.module_is_initialized )call mpp_error( FATAL, 'MPP_GET_TIMES: must first call mpp_io_init.' )
-      if( .NOT.mpp_file(unit)%opened )&
-           call mpp_error(FATAL, 'MPP_GET_TIMES: invalid unit number, file '//trim(mpp_file(unit)%name))
-
-! NF_INQ_DIM returns -1 for the length of a record dimension if
-! it does not exist
-
-      if (mpp_file(unit)%time_level == -1) then
-          time_values = 0.0
-          return
-      endif
-
-      if (size(time_values(:)).ne.mpp_file(unit)%time_level) &
-         call mpp_error(FATAL,'MPP_GET_TIMES: time_values not dimensioned properly in calling routine, file '//&
-         trim(mpp_file(unit)%name))
-
-      ntime = mpp_file(unit)%time_level
-
-      do i=1,ntime
-         time_values(i) = mpp_file(unit)%time_values(i)
-      enddo
-
-      return
-    end subroutine mpp_get_times
 
   !#####################################################################
    function mpp_get_field_index(fields,fieldname)
@@ -449,26 +396,6 @@
 
      return
   end function mpp_get_axis_bounds
-
-  !#####################################################################
-   subroutine mpp_get_axis_data( axis, data )
-
-     type(axistype), intent(in) :: axis
-     real, dimension(:), intent(out) :: data
-
-
-     if (size(data(:)).lt.axis%len)&
-          call mpp_error(FATAL,'MPP_GET_AXIS_DATA: data array not large enough, axis '//trim(axis%name))
-     if (.NOT.ASSOCIATED(axis%data)) then
-        call mpp_error(NOTE,'MPP_GET_AXIS_DATA: use mpp_get_times for record dims')
-        data = 0.
-     else
-        data(1:axis%len) = axis%data
-     endif
-
-     return
-   end subroutine mpp_get_axis_data
-
 
   !#####################################################################
    function mpp_get_recdimid(unit)
@@ -785,44 +712,6 @@
       return
 
    end function mpp_file_is_opened
-
-   !####################################################################
-   !> @brief return the attribute value of given field name
-   subroutine mpp_get_field_att_text(unit, fieldname, attname, attvalue)
-     integer,           intent(in) :: unit
-     character(len=*),  intent(in) :: fieldname, attname
-     character(len=*), intent(out) :: attvalue
-     logical                       :: found_field,  found_att
-     integer                       :: i, j, length
-
-     found_field = .false.
-     found_att = .false.
-     do i=1,mpp_file(unit)%nvar
-        if( trim(mpp_file(unit)%Var(i)%name) == trim(fieldname)) then
-           found_field = .true.
-           do j=1, size(mpp_file(unit)%Var(i)%Att(:))
-              if( trim(mpp_file(unit)%Var(i)%Att(j)%name) == trim(attname) ) then
-                 found_att = .true.
-                 length = mpp_file(unit)%Var(i)%Att(j)%len
-                 if(len(attvalue) .LE. length ) call mpp_error(FATAL, &
-                      'mpp_io_util.inc: length of attvalue is less than the length of catt')
-                 attvalue = trim(mpp_file(unit)%Var(i)%Att(j)%catt(1:length))
-                 exit
-              end if
-           end do
-           exit
-        end if
-     end do
-
-     if(.NOT. found_field) call mpp_error(FATAL,"mpp_io_util.inc: field "//trim(fieldname)// &
-               " does not exist in the file "//trim(mpp_file(unit)%name) )
-     if(.NOT. found_att) call mpp_error(FATAL,"mpp_io_util.inc: attribute "//trim(attname)//" of field "&
-               //trim(fieldname)// " does not exist in the file "//trim(mpp_file(unit)%name) )
-
-     return
-
-   end subroutine mpp_get_field_att_text
-
 
    !####################################################################
    !> @brief return mpp_io_nml variable io_clock_on

@@ -27,7 +27,7 @@ program test   !test various aspects of mpp_mod
   use mpp_mod, only : mpp_declare_pelist, mpp_set_current_pelist, mpp_set_stack_size
   use mpp_mod, only : mpp_broadcast, mpp_transmit, mpp_sum, mpp_max, mpp_chksum, ALL_PES
   use mpp_mod, only : mpp_gather, mpp_error, FATAL, mpp_sync_self
-  use mpp_io_mod, only: mpp_io_init, mpp_flush
+  use mpp_io_mod, only: mpp_io_init
   use platform_mod
 
   implicit none

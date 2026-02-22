@@ -58,30 +58,6 @@
 #define MPP_TYPE_ real(KIND=r4_kind)
 #include <mpp_read_2Ddecomp.fh>
 
-#undef READ_RECORD_
-#define READ_RECORD_ read_record_r8
-#undef MPP_READ_COMPRESSED_1D_
-#define MPP_READ_COMPRESSED_1D_ mpp_read_compressed_r1d_r8
-#undef MPP_READ_COMPRESSED_2D_
-#define MPP_READ_COMPRESSED_2D_ mpp_read_compressed_r2d_r8
-#undef MPP_READ_COMPRESSED_3D_
-#define MPP_READ_COMPRESSED_3D_ mpp_read_compressed_r3d_r8
-#undef MPP_TYPE_
-#define MPP_TYPE_ real(KIND=r8_kind)
-#include <mpp_read_compressed.fh>
-
-#undef READ_RECORD_
-#define READ_RECORD_ read_record_r4
-#undef MPP_READ_COMPRESSED_1D_
-#define MPP_READ_COMPRESSED_1D_ mpp_read_compressed_r1d_r4
-#undef MPP_READ_COMPRESSED_2D_
-#define MPP_READ_COMPRESSED_2D_ mpp_read_compressed_r2d_r4
-#undef MPP_READ_COMPRESSED_3D_
-#define MPP_READ_COMPRESSED_3D_ mpp_read_compressed_r3d_r4
-#undef MPP_TYPE_
-#define MPP_TYPE_ real(KIND=r4_kind)
-#include <mpp_read_compressed.fh>
-
 #include <mpp_read_distributed_ascii.inc>
 
 ! <SUBROUTINE NAME="mpp_read_r4D_r8" INTERFACE="mpp_read">
@@ -407,7 +383,6 @@
 !     can be accessed outside of <TT>mpp_io_mod</TT> using calls to
 !     <TT>mpp_get_info</TT>, <TT>mpp_get_atts</TT>,
 !     <TT>mpp_get_vars</TT> and
-!     <TT>mpp_get_times</TT>.
 !   </DESCRIPTION>
 !   <TEMPLATE>
 !     call mpp_read_meta(unit)

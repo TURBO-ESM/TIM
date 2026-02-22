@@ -149,7 +149,7 @@ module mpp_domains_mod
   public :: mpp_get_data_domain, mpp_get_global_domain, mpp_get_domain_components
   public :: mpp_get_layout, mpp_get_pelist, operator(.EQ.), operator(.NE.)
   public :: mpp_domain_is_symmetry, mpp_domain_is_initialized
-  public :: mpp_set_compute_domain, mpp_set_data_domain, mpp_set_global_domain
+  public :: mpp_set_global_domain
   public :: mpp_get_memory_domain, mpp_get_domain_shift, mpp_domain_is_tile_root_pe
   public :: mpp_get_tile_id, mpp_get_domain_extents, mpp_get_current_ntile, mpp_get_ntile_count
   public :: mpp_get_tile_npes, mpp_get_domain_root_pe
@@ -1757,34 +1757,6 @@ module mpp_domains_mod
   interface mpp_get_domain_extents
      module procedure mpp_get_domain_extents1D
      module procedure mpp_get_domain_extents2D
-  end interface
-
-  !> These routines set the axis specifications associated with the compute domains.
-  !! The domain is a derived type with private elements. These routines
-  !! set the axis specifications associated with the compute domains
-  !! The 2D version of these is a simple extension of 1D.
-  !! <br>Example usage:
-  !!
-  !!                    call mpp_get_data_domain(domain_1d, isd, ied)
-  !!                    call mpp_get_data_domain(domain_2d, isd, ied, jsd, jed)
-  !> @ingroup mpp_domains_mod
-  interface mpp_set_compute_domain
-     module procedure mpp_set_compute_domain1D
-     module procedure mpp_set_compute_domain2D
-  end interface
-
-  !> These routines set the axis specifications associated with the data domains.
-  !! The domain is a derived type with private elements. These routines
-  !! set the axis specifications associated with the data domains.
-  !! The 2D version of these is a simple extension of 1D.
-  !! <br>Example usage:
-  !!
-  !!                    call mpp_set_data_domain(domain_1d, isd, ied)
-  !!                    call mpp_set_data_domain(domain_2d, isd, ied, jsd, jed)
-  !> @ingroup mpp_domains_mod
-  interface mpp_set_data_domain
-     module procedure mpp_set_data_domain1D
-     module procedure mpp_set_data_domain2D
   end interface
 
   !> These routines set the axis specifications associated with the global domains.

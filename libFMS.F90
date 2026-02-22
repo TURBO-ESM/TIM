@@ -256,7 +256,7 @@ module fms
                      mpp_get_global_domain, mpp_get_domain_components, &
                      mpp_get_layout, mpp_get_pelist, operator(.EQ.), operator(.NE.), &
                      mpp_domain_is_symmetry, mpp_domain_is_initialized, &
-                     mpp_set_compute_domain, mpp_set_data_domain, mpp_set_global_domain, &
+                     mpp_set_global_domain, &
                      mpp_get_memory_domain, mpp_get_domain_shift, &
                      mpp_domain_is_tile_root_pe, mpp_get_tile_id, &
                      mpp_get_domain_extents, mpp_get_current_ntile, &

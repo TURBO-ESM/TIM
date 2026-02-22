@@ -81,7 +81,6 @@ libmpp_la_SOURCES = \
   include/mpp_io_read.inc \
   include/mpp_io_util.inc \
   include/mpp_io_write.inc \
-  include/mpp_read_2Ddecomp.fh \
   include/mpp_reduce_mpi.fh \
   include/mpp_reduce_nocomm.fh \
   include/mpp_scatter.fh \
@@ -101,10 +100,6 @@ libmpp_la_SOURCES = \
   include/mpp_util.inc \
   include/mpp_util_mpi.inc \
   include/mpp_util_nocomm.inc \
-  include/mpp_write.fh \
-  include/mpp_write_2Ddecomp.fh \
-  include/mpp_write_compressed.fh \
-  include/mpp_write_unlimited_axis.fh \
   include/system_clock.fh
 
 mpp_mod.$(FC_MODEXT): \
@@ -183,12 +178,7 @@ mpp_io_mod.$(FC_MODEXT): \
   include/mpp_io_misc.inc \
   include/mpp_io_connect.inc \
   include/mpp_io_read.inc \
-  include/mpp_read_2Ddecomp.fh \
-  include/mpp_io_write.inc \
-  include/mpp_write.fh \
-  include/mpp_write_2Ddecomp.fh \
-  include/mpp_write_compressed.fh \
-  include/mpp_write_unlimited_axis.fh
+  include/mpp_io_write.inc
 mpp_memutils_mod.$(FC_MODEXT): mpp_mod.$(FC_MODEXT)
 
 # Mod files are built and then installed as headers.

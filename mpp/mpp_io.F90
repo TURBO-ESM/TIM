@@ -376,11 +376,10 @@ private
   public :: mpp_io_init, mpp_io_exit, netcdf_err, mpp_get_maxunits, do_cf_compliance
 
   !--- public interface from mpp_io_write.h ---------------------
-  public :: mpp_write, mpp_write_meta, mpp_copy_meta, mpp_modify_meta, mpp_write_axis_data, mpp_def_dim
+  public :: mpp_write_meta, mpp_modify_meta, mpp_def_dim
 
   !--- public interface from mpp_io_read.h ---------------------
-  public :: mpp_read, mpp_read_meta, mpp_get_tavg_info
-  public :: mpp_write_compressed, mpp_write_unlimited_axis
+  public :: mpp_read, mpp_read_meta
 
   !--- public interface from mpp_io_switch.h ---------------------
   public :: mpp_open
@@ -572,26 +571,6 @@ type :: atttype
 !  </NOTE>
 ! </INTERFACE>
   interface mpp_read
-     module procedure mpp_read_2ddecomp_r2d_r4
-     module procedure mpp_read_2ddecomp_r3d_r4
-     module procedure mpp_read_2ddecomp_r4d_r4
-     module procedure mpp_read_2ddecomp_r2d_r8
-     module procedure mpp_read_2ddecomp_r3d_r8
-     module procedure mpp_read_2ddecomp_r4d_r8
-     module procedure mpp_read_region_r2D_r4
-     module procedure mpp_read_region_r3D_r4
-     module procedure mpp_read_region_r2D_r8
-     module procedure mpp_read_region_r3D_r8
-     module procedure mpp_read_r0D_r4
-     module procedure mpp_read_r1D_r4
-     module procedure mpp_read_r2D_r4
-     module procedure mpp_read_r3D_r4
-     module procedure mpp_read_r4D_r4
-     module procedure mpp_read_r0D_r8
-     module procedure mpp_read_r1D_r8
-     module procedure mpp_read_r2D_r8
-     module procedure mpp_read_r3D_r8
-     module procedure mpp_read_r4D_r8
      module procedure mpp_read_text
   end interface
 
@@ -783,22 +762,8 @@ type :: atttype
 !! The mpp_write_meta package also includes subroutines write_attribute and
 !! write_attribute_netcdf, that are private to this module.
   interface mpp_write_meta
-     module procedure mpp_write_meta_var
-     module procedure mpp_write_meta_scalar_r
-     module procedure mpp_write_meta_scalar_i
-     module procedure mpp_write_meta_axis_r1d
-     module procedure mpp_write_meta_axis_i1d
-     module procedure mpp_write_meta_axis_unlimited
-     module procedure mpp_write_meta_field
      module procedure mpp_write_meta_global
-     module procedure mpp_write_meta_global_scalar_r
      module procedure mpp_write_meta_global_scalar_i
-  end interface
-
-  interface mpp_copy_meta
-     module procedure mpp_copy_meta_axis
-     module procedure mpp_copy_meta_field
-     module procedure mpp_copy_meta_global
   end interface
 
   interface mpp_modify_meta
@@ -806,198 +771,6 @@ type :: atttype
      module procedure mpp_modify_field_meta
      module procedure mpp_modify_axis_meta
   end interface
-
-! <INTERFACE NAME="mpp_write">
-!   <OVERVIEW>
-!     Write to an open file.
-!   </OVERVIEW>
-!   <DESCRIPTION>
-!    <TT>mpp_write</TT> is used to write data to the file on an I/O unit
-!    using the file parameters supplied by <LINK
-!    SRC="#mpp_open"><TT>mpp_open</TT></LINK>. Axis and field definitions must
-!    have previously been written to the file using <LINK
-!    SRC="#mpp_write_meta"><TT>mpp_write_meta</TT></LINK>.  There are three
-!    forms of <TT>mpp_write</TT>, one to write axis data, one to write
-!    distributed field data, and one to write non-distributed field
-!    data. <I>Distributed</I> data refer to arrays whose two
-!    fastest-varying indices are domain-decomposed. Distributed data must
-!    be 2D or 3D (in space). Non-distributed data can be 0-3D.
-!
-!    The <TT>data</TT> argument for distributed data is expected by
-!    <TT>mpp_write</TT> to contain data specified on the <I>data</I> domain,
-!    and will write the data belonging to the <I>compute</I> domain,
-!    fetching or sending data as required by the parallel I/O <LINK
-!    SRC="#modes">mode</LINK> specified in the <TT>mpp_open</TT> call. This
-!    is consistent with our definition of <LINK
-!    SRC="http:mpp_domains.html#domains">domains</LINK>, where all arrays are
-!    expected to be dimensioned on the data domain, and all operations
-!    performed on the compute domain.
-!
-!     The type of the <TT>data</TT> argument must be a <I>default
-!     real</I>, which can be 4 or 8 byte.
-!   </DESCRIPTION>
-!  <TEMPLATE>
-!    mpp_write( unit, axis )
-!  </TEMPLATE>
-!  <TEMPLATE>
-!    mpp_write( unit, field, data, tstamp )
-!  </TEMPLATE>
-!  <TEMPLATE>
-!    mpp_write( unit, field, domain, data, tstamp )
-!  </TEMPLATE>
-!  <IN NAME="tstamp">
-!    <TT>tstamp</TT> is an optional argument. It is to
-!    be omitted if the field was defined not to be a function of time.
-!    Results are unpredictable if the argument is supplied for a time-
-!    independent field, or omitted for a time-dependent field. Repeated
-!    writes of a time-independent field are also not recommended. One
-!    time level of one field is written per call. tstamp must be an 8-byte
-!    real, even if the default real type is 4-byte.
-!  </IN>
-!  <NOTE>
-!    The type of write performed by <TT>mpp_write</TT> depends on the file
-!    characteristics on the I/O unit specified at the <LINK
-!    SRC="#mpp_open"><TT>mpp_open</TT></LINK> call. Specifically, the format of
-!    the output data (e.g netCDF or IEEE), the <TT>threading</TT> and
-!    <TT>fileset</TT> flags, etc., can be changed there, and require no
-!    changes to the <TT>mpp_write</TT> calls.
-!
-!    Packing is currently not implemented for non-netCDF files, and the
-!    <TT>pack</TT> attribute is ignored. On netCDF files,
-!    <TT>NF_DOUBLE</TT>s (8-byte IEEE floating point numbers) are
-!    written for <TT>pack</TT>=1 and <TT>NF_FLOAT</TT>s for
-!    <TT>pack</TT>=2. (<TT>pack</TT>=2 gives the customary
-!    and default behaviour). We write <TT>NF_SHORT</TT>s (2-byte
-!    integers) for <TT>pack=4</TT>, or <TT>NF_BYTE</TT>s
-!    (1-byte integers) for <TT>pack=8</TT>. Integer scaling is done
-!    using the <TT>scale</TT> and <TT>add</TT> attributes at
-!    <TT>pack</TT>=4 or 8, satisfying the relation
-!
-!    <PRE>
-!    data = packed_data*scale + add
-!    </PRE>
-!
-!    <TT>NOTE: mpp_write</TT> does not check to see if the scaled
-!    data in fact fits into the dynamic range implied by the specified
-!    packing. It is incumbent on the user to supply correct scaling
-!    attributes.
-!
-!    You cannot interleave calls to <TT>mpp_write</TT> and
-!    <TT>mpp_write_meta</TT>: the first call to
-!    <TT>mpp_write</TT> implies that metadata specification is
-!    complete.
-! </NOTE>
-! </INTERFACE>
-
-
-  interface write_record
-     module procedure write_record_r8
-     module procedure write_record_r4
-  end interface
-
-  interface mpp_write
-     module procedure mpp_write_2ddecomp_r2d_r8
-     module procedure mpp_write_2ddecomp_r3d_r8
-     module procedure mpp_write_2ddecomp_r4d_r8
-     module procedure mpp_write_2ddecomp_r2d_r4
-     module procedure mpp_write_2ddecomp_r3d_r4
-     module procedure mpp_write_2ddecomp_r4d_r4
-     module procedure mpp_write_r0D_r8
-     module procedure mpp_write_r1D_r8
-     module procedure mpp_write_r2D_r8
-     module procedure mpp_write_r3D_r8
-     module procedure mpp_write_r4D_r8
-     module procedure mpp_write_r0D_r4
-     module procedure mpp_write_r1D_r4
-     module procedure mpp_write_r2D_r4
-     module procedure mpp_write_r3D_r4
-     module procedure mpp_write_r4D_r4
-     module procedure mpp_write_axis
-  end interface
-
-
-!***********************************************************************
-! <INTERFACE NAME="mpp_write_compressed">
-!   <OVERVIEW>
-!     Write to an opened, sparse data, compressed file (e.g. land_model)
-!   </OVERVIEW>
-!   <DESCRIPTION>
-!     These routines are similar to mpp_write except that they are
-!     designed to handle sparse, compressed vectors of data such
-!     as from the land model. Currently, the sparse vector may vary in z.
-!     Hence the need for the rank 2 treatment.
-!  </DESCRIPTION>
-!   <TEMPLATE>
-!     call mpp_write(unit, field, domain, data, nelems_io, tstamp, default_data )
-!   </TEMPLATE>
-!  <IN NAME="unit"></IN>
-!  <IN NAME="field"></IN>
-!  <IN NAME="domain"></IN>
-!  <INOUT NAME="data"></INOUT>
-!  <IN NAME="nelems_io">
-!    <TT>nelems</TT> is a vector containing the number of elements expected
-!    from each member of the io_domain. It MUST have the same order as
-!    the io_domain pelist.
-!  </IN>
-!  <IN NAME="tstamp">
-!    <TT>tstamp</TT> is an optional argument. It is to
-!    be omitted if the field was defined not to be a function of time.
-!    Results are unpredictable if the argument is supplied for a time-
-!    independent field, or omitted for a time-dependent field. Repeated
-!    writes of a time-independent field are also not recommended. One
-!    time level of one field is written per call. tstamp must be an 8-byte
-!    real, even if the default real type is 4-byte.
-!  </IN>
-!  <IN NAME="default_data"></IN>
-!  <NOTE>
-!     <TT>mpp_write_meta</TT> must be called prior to calling
-!     <TT>mpp_write_compressed.</TT>
-!     Since in general, the vector is distributed across the io-domain
-!     The write expects the io_domain to be defined.
-!  </NOTE>
-! </INTERFACE>
-  interface mpp_write_compressed
-     module procedure mpp_write_compressed_r1d_r8
-     module procedure mpp_write_compressed_r2d_r8
-     module procedure mpp_write_compressed_r3d_r8
-     module procedure mpp_write_compressed_r1d_r4
-     module procedure mpp_write_compressed_r2d_r4
-     module procedure mpp_write_compressed_r3d_r4
-  end interface mpp_write_compressed
-
-!***********************************************************************
-! <INTERFACE NAME="mpp_write_unlimited_axis">
-!   <OVERVIEW>
-!     Write to an opened file along the unlimited axis (e.g. icebergs)
-!   </OVERVIEW>
-!   <DESCRIPTION>
-!     These routines are similar to mpp_write except that they are
-!     designed to handle data written along the unlimited axis that
-!     is not time (e.g. icebergs).
-!  </DESCRIPTION>
-!   <TEMPLATE>
-!     call mpp_write(unit, field, domain, data, nelems_io)
-!   </TEMPLATE>
-!  <IN NAME="unit"></IN>
-!  <IN NAME="field"></IN>
-!  <IN NAME="domain"></IN>
-!  <INOUT NAME="data"></INOUT>
-!  <IN NAME="nelems">
-!    <TT>nelems</TT> is a vector containing the number of elements expected
-!    from each member of the io_domain. It MUST have the same order as
-!    the io_domain pelist.
-!  </IN>
-!  <NOTE>
-!     <TT>mpp_write_meta</TT> must be called prior to calling
-!     <TT>mpp_write_unlimited_axis.</TT>
-!     Since in general, the vector is distributed across the io-domain
-!     The write expects the io_domain to be defined.
-!  </NOTE>
-! </INTERFACE>
-  interface mpp_write_unlimited_axis
-     module procedure mpp_write_unlimited_axis_r1d
-  end interface mpp_write_unlimited_axis
-
 
 !***********************************************************************
 ! <INTERFACE NAME="mpp_def_dim">

@@ -361,29 +361,23 @@ private
   public :: default_field, default_axis, default_att
 
   !--- public interface from mpp_io_util.h ----------------------
-  public :: mpp_get_id, mpp_get_ncid, mpp_is_valid
   public :: mpp_get_info, mpp_get_atts, mpp_get_fields
-  public :: mpp_get_axes, mpp_get_recdimid, mpp_get_axis_by_name
-  public :: mpp_io_set_stack_size, mpp_get_field_index, mpp_get_axis_index
-  public :: mpp_get_field_name, mpp_get_att_length
-  public :: mpp_get_att_type, mpp_get_att_name, mpp_get_att_real, mpp_get_att_char
-  public :: mpp_get_att_real_scalar, mpp_get_axis_length, mpp_is_dist_ioroot
-  public :: mpp_get_file_name, mpp_file_is_opened, mpp_attribute_exist
-  public :: mpp_io_clock_on, mpp_get_default_calendar
-  public :: mpp_get_dimension_length, mpp_get_axis_bounds
+  public :: mpp_get_axes
+  public :: mpp_io_set_stack_size
+  public :: mpp_get_att_name, mpp_get_att_char
+  public :: mpp_is_dist_ioroot
 
   !--- public interface from mpp_io_misc.h ----------------------
-  public :: mpp_io_init, mpp_io_exit, netcdf_err, mpp_get_maxunits, do_cf_compliance
+  public :: mpp_io_init, mpp_io_exit, netcdf_err
 
   !--- public interface from mpp_io_write.h ---------------------
-  public :: mpp_write_meta, mpp_modify_meta, mpp_def_dim
+  public :: mpp_write_meta
 
   !--- public interface from mpp_io_read.h ---------------------
   public :: mpp_read, mpp_read_meta
 
   !--- public interface from mpp_io_switch.h ---------------------
   public :: mpp_open
-  public :: fillin_fieldtype
   !-----------------------------------------------------------------------------
   !--- mpp_io data types
   !-----------------------------------------------------------------------------
@@ -473,18 +467,6 @@ type :: atttype
      type(atttype), pointer   :: att(:) =>NULL()
      type(domain2d), pointer  :: domain =>NULL()
   end type filetype
-
-!> @addtogroup mpp_io_mod
-!> @{
-!***********************************************************************
-!
-!     public interface from mpp_io_util.h
-!
-!***********************************************************************
-  interface mpp_get_id
-     module procedure mpp_get_axis_id
-     module procedure mpp_get_field_id
-  end interface
 
 ! <INTERFACE NAME="mpp_get_atts">
 !   <OVERVIEW>
@@ -765,35 +747,6 @@ type :: atttype
      module procedure mpp_write_meta_global
      module procedure mpp_write_meta_global_scalar_i
   end interface
-
-  interface mpp_modify_meta
-!     module procedure mpp_modify_att_meta
-     module procedure mpp_modify_field_meta
-     module procedure mpp_modify_axis_meta
-  end interface
-
-!***********************************************************************
-! <INTERFACE NAME="mpp_def_dim">
-!   <OVERVIEW>
-!     Define an dimension variable
-!   </OVERVIEW>
-!   <DESCRIPTION>
-!     Similar to the mpp_write_meta routines, but simply defines the
-!     a dimension variable with the optional attributes
-!  </DESCRIPTION>
-!   <TEMPLATE>
-!     call mpp_def_dim( unit, name, dsize, longname, data )
-!   </TEMPLATE>
-!  <IN NAME="unit"></IN>
-!  <IN NAME="name"></IN>
-!  <IN NAME="dsize"></IN>
-!  <IN NAME="data"></INOUT>
-! </INTERFACE>
-  interface mpp_def_dim
-     module procedure mpp_def_dim_nodata
-     module procedure mpp_def_dim_int
-     module procedure mpp_def_dim_real
-  end interface mpp_def_dim
 
 !***********************************************************************
 !

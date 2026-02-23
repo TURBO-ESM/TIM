@@ -91,14 +91,12 @@ module fms_io_mod
 
 use mpp_io_mod,      only: mpp_open, mpp_io_init, mpp_io_exit, mpp_read
 use mpp_io_mod,      only: mpp_write_meta, mpp_get_info, mpp_get_atts, mpp_get_fields
-use mpp_io_mod,      only: mpp_def_dim
 use mpp_io_mod,      only: mpp_get_axes, mpp_get_att_char, mpp_get_att_name
-use mpp_io_mod,      only: mpp_get_att_real_scalar, mpp_attribute_exist, mpp_is_dist_ioroot
+use mpp_io_mod,      only: mpp_is_dist_ioroot
 use mpp_io_mod,      only: fieldtype, axistype, atttype, default_field, default_axis, default_att
 use mpp_io_mod,      only: MPP_NETCDF, MPP_ASCII, MPP_MULTI, MPP_SINGLE, MPP_OVERWR, MPP_RDONLY
 use mpp_io_mod,      only: MPP_IEEE32, MPP_NATIVE, MPP_DELETE, MPP_APPEND, MPP_SEQUENTIAL, MPP_DIRECT
 use mpp_io_mod,      only: MAX_FILE_SIZE
-use mpp_io_mod,      only: mpp_get_dimension_length
 use mpp_domains_mod, only: domain2d, domain1d, NULL_DOMAIN1D, NULL_DOMAIN2D, operator( .EQ. )
 use mpp_domains_mod, only: CENTER, EAST, WEST, NORTH, SOUTH, CORNER
 use mpp_domains_mod, only: mpp_get_domain_components, mpp_get_compute_domain, mpp_get_data_domain

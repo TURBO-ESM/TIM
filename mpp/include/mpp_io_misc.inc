@@ -273,16 +273,4 @@
     end subroutine netcdf_err
 
 
-   !> Return the maximum number of MPP file units available.
-   !!
-   !! maxunits is a mpp_io_mod module variable and defines the maximum number
-   !! of Fortran file units that can be open simultaneously.  mpp_get_maxunits
-   !! simply returns this number.
-   integer function mpp_get_maxunits()
-      mpp_get_maxunits = maxunits
-   end function mpp_get_maxunits
-
-    logical function do_cf_compliance()
-      do_cf_compliance = cf_compliance
-    end function do_cf_compliance
 !> @}

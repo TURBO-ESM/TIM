@@ -132,8 +132,7 @@ use       mpp_io_mod, only:  mpp_io_init, mpp_open,          &
                        MPP_RDONLY, MPP_WRONLY, MPP_APPEND, MPP_OVERWR, &
                        MPP_SEQUENTIAL, MPP_DIRECT,                     &
                        MPP_SINGLE, MPP_MULTI, MPP_DELETE, mpp_io_exit, &
-                       fieldtype, mpp_get_atts, mpp_get_info, mpp_get_fields, &
-                       do_cf_compliance
+                       fieldtype, mpp_get_atts, mpp_get_info, mpp_get_fields
 
 use fms_io_mod, only : fms_io_init, &
                        read_data, &
@@ -183,9 +182,6 @@ public :: CLOCK_COMPONENT, CLOCK_SUBCOMPONENT, &
 public :: fms_c2f_string, fms_cstring2cpointer
 !public from the old fms_io but not exists here
 public :: string
-
-! public mpp-io interfaces
-public :: do_cf_compliance
 
 !Balaji
 !this is published by fms and applied to any initialized clocks

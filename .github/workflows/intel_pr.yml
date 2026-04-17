@@ -14,7 +14,9 @@ jobs:
         SKIP_TESTS: "test_mpp_update_domains.1 test_update_domains_performance.1 test_diag_manager2.23"
     steps:
     - name: Set Env Variables
-      run: source /opt/intel/oneapi/setvars.sh
+      run: |
+        ls /opt/intel/oneapi/setvars.sh
+        . /opt/intel/oneapi/setvars.sh
     - name: Cache dependencies
       id: cache
       uses: actions/cache@v3

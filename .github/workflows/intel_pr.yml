@@ -5,7 +5,7 @@ jobs:
     container:
       image: intel/oneapi-hpckit:2025.2.2-0-devel-ubuntu24.04
       env:
-        CC: mpiicc
+        CC: mpicc
         FC: mpiifort
         CFLAGS:  "-I/libs/include"
         FCFLAGS: "-I/libs/include -g -traceback"

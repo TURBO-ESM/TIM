@@ -33,7 +33,7 @@ jobs:
         make -j install && cd ..
         wget https://github.com/Unidata/netcdf-c/archive/refs/tags/v4.10.0.tar.gz
         tar xf v4.10.0.tar.gz && cd netcdf-c-4.10.0
-        ./configure --prefix=/libs --enable-remote-fortran-bootstrap
+        ./configure --prefix=/libs --disable-libxml2
         make -j install
         # sets this here to pass embeded configure checks
         export LD_LIBRARY_PATH="/libs/lib:$LD_LIBRARY_PATH"

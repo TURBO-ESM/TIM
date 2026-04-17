@@ -15,7 +15,7 @@ jobs:
     steps:
     - name: Verify environment
       run: |
-        . /opt/intel/oneapi/setvars.sh --force
+        . /opt/intel/oneapi/setvars.sh --force intel64
         echo "CC: ${CC}"
         echo "CXX: ${CXX}"
         echo "FC: ${FC}"

@@ -3,7 +3,7 @@ jobs:
   intel-autotools:
     runs-on: ubuntu-latest
     container:
-      image: intel/oneapi-hpckit:2025.3.1-0-devel-ubuntu24.04
+      image: intel/oneapi-hpckit:2025.2.2-0-devel-ubuntu24.04
       env:
         CC: mpiicc
         FC: mpiifort

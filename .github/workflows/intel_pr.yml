@@ -5,9 +5,6 @@ jobs:
     container:
       image: intel/oneapi-hpckit:2025.3.1-0-devel-ubuntu24.04
       env:
-        CC: mpiicc
-        FC: mpiifort
-        CXX: mpiicpc
         CFLAGS:  "-I/libs/include"
         FCFLAGS: "-I/libs/include -g -traceback"
         LDFLAGS: "-L/libs/lib"
@@ -16,6 +13,8 @@ jobs:
         # intel bug causes some failures with shm option(required in container)
         SKIP_TESTS: "test_mpp_update_domains.1 test_update_domains_performance.1 test_diag_manager2.23"
     steps:
+    - name: Set Env Variables
+      run: source /opt/intel/oneapi/setvars.sh
     - name: Cache dependencies
       id: cache
       uses: actions/cache@v3

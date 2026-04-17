@@ -15,10 +15,10 @@ jobs:
     steps:
     - name: Verify environment
       run: |
+        . /opt/intel/oneapi/setvars.sh --force
         echo "CC: ${CC}"
         echo "CXX: ${CXX}"
         echo "FC: ${FC}"
-        printenv | grep ^MPI
     - name: Cache dependencies
       id: cache
       uses: actions/cache@v3

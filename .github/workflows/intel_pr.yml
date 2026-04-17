@@ -23,8 +23,11 @@ jobs:
         key: ${{ runner.os }}-intel-libs
     - name: Install packages for building
       run: |
+        # For now we are okay with intel certificates being invalid 
+        apt -o Acquire::https::repositories.intel.com::Verify-Peer=false update
+        apt -o Acquire::https::apt.repos.intel.com::Verify-Peer=false update
         apt update
-        apt install -y autoconf libtool automake zlibc zlib1g-dev ca-certificates
+        apt install -y autoconf libtool automake zlibc zlib1g-dev
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Build netcdf
       run: |

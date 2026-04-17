@@ -22,7 +22,9 @@ jobs:
         path: /libs
         key: ${{ runner.os }}-intel-libs
     - name: Install packages for building
-      run: apt update && apt install -y autoconf libtool automake zlibc zlib1g-dev
+      run: |
+        apt update
+        apt install -y autoconf libtool automake zlibc zlib1g-dev ca-certificates
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Build netcdf
       run: |

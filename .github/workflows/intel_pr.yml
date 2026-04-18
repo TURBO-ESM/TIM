@@ -6,7 +6,7 @@ jobs:
       image: intel/oneapi-hpckit:2025.2.2-0-devel-ubuntu24.04
       env:
         CC: mpicc
-        FC: mpiifort
+        FC: mpiifx
         CFLAGS:  "-I/libs/include"
         FCFLAGS: "-I/libs/include -g -traceback"
         LDFLAGS: "-L/libs/lib"

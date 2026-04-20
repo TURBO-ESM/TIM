@@ -44,7 +44,7 @@ fi
 touch input.nml
 
 # run the tests
-test_expect_failure "FMS2 IO Test" '
+test_expect_success "FMS2 IO Test" '
   mpirun -n 6 ../test_fms2_io
 '
 

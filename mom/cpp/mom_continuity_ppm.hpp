@@ -1,7 +1,5 @@
 // mom_continuity_ppm.hpp
-
-#ifndef CONTINUITY_PPM_H_
-#define CONTINUITY_PPM_H_
+#pragma once
 
 #include "mom_continuity_ppm_kernel.hpp"
 
@@ -38,4 +36,3 @@ void PPM_reconstruction_y(
     bool,
     OceanOBC*);
 
-#endif

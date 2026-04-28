@@ -2,8 +2,6 @@
 #include <AMReX_Gpu.H>
 #include <AMReX_Array4.H>
 #include <AMReX_MultiFab.H>
-#include <AMReX_VisMF.H>
-#include <filesystem>
 
 #include "turbotmp_helper.hpp"
 

@@ -1,8 +1,6 @@
-#ifndef A4_HELPER_H_
-#define A4_HELPER_H_
+#pragma once
 #include <AMReX_Array4.H>
 #include <AMReX_MultiFab.H>
-#include <string>
 
 namespace turbotmp {
 
@@ -22,4 +20,3 @@ struct A4Box
    void copy_FortranHost_to_array4(const double* f, A4Box& a4);
    void copy_array4_to_FortranHost(const A4Box& a4, double* f);
 }
-#endif

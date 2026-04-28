@@ -52,7 +52,6 @@ void PPM_reconstruction_y(
     OceanOBC* OBC                         //!< Open boundary control structure
 )
 {
-    using namespace amrex;
 
     // Local variables
     const Real oneSixth = 1.0 / 6.0;

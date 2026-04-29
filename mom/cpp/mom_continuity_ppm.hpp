@@ -5,6 +5,7 @@
 
 struct OceanOBC;    // Undefined at the moment
 
+namespace MOM {
 using amrex::Box;
 using amrex::Array4;
 /**
@@ -37,4 +38,4 @@ void PPM_reconstruction_y(
     bool,
     bool,
     OceanOBC*);
-
+}

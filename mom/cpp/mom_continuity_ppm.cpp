@@ -6,6 +6,7 @@
 #include <AMReX_FArrayBox.H>
 
 
+namespace MOM {
 using amrex::FArrayBox;
 /**
  * @brief Piecewise parabolic limiter
@@ -202,4 +203,5 @@ void PPM_reconstruction_y(
     } else {
         ppm_limit_pos(bx, h_in, h_S, h_N, h_min);
     }
+}
 }

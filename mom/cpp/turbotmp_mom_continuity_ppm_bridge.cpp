@@ -49,7 +49,7 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
     ///-------------------------------------------------
     ///  Execute kernel
     ///-------------------------------------------------
-    ppm_limit_pos(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr, h_min);
+    MOM::ppm_limit_pos(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr, h_min);
 
     /// Ensure kernel is done before copying back
     Gpu::synchronize();
@@ -104,7 +104,7 @@ void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST,
     ///-------------------------------------------------
     ///  Execute kernel
     ///-------------------------------------------------
-    ppm_limit_cw84(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr);
+    MOM::ppm_limit_cw84(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr);
 
     /// Ensure kernel is done before copying back
     Gpu::synchronize();
@@ -168,7 +168,7 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
     /// Execute kernel
     ///-------------------------------------------------
 
-    PPM_reconstruction_y(bx,
+    MOM::PPM_reconstruction_y(bx,
                          h_in_DEV.arr,
                          h_S_DEV.arr,
                          h_N_DEV.arr,

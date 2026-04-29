@@ -6,6 +6,7 @@
 #include <AMReX_REAL.H>
 #include <AMReX_Math.H>
 
+namespace MOM {
 using amrex::Real;
 /**
  * @brief Piecewise parabolic limiter
@@ -36,10 +37,10 @@ void ppm_limit_pos_point(Real& h_L,
     /// This limiter prevents undershooting minima within the domain with
     /// values less than h_min.
     /// The grid-normalized curvature of the three thicknesses  [H ~> m or kg m-2]
-    Real curv = 3.0 * ((h_L + h_R) - 2.0 * h_in);
+    Real const curv = 3.0 * ((h_L + h_R) - 2.0 * h_in);
 
     if (curv > 0.0) { /// Only minima are limited.
-        Real dh = h_R - h_L; ///< The difference between the edge thicknesses [H ~> m or kg m-2]
+        Real const dh = h_R - h_L; ///< The difference between the edge thicknesses [H ~> m or kg m-2]
 
         if (amrex::Math::abs(dh) < curv) { /// The parabola's minimum is within the cell.
             if (h_in <= h_min) {
@@ -50,7 +51,7 @@ void ppm_limit_pos_point(Real& h_L,
                 /// The minimum value is h_in - (curv^2 + 3*dh^2)/(12*curv), and must
                 /// be limited in this case.  0 < scale < 1.
 		/// A scaling factor to reduce the curvature of the fit     [nondim]
-                Real scale = 12.0 * curv * (h_in - h_min) / (curv * curv + 3.0 * dh * dh);
+                Real const scale = 12.0 * curv * (h_in - h_min) / (curv * curv + 3.0 * dh * dh);
 
                 h_L = h_in + scale * (h_L - h_in);
                 h_R = h_in + scale * (h_R - h_in);
@@ -88,13 +89,13 @@ void ppm_limit_cw84_point(Real& h_L,
         h_L = h_i;
         h_R = h_i;
     } else {
-        Real RLdiff  = h_R - h_L;           /// The difference between the input edge values
-        Real RLmean  = 0.5 * ( h_R + h_L );  /// The average of the input edge thicknesses
-        Real FunFac  = 6.0 * RLdiff * ( h_i - RLmean ); /// A curious product of the thickness slope and curvature
-        Real RLdiff2 = RLdiff * RLdiff;  //// The squared difference between the input edge values
+        Real const RLdiff  = h_R - h_L;           /// The difference between the input edge values
+        Real const RLmean  = 0.5 * ( h_R + h_L );  /// The average of the input edge thicknesses
+        Real const FunFac  = 6.0 * RLdiff * ( h_i - RLmean ); /// A curious product of the thickness slope and curvature
+        Real const RLdiff2 = RLdiff * RLdiff;  //// The squared difference between the input edge values
 
         if ( FunFac >  RLdiff2 ) h_L = 3.0 * h_i - 2.0 * h_R;
         if ( FunFac < -RLdiff2 ) h_R = 3.0 * h_i - 2.0 * h_L;
     }
 }
-
+}

@@ -5,6 +5,8 @@
 
 struct OceanOBC;    // Undefined at the moment
 
+using amrex::Box;
+using amrex::Array4;
 /**
  * @brief Piecewise parabolic limiter
  */

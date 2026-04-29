@@ -1,11 +1,12 @@
 // mom_continuity_ppm.cpp
 #define AMREX_ABORT_LOC(msg) \
-    Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
+	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 #include "mom_continuity_ppm.hpp"
 
 #include <AMReX_FArrayBox.H>
 
 
+using amrex::FArrayBox;
 /**
  * @brief Piecewise parabolic limiter
  */
@@ -105,11 +106,11 @@ void PPM_reconstruction_y(
 	        Real slope = 0.5 * (h_in(i,j+1,k) - h_in(i,j-1,k));
 
                 // Monotonic constraint (Lin 1994, Eq. B2)
-		Real dMx = max(max(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k)) - h_in(i,j,k);
-		Real dMn = h_in(i,j,k) - min(min(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k));
+		Real dMx = amrex::max(amrex::max(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k)) - h_in(i,j,k);
+		Real dMn = h_in(i,j,k) - amrex::min(amrex::min(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k));
 
-                slp(i,j,k) = Math::copysign(
-                    min(Math::abs(slope), 2.0 * min(dMx, dMn)),
+                slp(i,j,k) = amrex::Math::copysign(
+                    amrex::min(amrex::Math::abs(slope), 2.0 * amrex::min(dMx, dMn)),
                     slope
                 );
             }

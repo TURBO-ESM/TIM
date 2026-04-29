@@ -1,13 +1,12 @@
 #pragma once
 
-#include <AMReX.H>
 #include <AMReX_Box.H>
 #include <AMReX_Array4.H>
 #include <AMReX_Gpu.H>
 #include <AMReX_REAL.H>
 #include <AMReX_Math.H>
 
-using namespace amrex;
+using amrex::Real;
 /**
  * @brief Piecewise parabolic limiter
  *
@@ -42,7 +41,7 @@ void ppm_limit_pos_point(Real& h_L,
     if (curv > 0.0) { /// Only minima are limited.
         Real dh = h_R - h_L; ///< The difference between the edge thicknesses [H ~> m or kg m-2]
 
-        if (Math::abs(dh) < curv) { /// The parabola's minimum is within the cell.
+        if (amrex::Math::abs(dh) < curv) { /// The parabola's minimum is within the cell.
             if (h_in <= h_min) {
                 h_L = h_in;
                 h_R = h_in;
@@ -98,3 +97,4 @@ void ppm_limit_cw84_point(Real& h_L,
         if ( FunFac < -RLdiff2 ) h_R = 3.0 * h_i - 2.0 * h_L;
     }
 }
+

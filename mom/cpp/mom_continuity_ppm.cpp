@@ -1,9 +1,10 @@
 // mom_continuity_ppm.cpp
 #define AMREX_ABORT_LOC(msg) \
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
-#include "mom_continuity_ppm.hpp"
-
+#include <AMReX.H>
 #include <AMReX_FArrayBox.H>
+
+#include "mom_continuity_ppm.hpp"
 
 
 namespace MOM {
@@ -17,6 +18,8 @@ void ppm_limit_pos(const Box & bx,
 		  Array4<Real> const& h_R,
                   const Real h_min)
 {
+    BL_PROFILE("ppm_limit_pos");
+
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
         // This limiter prevents undershooting minima within the domain with
@@ -33,6 +36,8 @@ void ppm_limit_cw84(const Box & bx,
 		   Array4<Real> const& h_L,
 		   Array4<Real> const& h_R)
 {
+    BL_PROFILE("ppm_limit_cw84");
+
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
         // This limiter monotonizes the parabola following
@@ -54,6 +59,7 @@ void PPM_reconstruction_y(
     OceanOBC* OBC                         //!< Open boundary control structure
 )
 {
+    BL_PROFILE("PPM_reconstruction_x");
 
     // Local variables
     const Real oneSixth = 1.0 / 6.0;

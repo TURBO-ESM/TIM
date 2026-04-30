@@ -59,7 +59,7 @@ void PPM_reconstruction_y(
     OceanOBC* OBC                         //!< Open boundary control structure
 )
 {
-    BL_PROFILE("PPM_reconstruction_x");
+    BL_PROFILE("PPM_reconstruction_y");
 
     // Local variables
     const Real oneSixth = 1.0 / 6.0;

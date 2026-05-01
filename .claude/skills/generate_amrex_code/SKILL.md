@@ -1,11 +1,11 @@
 ---
-name: generate_cpp_bridge
-description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
+name: generate_amrex_code
+description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
 user-invocable: true
-argument-hint: <work-directory> <function-name>
+argument-hint: <work-directory> <function-name> [<mom6-directory>]
 ---
 
-# Generate C++ bridge for a MOM6 Fortran subroutine
+# Generate C++/AMReX implementation for a MOM6 Fortran subroutine
 
 This skill is the **execution checklist**. All templates, type tables,
 conventions, and pitfalls live in [lessons.md](lessons.md) — read it
@@ -25,7 +25,7 @@ equals `-h`, do NOT run any steps. Print the following help message
 verbatim and stop:
 
 ```
-Usage: /generate_cpp_bridge <work-directory> <function-name>
+Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>]
 
 Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine
 inside a TURBO-ESM/TIM checkout. Writes (or extends) three layers:
@@ -41,29 +41,43 @@ Reuses turbotmp/turbotmp_helper.{hpp,cpp}; extends it only if a needed
 helper is missing.
 
 Arguments:
-  <work-directory>   Absolute path to a TURBO-ESM/TIM checkout. Must
-                     already exist; Step 1 populates it from `main` if
-                     empty.
-  <function-name>    Name of the original Fortran subroutine being
-                     bridged (e.g. PPM_limit_pos). Used to derive the
-                     kernel symbol, the bridge symbol, and the capture
-                     filename.
+  <work-directory>     Absolute path to a TURBO-ESM/TIM checkout. Must
+                       already exist; Step 1 populates it from `main`
+                       if empty.
+  <function-name>      Name of the original Fortran subroutine being
+                       bridged (e.g. PPM_limit_pos). Used to derive
+                       the kernel symbol, the bridge symbol, and the
+                       capture filename.
+  <mom6-directory>     OPTIONAL. Absolute path to a TURBO-ESM/MOM6
+                       checkout. When given, Step 3 grep's the
+                       Fortran subroutine body out of src/ and
+                       config_src/ to ground the AMReX port. When
+                       omitted, Step 3 asks the user to paste the
+                       Fortran source body.
 
 Example:
-  /generate_cpp_bridge /glade/derecho/scratch/sunjian/TIM PPM_limit_pos
+  /generate_amrex_code /glade/derecho/scratch/sunjian/TIM PPM_limit_pos \
+                       /glade/derecho/scratch/sunjian/MOM6
 ```
 
 ## Step 0 — validate inputs
 
-`$0` = work-directory (TIM), `$1` = function-name. Stop on the first
-failure with a one-line, actionable error. Do not retry, do not assume
-defaults, do not create anything.
+`$0` = work-directory (TIM), `$1` = function-name, `$2` =
+mom6-directory (optional). Stop on the first failure with a
+one-line, actionable error. Do not retry, do not assume defaults,
+do not create anything.
 
 1. **Argument count.** If `$0` empty OR `$1` empty → stop:
-   `Error: missing arguments. Run "/generate_cpp_bridge --help" for usage.`
-2. **Work directory exists.** If `$0` is not an existing directory → stop:
+   `Error: missing arguments. Run "/generate_amrex_code --help" for usage.`
+2. **TIM work directory exists.** If `$0` is not an existing
+   directory → stop:
    `Error: work directory "<value>" does not exist.`
    It **may be empty** — Step 1 will clone into it.
+3. **MOM6 directory (optional).** If `$2` was provided but is not
+   an existing directory → stop:
+   `Error: MOM6 directory "<value>" does not exist.` If `$2` was
+   omitted, record `mom6_mode=paste` and Step 3 will ask the user
+   for the Fortran source body inline.
 
 Layout / lessons.md / plan-confirmation checks run in Step 1 after
 the clone populates the tree.
@@ -79,8 +93,9 @@ the clone populates the tree.
    exists, **append** to it; do not create a second file.
 3. **Pointwise factor** — yes if the kernel is stencil-free per cell
    (its inner loop body reads only `(i,j,k)`); no if it uses a
-   stencil (`(i, j±1, k)` etc.). Controls whether Step 4 produces a
-   `*_point` primitive.
+   stencil (`(i, j±1, k)` etc.). Controls whether Step 5 produces a
+   `*_point` primitive. The Fortran source captured in Step 3 is
+   what determines this — confirm or correct after Step 3.
 
 If the user already specified any of these, take their values as-is.
 
@@ -104,9 +119,9 @@ holds the template or rationale.
    Then validate the tree:
    - `$0/mom/cpp` and `$0/turbotmp` both missing → stop:
      `Error: "<value>" is not a TURBO-ESM/TIM checkout (missing mom/cpp/ and turbotmp/).`
-     One missing is OK — Steps 6–8 will create the sibling.
-   - `$0/.claude/skills/generate_cpp_bridge/lessons.md` missing → stop:
-     `Error: lessons.md not found at <work-directory>/.claude/skills/generate_cpp_bridge/lessons.md.`
+     One missing is OK — Steps 7–9 will create the sibling.
+   - `$0/.claude/skills/generate_amrex_code/lessons.md` missing → stop:
+     `Error: lessons.md not found at <work-directory>/.claude/skills/generate_amrex_code/lessons.md.`
    - **Read `lessons.md` in full.** Authoritative for naming,
      signature conventions, and the three-tier layout. Prefer it over
      this file on conflict and report the discrepancy.
@@ -115,46 +130,81 @@ holds the template or rationale.
    (`MOM::<lowercased_$1>`), bridge symbol
    (`<prefix>_<lowercased_$1>_bridge`), target file paths, whether
    each will be created or appended, and whether a `*_point` factor
-   will be produced.
+   is the working assumption (Step 3 may override it).
 
 ### 2. Gather the bridge contract
    Ask the user for the Fortran-side `bind(C)` interface, either as
    the literal `interface … end interface` block or as a path to a
    MOM6 source file containing
    `<prefix>_<lowercased_$1>_bridge) bind(C)` (the skill `grep`s the
-   signature out).
+   signature out — if `$2` was supplied, default the search root to
+   `$2/src` and `$2/config_src`).
 
    Derive the C prototype mechanically from the table in
    lessons.md §3.1. Print the derived C signature and pause for user
    confirmation. If any field is ambiguous, ask before proceeding.
 
-### 3. Locate the capture file (regression input)
+### 3. Locate and read the Fortran kernel source
+   The AMReX kernel body in Steps 5–6 must be a faithful port of the
+   Fortran subroutine body, so the skill must read that body before
+   it writes any C++.
+
+   - **If `$2` was supplied**, run
+     `grep -irln "^[[:space:]]*subroutine[[:space:]]\+\(<function-name>_fortran\|<function-name>\)\b" $2/src $2/config_src`.
+     - 1 match → open the file, locate the
+       `subroutine … end subroutine` block, and capture the body for
+       Steps 5–6 along with its file path and line range.
+     - 0 matches → fall through to user paste below.
+     - >1 matches → list the candidate file paths and ask the user
+       which to use. Do not pick silently.
+   - **If `$2` was omitted, or the grep found nothing**, ask the
+     user to paste the Fortran subroutine body inline. Either the
+     `<function-name>_fortran` form (post-wrap) or the original
+     pre-wrap form is acceptable; record which.
+
+   After capture, print a one-line acknowledgement: e.g.
+   `Loaded body from <path>:<lineS>-<lineE> (NN lines).` or
+   `Loaded body from user paste (NN lines).`
+
+   Then re-evaluate "Settle these decisions" #3 (pointwise factor):
+   if the captured body reads any neighbour index (`j-1`, `j+1`,
+   etc.), set the factor to `no` and record the change. If the body
+   is purely `(i,j,k)`-local, keep `yes`.
+
+   Do not proceed to Step 4 until the body has been captured.
+
+### 4. Locate the capture file (regression input)
    Ask where `capture/<lowercased_$1>.bin` and `…meta` live. Default
    search: the user's CWD, then `$0/capture`. If not found, surface
-   the absence but continue — Step 10 will skip the replay and
-   record "AMReX-mode replay deferred" in Step 11.
+   the absence but continue — Step 11 will skip the replay and
+   record "AMReX-mode replay deferred" in Step 12.
 
-### 4. Pointwise primitive in `mom/cpp/<module>_kernel.hpp`
-   Skip if the kernel is stencil-using. Otherwise add
-   `MOM::<lowercased_$1>_point(...)` per lessons.md §5. If the file
-   exists, append inside the existing `namespace MOM`.
+### 5. Pointwise primitive in `mom/cpp/<module>_kernel.hpp`
+   Skip if "Settle these decisions" #3 (as confirmed at the end of
+   Step 3) said "no pointwise factor". Otherwise add
+   `MOM::<lowercased_$1>_point(...)` per lessons.md §5, porting the
+   Fortran inner loop body captured in Step 3 verbatim (preserve
+   parenthesisation to keep floating-point evaluation order). If the
+   file exists, append inside the existing `namespace MOM`.
 
-### 5. Box-level AMReX kernel in `mom/cpp/<module>.{hpp,cpp}`
-   Add `MOM::<lowercased_$1>(...)` per lessons.md §4. Forward-declare
-   any opaque types in the header; in the body, guard non-null
-   opaque pointers with
-   `AMREX_ABORT_LOC("...not yet implemented")` until the type is
-   implemented. If the module file exists, append the new
-   declaration in the header and the new definition in the .cpp.
+### 6. Box-level AMReX kernel in `mom/cpp/<module>.{hpp,cpp}`
+   Add `MOM::<lowercased_$1>(...)` per lessons.md §4. The body of the
+   `ParallelFor` lambda is either a one-line call to the `*_point`
+   primitive from Step 5 (stencil-free case) or a direct port of the
+   Fortran loop nest from Step 3 (stencil case). Forward-declare any
+   opaque types in the header; in the body, guard non-null opaque
+   pointers with `AMREX_ABORT_LOC("...not yet implemented")` until
+   the type is implemented. If the module file exists, append the
+   new declaration in the header and the new definition in the .cpp.
 
-### 6. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
+### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
    First-time creation: include the mirror C structs (`RealArray_C`,
    `Box_C`), forward-declare any opaque types, wrap prototypes in
    `#ifdef __cplusplus extern "C" { … } #endif` — per lessons.md §3.
    Append the new prototype derived in Step 2. Do not re-declare the
    structs or guards if the file already exists.
 
-### 7. Bridge implementation in `mom/cpp/turbotmp_<module>_bridge.cpp`
+### 8. Bridge implementation in `mom/cpp/turbotmp_<module>_bridge.cpp`
    Implement the new prototype following the **7-step marshalling
    pattern** in lessons.md §3 (build `Box` with index −1, `make_array4`
    each array, copy host→device for inputs **and** inouts, call the
@@ -162,12 +212,12 @@ holds the template or rationale.
    outputs/inouts only, free everything). No math, no value-dependent
    branches.
 
-### 8. Extend `turbotmp/turbotmp_helper.{hpp,cpp}` only if needed
+### 9. Extend `turbotmp/turbotmp_helper.{hpp,cpp}` only if needed
    Reuse existing helpers (lessons.md §2). Only add a new helper if
    the new bridge needs a layout/type that does not yet exist (e.g.
    2-D, `IntArray_C`).
 
-### 9. Wire into the build
+### 10. Wire into the build
    Add the new sources alongside the existing `mom_continuity_ppm.cpp`
    in `CMakeLists.txt` / `Makefile.am`. Run a clean build; verify the
    resulting library exports `<prefix>_<lowercased_$1>_bridge` with
@@ -175,8 +225,8 @@ holds the template or rationale.
    the diagnostic; do not patch by changing kernel signatures or
    removing `const` without checking lessons.md §6.
 
-### 10. Verify (replay against capture)
-   If Step 3 located a capture file, run the replay procedure in
+### 11. Verify (replay against capture)
+   If Step 4 located a capture file, run the replay procedure in
    lessons.md §8. Expected outcome:
    - **stencil-free limiter kernels** → bit-identity. Any nonzero
      diff is a bug.
@@ -184,14 +234,15 @@ holds the template or rationale.
      configs only; OBC-active configs excluded until the opaque type
      is implemented in C++.
 
-   If no capture file: skip and note "replay deferred" for Step 11.
+   If no capture file: skip and note "replay deferred" for Step 12.
 
-### 11. Commit and push
+### 12. Commit and push
    Branch: `claude_<lowercased_$1>_bridge` based on `main`. Stage all
    newly created and modified files. Commit message names the bridge
    symbol, the kernel symbol, whether a pointwise primitive was
-   produced, and the replay result. Use a HEREDOC so the trailer is
-   preserved verbatim:
+   produced, the source-of-truth for the port (file path + line
+   range, or "user paste"), and the replay result. Use a HEREDOC so
+   the trailer is preserved verbatim:
 
    ```
    BRANCH="claude_$(echo "$1" | tr '[:upper:]' '[:lower:]')_bridge"
@@ -201,7 +252,7 @@ holds the template or rationale.
    <one-line summary of the C++ implementation for $1>
 
    <1–3 line body: bridge symbol, kernel symbol,
-   files added/extended, replay result>
+   files added/extended, source-of-truth, replay result>
 
    Co-authored-by: Claude <noreply@anthropic.com>
    EOF
@@ -234,6 +285,8 @@ holds the template or rationale.
 - Do not modify any Fortran source, the existing
   `turbotmp_helper.{hpp,cpp}` core API, or the mirror C struct
   layout (`RealArray_C`, `Box_C`).
+- Do not invent kernel math. The AMReX body must come from the
+  Fortran source captured in Step 3, ported verbatim.
 
 If something not covered here comes up, consult lessons.md §7
 (C++-side pitfalls) before improvising.
@@ -243,9 +296,11 @@ If something not covered here comes up, consult lessons.md §7
 Report:
 
 1. Bridge symbol implemented and the kernel symbol it dispatches to.
-2. List of TIM files created or extended.
-3. Build result (clean, with the bridge symbol exported).
-4. Replay-against-capture result, or "deferred" with the reason.
-5. Branch pushed to `origin`.
-6. What still needs to happen, if anything (e.g. `OceanOBC`
+2. Source-of-truth for the port: file path + line range (if grep'd
+   from `$2`) or "user paste".
+3. List of TIM files created or extended.
+4. Build result (clean, with the bridge symbol exported).
+5. Replay-against-capture result, or "deferred" with the reason.
+6. Branch pushed to `origin`.
+7. What still needs to happen, if anything (e.g. `OceanOBC`
    implementation, OBC-active replay once the opaque type lands).

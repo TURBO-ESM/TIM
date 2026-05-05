@@ -28,6 +28,9 @@ void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST, const RealArray_C* h_i
 void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST, const RealArray_C* h_in_HOST,
                         RealArray_C* h_S_HOST, RealArray_C* h_N_HOST, const RealArray_C* mask2dT_HOST,
                         const double h_min, const bool monotonic, const bool simple_2nd, OceanOBC* obc);
+void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST, const RealArray_C* h_in_HOST,
+                        RealArray_C* h_W_HOST, RealArray_C* h_E_HOST, const RealArray_C* mask2dT_HOST,
+                        const double h_min, const bool monotonic, const bool simple_2nd, OceanOBC* obc);
 
 #ifdef __cplusplus
 }

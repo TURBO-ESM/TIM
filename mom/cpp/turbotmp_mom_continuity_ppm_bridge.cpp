@@ -191,3 +191,71 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
     turbotmp::free_array4(h_N_DEV);
     turbotmp::free_array4(mask2dT_DEV);
 }
+
+/**
+ * @brief Bridge for the function PPM_reconstruction_x
+ *
+ * @param bx_HOST        Box over which to iterate
+ * @param h_in_HOST      Layer thickness [H → m or kg m^-2] (host, Fortran order)
+ * @param h_W_HOST       West edge thickness (host, Fortran order)
+ * @param h_E_HOST       East edge thickness (host, Fortran order)
+ * @param mask2dT_HOST   Mask (0 land, 1 ocean) (host, Fortran order)
+ * @param h_min       Minimum thickness
+ * @param monotonic   Use CW84 limiter if true
+ * @param simple_2nd  Use simple 2nd order scheme if true
+ *
+ * @return Modified thickness values @p h_W_HOST and @p h_E_HOST
+ */
+void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
+                                          const RealArray_C* h_in_HOST,
+                                          RealArray_C* h_W_HOST,
+                                          RealArray_C* h_E_HOST,
+                                          const RealArray_C* mask2dT_HOST,
+                                          const double h_min,
+                                          const bool monotonic,
+                                          const bool simple_2nd,
+                                          OceanOBC* obc)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
+                  amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2],    1);
+    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0],  h_W_HOST->shape[1],  h_W_HOST->shape[2],     1);
+    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0],  h_E_HOST->shape[1],  h_E_HOST->shape[2],     1);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,                1);
+
+    /// Copy from Fortran arrays to A4 container
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_W_HOST->data,     h_W_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_E_HOST->data,     h_E_DEV);
+    turbotmp::copy_FortranHost_to_array4(mask2dT_HOST->data, mask2dT_DEV);
+
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+
+    MOM::PPM_reconstruction_x(bx,
+                         h_in_DEV.arr,
+                         h_W_DEV.arr,
+                         h_E_DEV.arr,
+                         mask2dT_DEV.arr,
+                         h_min,
+                         monotonic,
+                         simple_2nd,
+                         obc);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host
+    turbotmp::copy_array4_to_FortranHost(h_W_DEV, h_W_HOST->data);
+    turbotmp::copy_array4_to_FortranHost(h_E_DEV, h_E_HOST->data);
+
+    /// Free memory from a4 containers
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_W_DEV);
+    turbotmp::free_array4(h_E_DEV);
+    turbotmp::free_array4(mask2dT_DEV);
+}

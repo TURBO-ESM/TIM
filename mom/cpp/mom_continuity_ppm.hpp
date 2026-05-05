@@ -38,4 +38,18 @@ void PPM_reconstruction_y(
     bool,
     bool,
     OceanOBC*);
+
+/**
+ * @brief Piecewise reconstruction in the x dimension
+ */
+void PPM_reconstruction_x(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    bool,
+    bool,
+    OceanOBC*);
 }

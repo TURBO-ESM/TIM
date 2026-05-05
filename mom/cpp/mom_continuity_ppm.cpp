@@ -218,6 +218,7 @@ void PPM_reconstruction_x(
     OceanOBC* OBC                    //!< Open boundary control structure
 )
 {
+    PL_PROFILE("PPM_reconstruction_x");
     const Real oneSixth = 1.0 / 6.0;
 
     // NOTE: OBC support temporarily disabled.

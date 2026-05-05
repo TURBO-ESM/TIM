@@ -229,7 +229,7 @@ void PPM_reconstruction_x(
     Box bx  = grow(bxH, 0, 1);  // grow in x-direction (dim=0)
 
     // Extended iteration box extends the h-grid by two elements in x
-    Box bxE = grow(bxH, 0, 2);
+    Box bxE = grow(bxH, 0, 2);  // grow in x-direction (dim=0)
 
     // Temporary slope array
     FArrayBox slp_fab(bxE, 1);

@@ -12,15 +12,18 @@ using amrex::Array4;
  *        layer thickness in height units (Z).
  *
  *  Box-level AMReX kernel for the MOM6
- *  MOM_interface_heights::thickness_to_dz_3d subroutine. Iterates the
- *  given Box and dispatches to thickness_to_dz_3d_point at each cell.
+ *  MOM_interface_heights::thickness_to_dz_3d subroutine. Checks the
+ *  Boussinesq/non-Boussinesq mode once, then dispatches to either
+ *  thickness_to_dz_3d_point_boussinesq or
+ *  thickness_to_dz_3d_point_nonboussinesq for every cell — no per-cell
+ *  branch.
  *
  *  @param bx          Iteration domain (Fortran 1-based indices already
  *                     converted to 0-based by the bridge).
  *  @param h           Input layer thickness [H ~> m or kg m-2].
  *  @param dz          Output geometric layer thickness [Z ~> m].
- *  @param spv_avg     Layer-mean specific volume; only read when
- *                     has_spv is true.
+ *  @param spv_avg     Layer-mean specific volume; read only in the
+ *                     non-Boussinesq path (has_spv true).
  *  @param boussinesq  True if running in Boussinesq mode.
  *  @param h_to_z      Conversion factor from H to Z [Z H-1].
  *  @param h_to_rz     Conversion factor from H to R*Z [R Z H-1].

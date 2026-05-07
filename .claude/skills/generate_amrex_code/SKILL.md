@@ -187,6 +187,14 @@ holds the template or rationale.
    parenthesisation to keep floating-point evaluation order). If the
    file exists, append inside the existing `namespace MOM`.
 
+   **Mode flags:** If the Fortran inner loop contains an `if`-test on
+   a bool that is constant for the entire loop (a mode flag such as
+   Boussinesq), create **two** separate `_point` functions — one per
+   mode — rather than a single function with a flag parameter. Name
+   them `<kernel>_point_<mode>` (e.g.
+   `thickness_to_dz_3d_point_boussinesq` /
+   `thickness_to_dz_3d_point_nonboussinesq`). See lessons.md §7 #9.
+
 ### 6. Box-level AMReX kernel in `mom/cpp/<module>.{hpp,cpp}`
    Add `MOM::<lowercased_$1>(...)` per lessons.md §4. The body of the
    `ParallelFor` lambda is either a one-line call to the `*_point`
@@ -196,6 +204,11 @@ holds the template or rationale.
    pointers with `AMREX_ABORT_LOC("...not yet implemented")` until
    the type is implemented. If the module file exists, append the
    new declaration in the header and the new definition in the .cpp.
+
+   **Mode dispatch:** When two `_point` primitives exist for distinct
+   modes (Step 5), select between them with a single `if/else`
+   **before** the `ParallelFor`, never inside the lambda. Each lambda
+   calls exactly one primitive with no conditional. See lessons.md §7 #9.
 
 ### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
    First-time creation: include the mirror C structs (`RealArray_C`,

@@ -342,6 +342,14 @@ PR #8's ~30 commits surface the friction worth flagging:
    `<AMReX_FArrayBox.H>` (the last only when intermediate `FArrayBox`
    buffers are allocated). Pulling in `<AMReX.H>` umbrella headers
    slows builds without benefit.
+9. **Per-cell mode flags on a call-constant bool.** If a kernel
+   switches between two math paths based on a `bool` parameter that is
+   constant for the entire kernel call (e.g. Boussinesq vs.
+   non-Boussinesq), do **not** pass the flag inside the `ParallelFor`
+   lambda. Instead create two separate `*_point` primitives — one per
+   mode — and select between two separate `ParallelFor` calls with a
+   single `if/else` at the box level before the loop. This eliminates
+   the divergent branch from every GPU thread. (Lesson from PR #11.)
 
 ---
 

@@ -204,4 +204,134 @@ void PPM_reconstruction_y(
         ppm_limit_pos(bx, h_in, h_S, h_N, h_min);
     }
 }
+
+//> Calculates west/east edge values for PPM reconstruction.
+void PPM_reconstruction_x(
+    const Box& bxH,                   //!< H-grid iteration Box
+    const Array4<const Real>& h_in,   //!< Layer thickness
+    const Array4<Real>& h_W,          //!< West edge thickness
+    const Array4<Real>& h_E,          //!< East edge thickness
+    const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
+    Real h_min,                       //!< Minimum thickness
+    bool monotonic,                   //!< Use CW84 limiter if true
+    bool simple_2nd,                  //!< Use simple 2nd order if true
+    OceanOBC* obc                     //!< Open boundary control structure
+)
+{
+    const Real oneSixth = 1.0 / 6.0;
+
+    if (obc != nullptr) {
+        AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+
+    // Local box grows bxH by 1 in x; expanded box grows by 2 in x
+    Box bx  = grow(bxH, 0, 1);
+    Box bxE = grow(bxH, 0, 2);
+
+    FArrayBox slp_fab(bxE, 1);
+    Array4<Real> slp = slp_fab.array();
+
+    if (simple_2nd) {
+
+        ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            Real h_im1 = mask2dT(i-1,j,0) * h_in(i-1,j,k)
+                       + (1.0 - mask2dT(i-1,j,0)) * h_in(i,j,k);
+            Real h_ip1 = mask2dT(i+1,j,0) * h_in(i+1,j,k)
+                       + (1.0 - mask2dT(i+1,j,0)) * h_in(i,j,k);
+            h_W(i,j,k) = 0.5 * (h_im1 + h_in(i,j,k));
+            h_E(i,j,k) = 0.5 * (h_ip1 + h_in(i,j,k));
+        });
+
+    } else {
+
+        // Compute slopes on expanded box
+        ParallelFor(bxE, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            if ((mask2dT(i-1,j,0) * mask2dT(i,j,0) * mask2dT(i+1,j,0)) == 0.0) {
+                slp(i,j,k) = 0.0;
+            } else {
+                Real slope = 0.5 * (h_in(i+1,j,k) - h_in(i-1,j,k));
+                Real dMx = amrex::max(amrex::max(h_in(i+1,j,k), h_in(i-1,j,k)), h_in(i,j,k)) - h_in(i,j,k);
+                Real dMn = h_in(i,j,k) - amrex::min(amrex::min(h_in(i+1,j,k), h_in(i-1,j,k)), h_in(i,j,k));
+                slp(i,j,k) = amrex::Math::copysign(
+                    amrex::min(amrex::Math::abs(slope), 2.0 * amrex::min(dMx, dMn)),
+                    slope
+                );
+            }
+        });
+
+        // Compute edge values (Lin 1994 Eq. B2)
+        ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            Real h_im1 = mask2dT(i-1,j,0) * h_in(i-1,j,k)
+                       + (1.0 - mask2dT(i-1,j,0)) * h_in(i,j,k);
+            Real h_ip1 = mask2dT(i+1,j,0) * h_in(i+1,j,k)
+                       + (1.0 - mask2dT(i+1,j,0)) * h_in(i,j,k);
+            h_W(i,j,k) = 0.5 * (h_im1 + h_in(i,j,k))
+                        + oneSixth * (slp(i-1,j,k) - slp(i,j,k));
+            h_E(i,j,k) = 0.5 * (h_ip1 + h_in(i,j,k))
+                        + oneSixth * (slp(i,j,k) - slp(i+1,j,k));
+        });
+    }
+
+    // Apply limiters
+    if (monotonic) {
+        ppm_limit_cw84(bx, h_in, h_W, h_E);
+    } else {
+        ppm_limit_pos(bx, h_in, h_W, h_E, h_min);
+    }
+}
+
+//> Zonal edge thickness: upwind copy or x-direction PPM reconstruction.
+void zonal_edge_thickness(
+    const Box& bxC,                   //!< Continuity iteration box
+    const Array4<const Real>& h_in,   //!< Layer thickness
+    const Array4<Real>& h_W,          //!< West edge thickness
+    const Array4<Real>& h_E,          //!< East edge thickness
+    const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
+    Real h_min,                       //!< Minimum thickness
+    bool upwind_1st,                  //!< If true, use 1st-order upwind
+    bool monotonic,                   //!< Use CW84 limiter if true
+    bool simple_2nd,                  //!< Use simple 2nd order if true
+    OceanOBC* obc                     //!< Open boundary control structure
+)
+{
+    BL_PROFILE("zonal_edge_thickness");
+    if (upwind_1st) {
+        // 1st-order upwind: set both edges to cell-centre value over box grown by 1 in x
+        Box bx = grow(bxC, 0, 1);
+        ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+            zonal_edge_thickness_upwind_point(h_W(i,j,k), h_E(i,j,k), h_in(i,j,k));
+        });
+    } else {
+        PPM_reconstruction_x(bxC, h_in, h_W, h_E, mask2dT, h_min, monotonic, simple_2nd, obc);
+    }
+}
+
+//> Meridional edge thickness: upwind copy or y-direction PPM reconstruction.
+void meridional_edge_thickness(
+    const Box& bxC,                   //!< Continuity iteration box
+    const Array4<const Real>& h_in,   //!< Layer thickness
+    const Array4<Real>& h_S,          //!< South edge thickness
+    const Array4<Real>& h_N,          //!< North edge thickness
+    const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
+    Real h_min,                       //!< Minimum thickness
+    bool upwind_1st,                  //!< If true, use 1st-order upwind
+    bool monotonic,                   //!< Use CW84 limiter if true
+    bool simple_2nd,                  //!< Use simple 2nd order if true
+    OceanOBC* obc                     //!< Open boundary control structure
+)
+{
+    BL_PROFILE("meridional_edge_thickness");
+    if (upwind_1st) {
+        // 1st-order upwind: set both edges to cell-centre value over box grown by 1 in y
+        Box bx = grow(bxC, 1, 1);
+        ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+            meridional_edge_thickness_upwind_point(h_S(i,j,k), h_N(i,j,k), h_in(i,j,k));
+        });
+    } else {
+        PPM_reconstruction_y(bxC, h_in, h_S, h_N, mask2dT, h_min, monotonic, simple_2nd, obc);
+    }
+}
 }

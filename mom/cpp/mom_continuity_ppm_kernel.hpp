@@ -98,4 +98,20 @@ void ppm_limit_cw84_point(Real& h_L,
         if ( FunFac < -RLdiff2 ) h_R = 3.0 * h_i - 2.0 * h_L;
     }
 }
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void zonal_edge_thickness_upwind_point(Real& h_W, Real& h_E, Real const h_in) noexcept
+{
+    h_W = h_in;
+    h_E = h_in;
+}
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void meridional_edge_thickness_upwind_point(Real& h_S, Real& h_N, Real const h_in) noexcept
+{
+    h_S = h_in;
+    h_N = h_in;
+}
 }

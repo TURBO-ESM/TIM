@@ -38,4 +38,48 @@ void PPM_reconstruction_y(
     bool,
     bool,
     OceanOBC*);
+
+/**
+ * @brief Piecewise reconstruction in the x dimension
+ */
+void PPM_reconstruction_x(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    bool,
+    bool,
+    OceanOBC*);
+
+/**
+ * @brief Zonal edge thickness — upwind copy or x-direction PPM reconstruction
+ */
+void zonal_edge_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    bool,
+    bool,
+    bool,
+    OceanOBC*);
+
+/**
+ * @brief Meridional edge thickness — upwind copy or y-direction PPM reconstruction
+ */
+void meridional_edge_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    bool,
+    bool,
+    bool,
+    OceanOBC*);
 }

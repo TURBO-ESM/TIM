@@ -17,7 +17,7 @@ void thickness_to_dz_3d(const Box& bx,
     if ((!boussinesq) && has_spv) {
         ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            thickness_to_dz_3d_point_nonboussinesq(dz(i,j,k),
+            thickness_to_dz_3d_nonboussinesq_point(dz(i,j,k),
                                                    h(i,j,k),
                                                    spv_avg(i,j,k),
                                                    h_to_rz);
@@ -25,7 +25,7 @@ void thickness_to_dz_3d(const Box& bx,
     } else {
         ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            thickness_to_dz_3d_point_boussinesq(dz(i,j,k),
+            thickness_to_dz_3d_boussinesq_point(dz(i,j,k),
                                                 h(i,j,k),
                                                 h_to_z);
         });

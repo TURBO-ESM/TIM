@@ -17,7 +17,7 @@ using amrex::Real;
  */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void thickness_to_dz_3d_point_boussinesq(Real& dz,
+void thickness_to_dz_3d_boussinesq_point(Real& dz,
                                          Real const h,
                                          Real const h_to_z) noexcept
 {
@@ -36,7 +36,7 @@ void thickness_to_dz_3d_point_boussinesq(Real& dz,
  */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void thickness_to_dz_3d_point_nonboussinesq(Real& dz,
+void thickness_to_dz_3d_nonboussinesq_point(Real& dz,
                                             Real const h,
                                             Real const spv,
                                             Real const h_to_rz) noexcept

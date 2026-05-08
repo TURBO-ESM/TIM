@@ -10,15 +10,15 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        conf-flags: [--disable-openmp, --enable-mixed-mode, --with-mpi=no]
+        conf-flag: [ --disable-openmp, --with-mpi=no, --disable-r8-default]
         input-flag:  [--enable-test-input=/home/unit_tests_input]
         exclude:
-          - conf-flags: --with-mpi=no
+          - conf-flag: --with-mpi=no
             input-flag: --enable-test-input=/home/unit_tests_input
     container:
       image: ghcr.io/noaa-gfdl/fms/fms-ci-rocky-gnu:15.1.0
       env:
-        DISTCHECK_CONFIGURE_FLAGS: "${{ matrix.conf-flags }} ${{ matrix.input-flag }}"
+        DISTCHECK_CONFIGURE_FLAGS: "${{ matrix.conf-flag }} ${{ matrix.input-flag }}"
         DEBUG_FLAGS: "-O0 -g -fbounds-check -ffpe-trap=invalid,zero,overflow"
     steps:
     - name: Checkout code
@@ -29,7 +29,7 @@ jobs:
       run: ./configure ${DISTCHECK_CONFIGURE_FLAGS} FCFLAGS="$FCFLAGS $DEBUG_FLAGS" || cat config.log
     - name: Run distcheck
       run: make distcheck
-      if: ${{ matrix.conf-flags != '--with-mpi=no' }}
+      if: ${{ matrix.conf-flag != '--with-mpi=no' }}
     - name: Build the library (without test suite for serial build)
       run: make
-      if: ${{ matrix.conf-flags == '--with-mpi=no' }}
+      if: ${{ matrix.conf-flag == '--with-mpi=no' }}

@@ -41,9 +41,9 @@ Reuses turbotmp/turbotmp_helper.{hpp,cpp}; extends it only if a needed
 helper is missing.
 
 Arguments:
-  <work-directory>     Absolute path to a TURBO-ESM/TIM checkout. Must
-                       already exist; Step 1 populates it from `main`
-                       if empty.
+  <work-directory>     Absolute path to an existing TURBO-ESM/TIM checkout
+                       (must contain mom/cpp/ and turbotmp/, and should be
+                       on the main branch). Cloning is not performed.
   <function-name>      Name of the original Fortran subroutine being
                        bridged (e.g. PPM_limit_pos). Used to derive
                        the kernel symbol, the bridge symbol, and the
@@ -69,18 +69,19 @@ do not create anything.
 
 1. **Argument count.** If `$0` empty OR `$1` empty → stop:
    `Error: missing arguments. Run "/generate_amrex_code --help" for usage.`
-2. **TIM work directory exists.** If `$0` is not an existing
-   directory → stop:
+2. **TIM work directory is an existing checkout.** If `$0` is not an
+   existing directory → stop:
    `Error: work directory "<value>" does not exist.`
-   It **may be empty** — Step 1 will clone into it.
+   The directory must already contain a TURBO-ESM/TIM checkout —
+   cloning is not performed by this skill. Step 1 verifies the checkout
+   identity and validates the tree layout.
 3. **MOM6 directory (optional).** If `$2` was provided but is not
    an existing directory → stop:
    `Error: MOM6 directory "<value>" does not exist.` If `$2` was
    omitted, record `mom6_mode=paste` and Step 3 will ask the user
    for the Fortran source body inline.
 
-Layout / lessons.md / plan-confirmation checks run in Step 1 after
-the clone populates the tree.
+Layout / lessons.md / plan-confirmation checks run in Step 1.
 
 ## Settle these decisions (ask if not obvious from the tree)
 
@@ -104,17 +105,23 @@ If the user already specified any of these, take their values as-is.
 Each step is one action with a pointer to the lessons.md section that
 holds the template or rationale.
 
-### 1. Clone TIM and validate
-   Target branch: `main`. Apply this policy on `$0`:
+### 1. Validate the existing checkout
+   **Verify the work directory.** All bridge work in this skill is based
+   on the `main` branch — that is the agreed base and what the Fortran
+   side expects to merge against.
 
-   - empty → `git clone -b main git@github.com:TURBO-ESM/TIM.git $0`.
-   - already a TURBO-ESM/TIM checkout (`git -C $0 remote -v`) →
-     `git -C $0 fetch origin main`, then stop and surface to the user
-     if any of: working tree dirty (`git status --porcelain` non-empty),
-     HEAD not at `origin/main`. Do not stash, discard, or switch
-     branches silently.
-   - non-empty but not TURBO-ESM/TIM → stop and surface; do not
-     overwrite.
+   Verify `$0` is a TURBO-ESM/TIM checkout by running
+   `git -C $0 remote -v` and confirming the output contains
+   `TURBO-ESM/TIM`. If not → stop:
+   `Error: "<value>" is not a TURBO-ESM/TIM checkout.`
+
+   Then run `git -C $0 fetch origin main` and check the branch state:
+   - If the working tree is dirty (`git -C $0 status --porcelain` is
+     non-empty) → stop and surface to the user; do not stash or discard.
+   - If HEAD is not already at `origin/main` (compare
+     `git -C $0 rev-parse HEAD` and `git -C $0 rev-parse origin/main`)
+     → stop and ask the user whether to `git checkout main` before
+     continuing. Do not switch branches silently.
 
    Then validate the tree:
    - `$0/mom/cpp` and `$0/turbotmp` both missing → stop:

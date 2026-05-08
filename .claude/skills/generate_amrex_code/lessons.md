@@ -2,6 +2,14 @@
 
 Source: [TURBO-ESM/TIM PR #8](https://github.com/TURBO-ESM/TIM/pull/8) — merged commit `2374014`.
 
+**Pre-condition:** The `generate_amrex_code` skill operates on a
+pre-existing TURBO-ESM/TIM checkout. The work directory must already
+contain the source tree (i.e. have `mom/cpp/` and `turbotmp/`) and must
+be on (or rebased onto) the `main` branch. Cloning is not performed —
+use `git clone -b main git@github.com:TURBO-ESM/TIM.git <dir>` once to
+set up the directory, then pass it as `<work-directory>` on every
+subsequent skill invocation.
+
 This document distills the design, logic, and patterns used on the **C++/TIM
 side** of the PPM bridge work. PR #8 adds 7 files that implement the AMReX
 versions of three Fortran subroutines whose Fortran-side wrapper lives in

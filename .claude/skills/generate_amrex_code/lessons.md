@@ -133,37 +133,40 @@ Signature conventions:
 - `const RealArray_C*` for inputs, `RealArray_C*` for outputs/inouts.
 - Scalars by value: `const double h_min`, `const bool monotonic`.
 - Opaque types as raw pointers: `OceanOBC* obc`.
+- **`_HOST` suffix on all `Box_C*` and `RealArray_C*` parameter names** — in
+  both the `.h` declaration and the `.cpp` implementation — to advertise
+  that these point into Fortran host (CPU) memory, not device memory.
+  Example: `const Box_C* bx_HOST`, `const RealArray_C* h_HOST`,
+  `RealArray_C* dz_HOST`.
 
-Mirror types live in the bridge's header:
+`RealArray_C` and `Box_C` are defined once in `mom/cpp/turbotmp_bridge_c_types.h`.
+Bridge headers `#include "turbotmp_bridge_c_types.h"` instead of re-declaring
+the structs. The bridge header then looks like:
 
 ```cpp
-struct RealArray_C {
-    double* data;   // multidimensional payload
-    int*    shape;  // dimension extents
-    int*    lb;     // lower bounds
-    int*    ub;     // upper bounds
-    int     dim;    // rank
-};
-struct Box_C {
-    int* idxS;
-    int* idxE;
-};
+#pragma once
+#include "turbotmp_bridge_c_types.h"
+
 struct OceanOBC;    // forward-declared, defined elsewhere
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-void turbotmp_ppm_limit_pos_bridge(...);
-void turbotmp_ppm_limit_cw84_bridge(...);
-void turbotmp_ppm_reconstruction_y_bridge(...);
+void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
+                                   const RealArray_C* h_in_HOST,
+                                   RealArray_C* h_L_HOST,
+                                   RealArray_C* h_R_HOST,
+                                   const double h_min);
+// ... other prototypes ...
 #ifdef __cplusplus
 }
 #endif
 ```
 
-The struct member order **must** match the Fortran-side `RealArray_C` /
-`Box_C` declarations field-for-field. The Fortran field is `int :: rank`;
-the C field is `int dim` — only the names differ, the layout matches.
+The struct member order in `turbotmp_bridge_c_types.h` **must** match the
+Fortran-side `RealArray_C` / `Box_C` declarations field-for-field. The
+Fortran field is `int :: rank`; the C field is `int dim` — only the names
+differ, the layout matches.
 
 ### 3.1 Mapping a Fortran `bind(C)` interface to a C prototype
 
@@ -242,6 +245,10 @@ The innermost, stencil-free per-cell math is factored out into a
 `<module>_kernel.hpp`. Conventions:
 
 - One function per pointwise rule, named `<kernel>_point`.
+- **`_point` is always the final suffix.** For mode-split primitives use
+  `<kernel>_<mode>_point` (e.g. `thickness_to_dz_3d_boussinesq_point`,
+  `thickness_to_dz_3d_nonboussinesq_point`) — not `<kernel>_point_<mode>`.
+  This is consistent with `ppm_limit_pos_point` / `ppm_limit_cw84_point`.
 - Marked `AMREX_GPU_DEVICE AMREX_FORCE_INLINE noexcept`.
 - Inputs by value (`Real const h_in`), outputs by reference (`Real& h_L`).
 - No `Array4`, no `Box`, no indexing — the caller supplies the cell value.

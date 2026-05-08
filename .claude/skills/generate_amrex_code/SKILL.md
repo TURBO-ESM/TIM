@@ -211,11 +211,15 @@ holds the template or rationale.
    calls exactly one primitive with no conditional. See lessons.md §7 #9.
 
 ### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
-   First-time creation: include the mirror C structs (`RealArray_C`,
-   `Box_C`), forward-declare any opaque types, wrap prototypes in
+   First-time creation: start with `#include "turbotmp_bridge_c_types.h"`
+   (do **not** re-define `RealArray_C` / `Box_C` — they live in that shared
+   file). Forward-declare any opaque types, wrap prototypes in
    `#ifdef __cplusplus extern "C" { … } #endif` — per lessons.md §3.
    Append the new prototype derived in Step 2. Do not re-declare the
    structs or guards if the file already exists.
+   All `Box_C*` and `RealArray_C*` parameter names must carry the `_HOST`
+   suffix in the declaration here, matching the `.cpp` implementation —
+   see lessons.md §3.
 
 ### 8. Bridge implementation in `mom/cpp/turbotmp_<module>_bridge.cpp`
    Implement the new prototype following the **7-step marshalling

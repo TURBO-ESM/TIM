@@ -2,7 +2,7 @@
 name: generate_amrex_code
 description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
 user-invocable: true
-argument-hint: <work-directory> <function-name> [<mom6-directory>]
+argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit]
 ---
 
 # Generate C++/AMReX implementation for a MOM6 Fortran subroutine
@@ -25,7 +25,7 @@ equals `-h`, do NOT run any steps. Print the following help message
 verbatim and stop:
 
 ```
-Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>]
+Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit]
 
 Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine
 inside a TURBO-ESM/TIM checkout. Writes (or extends) three layers:
@@ -54,6 +54,12 @@ Arguments:
                        config_src/ to ground the AMReX port. When
                        omitted, Step 3 asks the user to paste the
                        Fortran source body.
+  --enable_src_validate  (optional) Run Step 1: verify the work directory is a
+                         TURBO-ESM/TIM checkout on the main branch and that the
+                         tree layout is valid. Off by default.
+  --enable_git_commit    (optional) Run Step 12: create branch
+                         claude_<function-name>_bridge, commit all changes, and
+                         push to origin. Off by default.
 
 Example:
   /generate_amrex_code /glade/derecho/scratch/sunjian/TIM PPM_limit_pos \
@@ -80,8 +86,14 @@ do not create anything.
    `Error: MOM6 directory "<value>" does not exist.` If `$2` was
    omitted, record `mom6_mode=paste` and Step 3 will ask the user
    for the Fortran source body inline.
+4. **Parse optional flags.** Scan remaining arguments for `--enable_src_validate`
+   and `--enable_git_commit`. Store as boolean flags (default: off). Any
+   unrecognised argument that starts with `--` → stop:
+   `Error: unknown option "<value>". Run "/generate_amrex_code --help" for usage.`
 
-Layout / lessons.md / plan-confirmation checks run in Step 1.
+Step 1 runs only when `--enable_src_validate` is set; Step 12 runs only when
+`--enable_git_commit` is set. Layout / lessons.md / plan-confirmation checks
+run in Step 1.
 
 ## Settle these decisions (ask if not obvious from the tree)
 
@@ -105,7 +117,9 @@ If the user already specified any of these, take their values as-is.
 Each step is one action with a pointer to the lessons.md section that
 holds the template or rationale.
 
-### 1. Validate the existing checkout
+### 1. Validate the existing checkout *(runs only when `--enable_src_validate` is passed; skip otherwise and proceed to Step 2)*
+   If `--enable_src_validate` was not supplied, skip this entire step and go to Step 2.
+
    **Verify the work directory.** All bridge work in this skill is based
    on the `main` branch — that is the agreed base and what the Fortran
    side expects to merge against.
@@ -260,7 +274,10 @@ holds the template or rationale.
 
    If no capture file: skip and note "replay deferred" for Step 12.
 
-### 12. Commit and push
+### 12. Commit and push *(runs only when `--enable_git_commit` is passed; skip otherwise)*
+   If `--enable_git_commit` was not supplied, skip this entire step and report the
+   files that were modified so the user can commit manually.
+
    Branch: `claude_<lowercased_$1>_bridge` based on `main`. Stage all
    newly created and modified files. Commit message names the bridge
    symbol, the kernel symbol, whether a pointwise primitive was

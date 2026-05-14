@@ -102,9 +102,9 @@ void ppm_limit_cw84_point(Real& h_L,
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void edge_thickness_upwind_point(Real& h_R, Real& h_L, Real const h_in) noexcept
+void edge_thickness_upwind_point(Real& h_L, Real& h_R, Real const h_in) noexcept
 {
-    h_R = h_in;
     h_L = h_in;
+    h_R = h_in;
 }
 }

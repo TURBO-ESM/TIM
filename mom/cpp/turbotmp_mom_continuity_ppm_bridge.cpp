@@ -9,7 +9,9 @@
 using namespace amrex;
 
 
+namespace {
 bool verbose = false;
+}
 
 /**
  * @brief Bridge for the function PPM_limit_pos function

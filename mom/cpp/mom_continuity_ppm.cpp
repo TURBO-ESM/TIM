@@ -251,8 +251,8 @@ void PPM_reconstruction_x(
                       + (1.0_rt - mask2dT(i-1,j,0)) * h_in(i,j,k);
             Real h_ip1 = mask2dT(i+1,j,0) * h_in(i+1,j,k)
                       + (1.0_rt - mask2dT(i+1,j,0)) * h_in(i,j,k);
-            h_W(i,j,k) = 0.5 * (h_im1 + h_in(i,j,k));
-            h_E(i,j,k) = 0.5 * (h_ip1 + h_in(i,j,k));
+            h_W(i,j,k) = 0.5_rt * (h_im1 + h_in(i,j,k));
+            h_E(i,j,k) = 0.5_rt * (h_ip1 + h_in(i,j,k));
         });
 
     } else {

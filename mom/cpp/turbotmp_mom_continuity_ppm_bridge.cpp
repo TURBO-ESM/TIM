@@ -2,10 +2,14 @@
 #include "mom_continuity_ppm.hpp"
 #include "turbotmp_helper.hpp"
 #include "turbotmp_mom_continuity_ppm_bridge.h"
+#include <AMReX_Print.H>
 #include <fstream>
 #include <string>
 
 using namespace amrex;
+
+
+bool verbose = false;
 
 /**
  * @brief Bridge for the function PPM_limit_pos function
@@ -46,6 +50,7 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
     turbotmp::copy_FortranHost_to_array4(h_L_HOST->data, h_L_DEV);
     turbotmp::copy_FortranHost_to_array4(h_R_HOST->data, h_R_DEV);
 
+    if(verbose) amrex::Print() << "Entered turbotmp_ppm_limit_pos_bridge\n";
     ///-------------------------------------------------
     ///  Execute kernel
     ///-------------------------------------------------
@@ -101,6 +106,7 @@ void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST,
     turbotmp::copy_FortranHost_to_array4(h_L_HOST->data, h_L_DEV);
     turbotmp::copy_FortranHost_to_array4(h_R_HOST->data, h_R_DEV);
 
+    if(verbose) amrex::Print() << "Entered turbotmp_ppm_limit_cw84_bridge\n";
     ///-------------------------------------------------
     ///  Execute kernel
     ///-------------------------------------------------
@@ -164,6 +170,7 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
     turbotmp::copy_FortranHost_to_array4(h_N_HOST->data,     h_N_DEV);
     turbotmp::copy_FortranHost_to_array4(mask2dT_HOST->data, mask2dT_DEV);
 
+    if(verbose) amrex::Print() << "Entered turbotmp_ppm_reconstruction_y_bridge\n";
     ///-------------------------------------------------
     /// Execute kernel
     ///-------------------------------------------------
@@ -233,6 +240,7 @@ void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
     turbotmp::copy_FortranHost_to_array4(h_E_HOST->data,     h_E_DEV);
     turbotmp::copy_FortranHost_to_array4(mask2dT_HOST->data, mask2dT_DEV);
 
+    if(verbose) amrex::Print() << "Entered turbotmp_ppm_reconstruction_x_bridge\n";
     ///-------------------------------------------------
     /// Execute kernel
     ///-------------------------------------------------
@@ -303,6 +311,7 @@ void turbotmp_zonal_edge_thickness_bridge(const Box_C* bx_HOST,
     turbotmp::copy_FortranHost_to_array4(h_E_HOST->data,     h_E_DEV);
     turbotmp::copy_FortranHost_to_array4(mask2dT_HOST->data, mask2dT_DEV);
 
+    if(verbose) amrex::Print() << "Entered turbotmp_zonal_edge_thickness_bridge\n";
     ///-------------------------------------------------
     /// Execute kernel
     ///-------------------------------------------------
@@ -374,6 +383,7 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
     turbotmp::copy_FortranHost_to_array4(h_N_HOST->data,     h_N_DEV);
     turbotmp::copy_FortranHost_to_array4(mask2dT_HOST->data, mask2dT_DEV);
 
+    if(verbose) amrex::Print() << "Entered: turbotmp_meridional_edge_thickness_bridge\n";
     ///-------------------------------------------------
     /// Execute kernel
     ///-------------------------------------------------

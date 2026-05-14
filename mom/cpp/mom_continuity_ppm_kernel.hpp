@@ -8,6 +8,7 @@
 
 namespace MOM {
 using amrex::Real;
+using namespace amrex::literals;
 /**
  * @brief Piecewise parabolic limiter
  *
@@ -37,9 +38,9 @@ void ppm_limit_pos_point(Real& h_L,
     /// This limiter prevents undershooting minima within the domain with
     /// values less than h_min.
     /// The grid-normalized curvature of the three thicknesses  [H ~> m or kg m-2]
-    Real const curv = 3.0 * ((h_L + h_R) - 2.0 * h_in);
+    Real const curv = 3.0_rt * ((h_L + h_R) - 2.0_rt * h_in);
 
-    if (curv > 0.0) { /// Only minima are limited.
+    if (curv > 0.0_rt) { /// Only minima are limited.
         Real const dh = h_R - h_L; ///< The difference between the edge thicknesses [H ~> m or kg m-2]
 
         if (amrex::Math::abs(dh) < curv) { /// The parabola's minimum is within the cell.
@@ -47,11 +48,11 @@ void ppm_limit_pos_point(Real& h_L,
                 h_L = h_in;
                 h_R = h_in;
             }
-            else if (12.0 * curv * (h_in - h_min) < (curv * curv + 3.0 * dh * dh)) {
+            else if (12.0_rt * curv * (h_in - h_min) < ((curv * curv) + (3.0_rt * (dh * dh)))) {
                 /// The minimum value is h_in - (curv^2 + 3*dh^2)/(12*curv), and must
                 /// be limited in this case.  0 < scale < 1.
 		/// A scaling factor to reduce the curvature of the fit     [nondim]
-                Real const scale = 12.0 * curv * (h_in - h_min) / (curv * curv + 3.0 * dh * dh);
+                Real const scale = 12.0_rt * curv * (h_in - h_min) / ((curv * curv) + (3.0_rt * (dh * dh)));
 
                 h_L = h_in + scale * (h_L - h_in);
                 h_R = h_in + scale * (h_R - h_in);
@@ -85,33 +86,25 @@ void ppm_limit_cw84_point(Real& h_L,
     /// Colella and Woodward, 1984, Eq. 1.10
     Real h_i = h_in;  ///< A copy of the cell-average layer thickness
 
-    if ( ( h_R - h_i ) * ( h_i - h_L ) <= 0.0 ) {
+    if ( ( h_R - h_i ) * ( h_i - h_L ) <= 0.0_rt ) {
         h_L = h_i;
         h_R = h_i;
     } else {
         Real const RLdiff  = h_R - h_L;           /// The difference between the input edge values
-        Real const RLmean  = 0.5 * ( h_R + h_L );  /// The average of the input edge thicknesses
-        Real const FunFac  = 6.0 * RLdiff * ( h_i - RLmean ); /// A curious product of the thickness slope and curvature
+        Real const RLmean  = 0.5_rt * ( h_R + h_L );  /// The average of the input edge thicknesses
+        Real const FunFac  = 6.0_rt * RLdiff * ( h_i - RLmean ); /// A curious product of the thickness slope and curvature
         Real const RLdiff2 = RLdiff * RLdiff;  //// The squared difference between the input edge values
 
-        if ( FunFac >  RLdiff2 ) h_L = 3.0 * h_i - 2.0 * h_R;
-        if ( FunFac < -RLdiff2 ) h_R = 3.0 * h_i - 2.0 * h_L;
+        if ( FunFac >  RLdiff2 ) h_L = 3.0_rt * h_i - 2.0_rt * h_R;
+        if ( FunFac < -RLdiff2 ) h_R = 3.0_rt * h_i - 2.0_rt * h_L;
     }
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void zonal_edge_thickness_upwind_point(Real& h_W, Real& h_E, Real const h_in) noexcept
+void edge_thickness_upwind_point(Real& h_R, Real& h_L, Real const h_in) noexcept
 {
-    h_W = h_in;
-    h_E = h_in;
-}
-
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
-void meridional_edge_thickness_upwind_point(Real& h_S, Real& h_N, Real const h_in) noexcept
-{
-    h_S = h_in;
-    h_N = h_in;
+    h_R = h_in;
+    h_L = h_in;
 }
 }

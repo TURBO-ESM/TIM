@@ -1,9 +1,10 @@
 // mom_continuity_ppm.cpp
 #define AMREX_ABORT_LOC(msg) \
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
-#include "mom_continuity_ppm.hpp"
-
+#include <AMReX.H>
 #include <AMReX_FArrayBox.H>
+
+#include "mom_continuity_ppm.hpp"
 
 
 namespace MOM {
@@ -18,6 +19,8 @@ void ppm_limit_pos(const Box & bx,
 		  Array4<Real> const& h_R,
                   const Real h_min)
 {
+    BL_PROFILE("ppm_limit_pos");
+
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
         // This limiter prevents undershooting minima within the domain with
@@ -34,6 +37,8 @@ void ppm_limit_cw84(const Box & bx,
 		   Array4<Real> const& h_L,
 		   Array4<Real> const& h_R)
 {
+    BL_PROFILE("ppm_limit_cw84");
+
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
         // This limiter monotonizes the parabola following
@@ -55,6 +60,7 @@ void PPM_reconstruction_y(
     OceanOBC* OBC                         //!< Open boundary control structure
 )
 {
+    BL_PROFILE("PPM_reconstruction_y");
 
     // Local variables
     const Real oneSixth = 1.0_rt / 6.0_rt;
@@ -213,15 +219,17 @@ void PPM_reconstruction_x(
     const Array4<Real>& h_W,          //!< West edge thickness
     const Array4<Real>& h_E,          //!< East edge thickness
     const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
-    Real h_min,                       //!< Minimum thickness
-    bool monotonic,                   //!< Use CW84 limiter if true
-    bool simple_2nd,                  //!< Use simple 2nd order if true
-    OceanOBC* obc                     //!< Open boundary control structure
+    Real h_min,                      //!< Minimum thickness
+    bool monotonic,                  //!< Use CW84 limiter if true
+    bool simple_2nd,                 //!< Use simple 2nd order if true
+    OceanOBC* OBC                    //!< Open boundary control structure
 )
 {
+    BL_PROFILE("PPM_reconstruction_x");
     const Real oneSixth = 1.0_rt / 6.0_rt;
 
-    if (obc != nullptr) {
+    // NOTE: OBC support temporarily disabled.
+    if (OBC != nullptr) {
         AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }
 
@@ -283,7 +291,6 @@ void PPM_reconstruction_x(
         ppm_limit_pos(bx, h_in, h_W, h_E, h_min);
     }
 }
-
 //> Zonal edge thickness: upwind copy or x-direction PPM reconstruction.
 void zonal_edge_thickness(
     const Box& bxC,                   //!< Continuity iteration box

@@ -200,17 +200,17 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
 }
 
 /**
- * @brief Bridge for PPM_reconstruction_x
+ * @brief Bridge for the function PPM_reconstruction_x
  *
  * @param bx_HOST        Box over which to iterate
- * @param h_in_HOST      Layer thickness (host, Fortran order)
+ * @param h_in_HOST      Layer thickness [H → m or kg m^-2] (host, Fortran order)
  * @param h_W_HOST       West edge thickness (host, Fortran order)
  * @param h_E_HOST       East edge thickness (host, Fortran order)
  * @param mask2dT_HOST   Mask (0 land, 1 ocean) (host, Fortran order)
  * @param h_min       Minimum thickness
  * @param monotonic   Use CW84 limiter if true
  * @param simple_2nd  Use simple 2nd order scheme if true
- * @param obc         Open boundary control structure
+ * @param OBC         Open boundary control structure
  *
  * @return Modified thickness values @p h_W_HOST and @p h_E_HOST
  */
@@ -267,7 +267,6 @@ void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
     turbotmp::free_array4(h_E_DEV);
     turbotmp::free_array4(mask2dT_DEV);
 }
-
 /**
  * @brief Bridge for zonal_edge_thickness
  *

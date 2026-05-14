@@ -214,10 +214,10 @@ void PPM_reconstruction_y(
 
 //> Calculates west/east edge values for PPM reconstruction.
 void PPM_reconstruction_x(
-    const Box& bxH,                   //!< H-grid iteration Box
-    const Array4<const Real>& h_in,   //!< Layer thickness
-    const Array4<Real>& h_W,          //!< West edge thickness
-    const Array4<Real>& h_E,          //!< East edge thickness
+    const Box& bxH,                  //!< H-grid iteration Box
+    const Array4<const Real>& h_in,  //!< Layer thickness
+    const Array4<Real>& h_W,         //!< West edge thickness
+    const Array4<Real>& h_E,         //!< East edge thickness
     const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
     Real h_min,                      //!< Minimum thickness
     bool monotonic,                  //!< Use CW84 limiter if true
@@ -230,13 +230,16 @@ void PPM_reconstruction_x(
 
     // NOTE: OBC support temporarily disabled.
     if (OBC != nullptr) {
-        AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }
 
-    // Local box grows bxH by 1 in x; expanded box grows by 2 in x
-    Box bx  = grow(bxH, 0, 1);
-    Box bxE = grow(bxH, 0, 2);
+    // Local iteration box extends the h-grid by one element in x
+    Box bx  = grow(bxH, 0, 1);  // grow in x-direction (dim=0)
 
+    // Extended iteration box extends the h-grid by two elements in x
+    Box bxE = grow(bxH, 0, 2);  // grow in x-direction (dim=0)
+
+    // Temporary slope array
     FArrayBox slp_fab(bxE, 1);
     Array4<Real> slp = slp_fab.array();
 
@@ -245,9 +248,9 @@ void PPM_reconstruction_x(
         ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
             Real h_im1 = mask2dT(i-1,j,0) * h_in(i-1,j,k)
-                       + (1.0_rt - mask2dT(i-1,j,0)) * h_in(i,j,k);
+                      + (1.0_rt - mask2dT(i-1,j,0)) * h_in(i,j,k);
             Real h_ip1 = mask2dT(i+1,j,0) * h_in(i+1,j,k)
-                       + (1.0_rt - mask2dT(i+1,j,0)) * h_in(i,j,k);
+                      + (1.0_rt - mask2dT(i+1,j,0)) * h_in(i,j,k);
             h_W(i,j,k) = 0.5 * (h_im1 + h_in(i,j,k));
             h_E(i,j,k) = 0.5 * (h_ip1 + h_in(i,j,k));
         });
@@ -274,13 +277,13 @@ void PPM_reconstruction_x(
         ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
             Real h_im1 = mask2dT(i-1,j,0) * h_in(i-1,j,k)
-                       + (1.0_rt - mask2dT(i-1,j,0)) * h_in(i,j,k);
+                      + (1.0_rt - mask2dT(i-1,j,0)) * h_in(i,j,k);
             Real h_ip1 = mask2dT(i+1,j,0) * h_in(i+1,j,k)
-                       + (1.0_rt - mask2dT(i+1,j,0)) * h_in(i,j,k);
+                      + (1.0_rt - mask2dT(i+1,j,0)) * h_in(i,j,k);
             h_W(i,j,k) = 0.5_rt * (h_im1 + h_in(i,j,k))
-                        + oneSixth * (slp(i-1,j,k) - slp(i,j,k));
+                       + oneSixth * (slp(i-1,j,k) - slp(i,j,k));
             h_E(i,j,k) = 0.5_rt * (h_ip1 + h_in(i,j,k))
-                        + oneSixth * (slp(i,j,k) - slp(i+1,j,k));
+                       + oneSixth * (slp(i,j,k) - slp(i+1,j,k));
         });
     }
 

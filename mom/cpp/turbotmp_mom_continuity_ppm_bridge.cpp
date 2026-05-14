@@ -245,14 +245,14 @@ void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
     /// Execute kernel
     ///-------------------------------------------------
     MOM::PPM_reconstruction_x(bx,
-                              h_in_DEV.arr,
-                              h_W_DEV.arr,
-                              h_E_DEV.arr,
-                              mask2dT_DEV.arr,
-                              h_min,
-                              monotonic,
-                              simple_2nd,
-                              obc);
+                         h_in_DEV.arr,
+                         h_W_DEV.arr,
+                         h_E_DEV.arr,
+                         mask2dT_DEV.arr,
+                         h_min,
+                         monotonic,
+                         simple_2nd,
+                         obc);
 
     /// Ensure kernel is done before copying back
     amrex::Gpu::synchronize();

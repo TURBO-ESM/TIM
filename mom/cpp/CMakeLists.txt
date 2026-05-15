@@ -1,0 +1,17 @@
+# MOM C++ kernels library.
+#
+# Builds the AMReX-based MOM kernels as a static library
+
+if(NOT TARGET AMReX::amrex_3d AND NOT TARGET amrex_3d)
+    find_package(AMReX REQUIRED)
+endif()
+
+add_library(mom_continuity STATIC
+    mom_continuity_ppm.cpp
+)
+
+target_include_directories(mom_continuity PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(mom_continuity PUBLIC AMReX::amrex_3d)
+
+target_compile_features(mom_continuity PUBLIC cxx_std_17)

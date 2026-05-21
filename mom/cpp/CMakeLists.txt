@@ -10,6 +10,10 @@ add_library(mom_continuity STATIC
     mom_continuity_ppm.cpp
 )
 
+if(AMReX_GPU_BACKEND STREQUAL "CUDA")
+    set_source_files_properties(mom_continuity_ppm.cpp PROPERTIES LANGUAGE CUDA)
+endif()
+
 target_include_directories(mom_continuity PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(mom_continuity PUBLIC AMReX::amrex_3d)

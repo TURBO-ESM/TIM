@@ -35,8 +35,9 @@
 //
 // AMReX dependency
 // ----------------
-//   fab() allocates an amrex::FArrayBox on The_Pinned_Arena(), so
-//   amrex::Initialize must have been called before invoking it.
+//   fab_host() allocates on The_Pinned_Arena(); fab_device() allocates on
+//   The_Arena() (device memory on GPU builds, host on CPU builds) and stages
+//   the payload through a pinned-host buffer.
 
 #pragma once
 
@@ -53,16 +54,17 @@ namespace test_mom {
 
 // Loads a .meta / .bin pair given the base path (no extension). The .meta
 // directory is parsed eagerly; payload values are decoded on each accessor
-// call. fab() returns a fresh FArrayBox by move, so the caller owns it and
-// may mutate it (e.g. pass to a kernel as in/out storage).
+// call. fab_host()/fab_device() return a fresh FArrayBox by move, so the
+// caller owns it and may mutate it (e.g. pass to a kernel as in/out storage).
 class CapturedFile {
 public:
     explicit CapturedFile(const std::filesystem::path& base);
 
-    amrex::Box       box    (const std::string& name) const;
-    amrex::FArrayBox fab    (const std::string& name) const;
-    double           real64 (const std::string& name) const;
-    bool             logical(const std::string& name) const;
+    amrex::Box       box       (const std::string& name) const;
+    amrex::FArrayBox fab_host  (const std::string& name) const;
+    amrex::FArrayBox fab_device(const std::string& name) const;
+    double           real64    (const std::string& name) const;
+    bool             logical   (const std::string& name) const;
 
 private:
     struct Entry {

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <AMReX_Arena.H>
+#include <AMReX_Gpu.H>
 
 namespace test_mom {
 
@@ -117,7 +118,7 @@ amrex::Box CapturedFile::box(const std::string& name) const {
                       amrex::IntVect(idxE[0] - 1, idxE[1] - 1, idxE[2] - 1));
 }
 
-amrex::FArrayBox CapturedFile::fab(const std::string& name) const {
+amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
     const auto& e = lookup(name, "RealArray_t");
     std::size_t off = e.offset - 1;
     int ndim = read_be_i32(bin_, off);
@@ -163,6 +164,18 @@ amrex::FArrayBox CapturedFile::fab(const std::string& name) const {
             for (int i = 0; i < shape[0]; ++i)
                 arr(i, j, k) = read_be_f64(bin_, off);
     return fab;
+}
+
+amrex::FArrayBox CapturedFile::fab_device(const std::string& name) const {
+    amrex::FArrayBox host = fab_host(name);
+    amrex::FArrayBox dev(host.box(), host.nComp(), amrex::The_Arena());
+    const std::size_t n = static_cast<std::size_t>(host.box().numPts()) *
+                          static_cast<std::size_t>(host.nComp());
+    amrex::Gpu::copy(amrex::Gpu::hostToDevice,
+                     host.dataPtr(), host.dataPtr() + n,
+                     dev.dataPtr());
+    amrex::Gpu::streamSynchronize();
+    return dev;
 }
 
 double CapturedFile::real64(const std::string& name) const {

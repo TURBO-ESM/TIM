@@ -15,6 +15,7 @@
 #include "mom_continuity_ppm.hpp"
 
 using test_mom::expect_arrays_equal;
+using test_mom::to_host_fab;
 
 // -------------------------------------------------------------------------
 // ppm_limit_pos
@@ -23,11 +24,11 @@ TEST(PpmLimitPos, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "ppm_limit_pos");
 
     const auto   bx        = captured.box("_bx");
-    const auto   h_in      = captured.fab("_h_in");
-    auto         h_L       = captured.fab("_h_L_before");
-    auto         h_R       = captured.fab("_h_R_before");
-    const auto   h_L_after = captured.fab("_h_L_after");
-    const auto   h_R_after = captured.fab("_h_R_after");
+    const auto   h_in      = captured.fab_device("_h_in");
+    auto         h_L       = captured.fab_device("_h_L_before");
+    auto         h_R       = captured.fab_device("_h_R_before");
+    const auto   h_L_after = captured.fab_host("_h_L_after");
+    const auto   h_R_after = captured.fab_host("_h_R_after");
     const double h_min     = captured.real64("_h_min");
 
     MOM::ppm_limit_pos(bx,
@@ -37,8 +38,8 @@ TEST(PpmLimitPos, MatchesFortranCapture) {
                        h_min);
     amrex::Gpu::synchronize();
 
-    expect_arrays_equal(h_L_after, h_L, "h_L");
-    expect_arrays_equal(h_R_after, h_R, "h_R");
+    expect_arrays_equal(h_L_after, to_host_fab(h_L), "h_L");
+    expect_arrays_equal(h_R_after, to_host_fab(h_R), "h_R");
 }
 
 // -------------------------------------------------------------------------
@@ -48,12 +49,12 @@ TEST(PpmReconstructionX, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "ppm_reconstruction_x");
 
     const auto   bxH        = captured.box("_bxH");
-    const auto   h_in       = captured.fab("_h_in");
-    auto         h_W        = captured.fab("_h_W_before");
-    auto         h_E        = captured.fab("_h_E_before");
-    const auto   mask2d     = captured.fab("_mask2d_t");
-    const auto   h_W_after  = captured.fab("_h_W_after");
-    const auto   h_E_after  = captured.fab("_h_E_after");
+    const auto   h_in       = captured.fab_device("_h_in");
+    auto         h_W        = captured.fab_device("_h_W_before");
+    auto         h_E        = captured.fab_device("_h_E_before");
+    const auto   mask2d     = captured.fab_device("_mask2d_t");
+    const auto   h_W_after  = captured.fab_host("_h_W_after");
+    const auto   h_E_after  = captured.fab_host("_h_E_after");
     const double h_min      = captured.real64("_h_min");
     const bool   monotonic  = captured.logical("_monotonic");
     const bool   simple_2nd = captured.logical("_simple_2nd");
@@ -69,8 +70,8 @@ TEST(PpmReconstructionX, MatchesFortranCapture) {
                               /*OBC=*/nullptr);
     amrex::Gpu::synchronize();
 
-    expect_arrays_equal(h_W_after, h_W, "h_W");
-    expect_arrays_equal(h_E_after, h_E, "h_E");
+    expect_arrays_equal(h_W_after, to_host_fab(h_W), "h_W");
+    expect_arrays_equal(h_E_after, to_host_fab(h_E), "h_E");
 }
 
 // -------------------------------------------------------------------------
@@ -80,12 +81,12 @@ TEST(PpmReconstructionY, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "ppm_reconstruction_y");
 
     const auto   bxH        = captured.box("_bxH");
-    const auto   h_in       = captured.fab("_h_in");
-    auto         h_S        = captured.fab("_h_S_before");
-    auto         h_N        = captured.fab("_h_N_before");
-    const auto   mask2d     = captured.fab("_mask2d_t");
-    const auto   h_S_after  = captured.fab("_h_S_after");
-    const auto   h_N_after  = captured.fab("_h_N_after");
+    const auto   h_in       = captured.fab_device("_h_in");
+    auto         h_S        = captured.fab_device("_h_S_before");
+    auto         h_N        = captured.fab_device("_h_N_before");
+    const auto   mask2d     = captured.fab_device("_mask2d_t");
+    const auto   h_S_after  = captured.fab_host("_h_S_after");
+    const auto   h_N_after  = captured.fab_host("_h_N_after");
     const double h_min      = captured.real64("_h_min");
     const bool   monotonic  = captured.logical("_monotonic");
     const bool   simple_2nd = captured.logical("_simple_2nd");
@@ -101,8 +102,8 @@ TEST(PpmReconstructionY, MatchesFortranCapture) {
                               /*OBC=*/nullptr);
     amrex::Gpu::synchronize();
 
-    expect_arrays_equal(h_S_after, h_S, "h_S");
-    expect_arrays_equal(h_N_after, h_N, "h_N");
+    expect_arrays_equal(h_S_after, to_host_fab(h_S), "h_S");
+    expect_arrays_equal(h_N_after, to_host_fab(h_N), "h_N");
 }
 
 // -------------------------------------------------------------------------

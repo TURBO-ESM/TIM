@@ -47,11 +47,11 @@ void ppm_limit_pos_point(Real& h_L,
                 h_L = h_in;
                 h_R = h_in;
             }
-            else if (12.0 * curv * (h_in - h_min) < (curv * curv + 3.0 * dh * dh)) {
+            else if (12.0 * curv * (h_in - h_min) < (curv * curv + 3.0 * (dh * dh))) {
                 /// The minimum value is h_in - (curv^2 + 3*dh^2)/(12*curv), and must
                 /// be limited in this case.  0 < scale < 1.
 		/// A scaling factor to reduce the curvature of the fit     [nondim]
-                Real const scale = 12.0 * curv * (h_in - h_min) / (curv * curv + 3.0 * dh * dh);
+                Real const scale = 12.0 * curv * (h_in - h_min) / (curv * curv + 3.0 * (dh * dh));
 
                 h_L = h_in + scale * (h_L - h_in);
                 h_R = h_in + scale * (h_R - h_in);

@@ -52,4 +52,34 @@ void PPM_reconstruction_x(
     bool,
     bool,
     OceanOBC*);
+
+/**
+ * @brief Zonal (west/east) edge thicknesses, with optional 1st-order upwind
+ */
+void zonal_edge_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    bool,
+    bool,
+    bool,
+    OceanOBC*);
+
+/**
+ * @brief Meridional (south/north) edge thicknesses, with optional 1st-order upwind
+ */
+void meridional_edge_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    bool,
+    bool,
+    bool,
+    OceanOBC*);
 }

@@ -294,4 +294,62 @@ void PPM_reconstruction_x(
         ppm_limit_pos(bx, h_in, h_W, h_E, h_min);
     }
 }
+
+//> Calculates west/east edge thicknesses, optionally with 1st-order upwind.
+void zonal_edge_thickness(
+    const Box& bxH,                   //!< H-grid iteration Box
+    const Array4<const Real>& h_in,   //!< Layer thickness
+    const Array4<Real>& h_W,          //!< West edge thickness
+    const Array4<Real>& h_E,          //!< East edge thickness
+    const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
+    Real h_min,                       //!< Minimum thickness
+    bool upwind_1st,                  //!< Use 1st-order upwind reconstruction if true
+    bool monotonic,                   //!< Use CW84 limiter if true
+    bool simple_2nd,                  //!< Use simple 2nd order if true
+    OceanOBC* OBC                     //!< Open boundary control structure
+)
+{
+    BL_PROFILE("zonal_edge_thickness");
+
+    if (upwind_1st) {
+        // Local iteration box extends the h-grid by one element in x
+        Box bx = grow(bxH, 0, 1);  // grow in x-direction (dim=0)
+        ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            h_W(i,j,k) = h_in(i,j,k);
+            h_E(i,j,k) = h_in(i,j,k);
+        });
+    } else {
+        PPM_reconstruction_x(bxH, h_in, h_W, h_E, mask2dT, h_min, monotonic, simple_2nd, OBC);
+    }
+}
+
+//> Calculates south/north edge thicknesses, optionally with 1st-order upwind.
+void meridional_edge_thickness(
+    const Box& bxH,                   //!< H-grid iteration Box
+    const Array4<const Real>& h_in,   //!< Layer thickness
+    const Array4<Real>& h_S,          //!< South edge thickness
+    const Array4<Real>& h_N,          //!< North edge thickness
+    const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
+    Real h_min,                       //!< Minimum thickness
+    bool upwind_1st,                  //!< Use 1st-order upwind reconstruction if true
+    bool monotonic,                   //!< Use CW84 limiter if true
+    bool simple_2nd,                  //!< Use simple 2nd order if true
+    OceanOBC* OBC                     //!< Open boundary control structure
+)
+{
+    BL_PROFILE("meridional_edge_thickness");
+
+    if (upwind_1st) {
+        // Local iteration box extends the h-grid by one element in y
+        Box bx = grow(bxH, 1, 1);  // grow in y-direction (dim=1)
+        ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            h_S(i,j,k) = h_in(i,j,k);
+            h_N(i,j,k) = h_in(i,j,k);
+        });
+    } else {
+        PPM_reconstruction_y(bxH, h_in, h_S, h_N, mask2dT, h_min, monotonic, simple_2nd, OBC);
+    }
+}
 }

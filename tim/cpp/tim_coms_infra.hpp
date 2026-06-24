@@ -1,8 +1,9 @@
 #pragma once
 
-#include <cstdint>
-#include <cstddef>
+#include <AMReX_Array4.H>
+#include <AMReX_Box.H>
 
 namespace TIM {
-    int64_t checksum(double* field, size_t field_size, double* mask_val);
+    amrex::Long checksum(amrex::Box const& bx, amrex::Array4<amrex::Real> const& arr);
+    amrex::Long checksum(amrex::Box const& bx, amrex::Array4<amrex::Real> const& arr, amrex::Real mask);
 }

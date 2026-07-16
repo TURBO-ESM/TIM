@@ -59,6 +59,8 @@ option(OPENMP "Build TIM with OpenMP support"        OFF)
 option(32BIT  "Build 32-bit (r4) TIM library"        OFF)
 option(64BIT  "Build 64-bit (r8) TIM library"         ON)
 option(FPIC   "Build with position independent code" OFF)
+option(TIM_ADD_TEST_TARGETS "Build C++ unit test targets (test_tim)"          OFF)
+option(TIM_FETCH_DEPS       "Fetch missing test dependencies (GoogleTest)"     ON)
 
 # Options for compiler definitions
 option(INTERNAL_FILE_NML     "Enable compiler definition -DINTERNAL_FILE_NML"      ON)
@@ -82,6 +84,7 @@ endif()
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran)
 find_package(NetCDF REQUIRED COMPONENTS C Fortran)
 find_package(AMReX REQUIRED)
+find_package(PIO REQUIRED COMPONENTS C)
 
 # Check for the OpenMP library and set the required compile flags
 if (OPENMP)
@@ -385,3 +388,9 @@ install(EXPORT TIMExports
   NAMESPACE TIM::
   FILE tim-targets.cmake
   DESTINATION ${CONFIG_INSTALL_DESTINATION})
+
+# C++ unit tests (reuses the AMReX/PIO/tim targets defined above).
+if(TIM_ADD_TEST_TARGETS)
+  enable_testing()
+  add_subdirectory(test_tim)
+endif()

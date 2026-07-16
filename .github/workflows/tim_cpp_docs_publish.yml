@@ -1,0 +1,54 @@
+name: TIM C++ Docs - Generate and Publish
+
+# Publishes the tim/cpp doxygen documentation to GitHub Pages on every push
+# to main. NOTE: uses the GitHub Actions Pages source (actions/deploy-pages);
+# the repository's Pages settings must select "GitHub Actions" as the source.
+# The legacy FMS documentation workflow (update_docs.yml, release-triggered,
+# gh-pages-branch based) targets the other Pages source and should be retired
+# or reconciled when this one is enabled.
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz && doxygen --version
+
+      - name: Generate documentation
+        run: doxygen docs/Doxyfile.tim_cpp
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/tim_cpp_build/html
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

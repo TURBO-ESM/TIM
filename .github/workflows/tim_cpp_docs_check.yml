@@ -1,0 +1,22 @@
+name: TIM C++ Documentation Check
+
+# Documentation-coverage gate for the C++ infrastructure layer (tim/cpp):
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  docs-check:
+    name: Check Documentation Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz && doxygen --version
+
+      - name: Check documentation
+        run: doxygen docs/Doxyfile.tim_cpp

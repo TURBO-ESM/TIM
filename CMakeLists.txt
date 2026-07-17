@@ -60,7 +60,7 @@ option(32BIT  "Build 32-bit (r4) TIM library"        OFF)
 option(64BIT  "Build 64-bit (r8) TIM library"         ON)
 option(FPIC   "Build with position independent code" OFF)
 option(TIM_ADD_TEST_TARGETS "Build C++ unit test targets (test_tim)"          OFF)
-option(TIM_FETCH_DEPS       "Fetch missing test dependencies (GoogleTest)"     ON)
+option(TIM_FETCH_DEPS       "Fetch missing dependencies (GoogleTest, PIO)"     ON)
 
 # Options for compiler definitions
 option(INTERNAL_FILE_NML     "Enable compiler definition -DINTERNAL_FILE_NML"      ON)
@@ -84,7 +84,8 @@ endif()
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran)
 find_package(NetCDF REQUIRED COMPONENTS C Fortran)
 find_package(AMReX REQUIRED)
-find_package(PIO REQUIRED COMPONENTS C)
+
+include(FindOrFetchPIO) # find_package(PIO) or FetchContent pio2_6_8 -> PIO::PIO_C
 
 # Check for the OpenMP library and set the required compile flags
 if (OPENMP)

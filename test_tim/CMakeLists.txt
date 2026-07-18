@@ -38,8 +38,6 @@ target_link_libraries(test_tim_smoke
   PIO::PIO_C
 )
 
-target_link_options(test_tim_smoke PRIVATE LINKER:--allow-shlib-undefined)
-
 if(AMReX_GPU_BACKEND STREQUAL "CUDA")
   set_source_files_properties(
     test_tim_main.cpp

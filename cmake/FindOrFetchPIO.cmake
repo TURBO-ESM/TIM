@@ -22,18 +22,17 @@ if(NOT PIO_FOUND)
     set(PIO_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(PIO_ENABLE_TESTS   OFF CACHE BOOL "" FORCE)
     set(WITH_PNETCDF       OFF CACHE BOOL "" FORCE)
+    find_package(MPI REQUIRED COMPONENTS C)
     FetchContent_MakeAvailable(parallelio)
-    # Two embedded-build fixups (PIO's CMake assumes it is the top-level
-    # project, built with MPI compiler wrappers), applied here instead of
-    # patching PIO:
-    #  - config.h is generated into PIO's PROJECT_BINARY_DIR but the include
-    #    path carries the top-level CMAKE_BINARY_DIR; point pioc at the former.
-    #  - pio.h includes mpi.h but pioc never links MPI::MPI_C (standalone
-    #    builds get MPI from the mpicc wrapper); attach it explicitly. PUBLIC
-    #    so pio.h consumers inherit the MPI include path too.
+    # Two embedded-build fixups, scoped to pioc:
+    #  - pio.h includes mpi.h, but PIO's CMake assumes an MPI compiler wrapper and
+    #    puts no MPI usage requirement on pioc; give it MPI's include path so it
+    #    also compiles under a plain compiler.
+    #  - PIO generates config.h into its own PROJECT_BINARY_DIR, but its include
+    #    path carries the top-level CMAKE_BINARY_DIR (identical only when PIO is
+    #    the top-level project); point pioc at the directory that holds it.
+    target_include_directories(pioc SYSTEM PRIVATE ${MPI_C_INCLUDE_DIRS})
     target_include_directories(pioc PRIVATE ${parallelio_BINARY_DIR})
-    cmake_policy(SET CMP0079 NEW) # allow linking a target defined in the PIO subdirectory
-    target_link_libraries(pioc PUBLIC MPI::MPI_C)
     add_library(PIO::PIO_C ALIAS pioc)
   else()
     message(FATAL_ERROR

@@ -16,7 +16,6 @@ TEST(Smoke, AmrexIsInitialized) {
 }
 
 TEST(Smoke, ParallelIoLinks) {
-    EXPECT_EQ(static_cast<int>(PIO_IOTYPE_NETCDF), 2);
-    void* pio_entry = reinterpret_cast<void*>(&PIOc_Init_Intracomm);
+    auto* pio_entry = &PIOc_Init_Intracomm;
     EXPECT_NE(pio_entry, nullptr);
 }

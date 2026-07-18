@@ -12,6 +12,12 @@ if(NOT TARGET MPI::MPI_CXX)
   find_package(MPI REQUIRED COMPONENTS CXX)
 endif()
 if(NOT TARGET AMReX::amrex)
+  # An AMReX built with AMReX_FORTRAN=ON requires the importing project to enable Fortran
+  include(CheckLanguage)
+  check_language(Fortran)
+  if(CMAKE_Fortran_COMPILER)
+    enable_language(Fortran)
+  endif()
   find_package(AMReX REQUIRED)
 endif()
 

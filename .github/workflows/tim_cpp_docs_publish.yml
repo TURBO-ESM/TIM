@@ -3,9 +3,6 @@ name: TIM C++ Docs - Generate and Publish
 # Publishes the tim/cpp doxygen documentation to GitHub Pages on every push
 # to main. NOTE: uses the GitHub Actions Pages source (actions/deploy-pages);
 # the repository's Pages settings must select "GitHub Actions" as the source.
-# The legacy FMS documentation workflow (update_docs.yml, release-triggered,
-# gh-pages-branch based) targets the other Pages source and should be retired
-# or reconciled when this one is enabled.
 
 on:
   push:

@@ -27,6 +27,10 @@ if(NOT GTest_FOUND)
 endif()
 enable_testing()
 
+if(AMReX_GPU_BACKEND STREQUAL "CUDA")
+  enable_language(CUDA)
+endif()
+
 add_executable(test_tim_smoke
   test_tim_main.cpp
   smoke/test_smoke.cpp

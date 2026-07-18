@@ -34,6 +34,7 @@ if(NOT PIO_FOUND)
     target_include_directories(pioc SYSTEM PRIVATE ${MPI_C_INCLUDE_DIRS})
     target_include_directories(pioc PRIVATE ${parallelio_BINARY_DIR})
     add_library(PIO::PIO_C ALIAS pioc)
+    set(PIO_FOUND TRUE)
   else()
     message(FATAL_ERROR
       "PIO not found. Load the parallelio module / add a PIO install to "

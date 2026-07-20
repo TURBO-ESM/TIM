@@ -6,7 +6,8 @@ PROJECT_BRIEF          = "TURBO Infrastructure for MOM - the C++ infrastructure 
 OUTPUT_DIRECTORY       = docs/tim_cpp_build
 
 # Input
-INPUT                  = tim/cpp
+INPUT                  = docs/mainpage.md tim/cpp
+USE_MDFILE_AS_MAINPAGE = docs/mainpage.md
 RECURSIVE              = YES
 FILE_PATTERNS          = *.c *.cc *.cxx *.cpp *.c++ *.h *.hpp *.hxx *.h++
 

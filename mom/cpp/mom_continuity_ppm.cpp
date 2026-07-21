@@ -1,4 +1,9 @@
 // mom_continuity_ppm.cpp
+/**
+ * @file mom_continuity_ppm.cpp
+ * @brief Box-level AMReX kernel implementations for MOM6 PPM continuity.
+ */
+/// @brief Abort with @p msg annotated by the source file and line number.
 #define AMREX_ABORT_LOC(msg) \
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 #include <AMReX.H>
@@ -11,7 +16,13 @@ namespace MOM {
 using amrex::FArrayBox;
 using namespace amrex::literals;
 /**
- * @brief Piecewise parabolic limiter
+ * @brief Piecewise parabolic limiter (positive-definite) over a Box.
+ *
+ * @param bx    Iteration Box.
+ * @param h_in  Layer thickness [H ~> m or kg m-2].
+ * @param h_L   Left edge thickness of the reconstruction [H ~> m or kg m-2].
+ * @param h_R   Right edge thickness of the reconstruction [H ~> m or kg m-2].
+ * @param h_min Minimum thickness allowed by the parabolic fit [H ~> m or kg m-2].
  */
 void ppm_limit_pos(const Box & bx,
 		  Array4<const Real> const& h_in,
@@ -30,7 +41,12 @@ void ppm_limit_pos(const Box & bx,
 }
 
 /**
- * @brief Peacewise parabolic limiter of Colella and Woodward, 1984
+ * @brief Piecewise parabolic limiter of Colella and Woodward, 1984, over a Box.
+ *
+ * @param bx   Iteration Box.
+ * @param h_in Layer thickness [H ~> m or kg m-2].
+ * @param h_L  Left edge thickness of the reconstruction [H ~> m or kg m-2].
+ * @param h_R  Right edge thickness of the reconstruction [H ~> m or kg m-2].
  */
 void ppm_limit_cw84(const Box & bx,
 		   Array4<const Real> const& h_in,

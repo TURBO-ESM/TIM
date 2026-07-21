@@ -1,4 +1,8 @@
 #pragma once
+/**
+ * @file mom_interface_heights_kernel.hpp
+ * @brief Per-cell device primitives for the MOM6 thickness-to-dz conversion.
+ */
 
 #include <AMReX_Box.H>
 #include <AMReX_Array4.H>

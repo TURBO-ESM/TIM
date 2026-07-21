@@ -1,10 +1,16 @@
 // mom_continuity_ppm.hpp
 #pragma once
+/**
+ * @file mom_continuity_ppm.hpp
+ * @brief Box-level AMReX kernel declarations for MOM6 PPM continuity
+ *        (piecewise parabolic reconstruction and edge-thickness routines).
+ */
 
 #include "mom_continuity_ppm_kernel.hpp"
 
 struct OceanOBC;    // Undefined at the moment
 
+/// @brief AMReX ports of MOM6 numerical kernels.
 namespace MOM {
 using amrex::Box;
 using amrex::Array4;

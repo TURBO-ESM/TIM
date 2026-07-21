@@ -1,10 +1,11 @@
-// turbotmp_mom_interface_heights_bridge.cpp
-//
-// Marshalling bridge between the MOM6 Fortran shim
-// MOM_interface_heights::thickness_to_dz_3d (mode = AMREX) and the AMReX
-// kernel MOM::thickness_to_dz_3d. Pure host↔device transfer, layout
-// transpose, and Box reconstruction — no math, no value-dependent
-// branches (lessons.md §3).
+/**
+ * @file turbotmp_mom_interface_heights_bridge.cpp
+ * @brief Marshalling bridge between the MOM6 Fortran shim
+ *        MOM_interface_heights::thickness_to_dz_3d (mode = AMREX) and the AMReX
+ *        kernel MOM::thickness_to_dz_3d. Pure host↔device transfer, layout
+ *        transpose, and Box reconstruction — no math, no value-dependent
+ *        branches (lessons.md §3).
+ */
 
 #include "mom_interface_heights.hpp"
 #include "turbotmp_helper.hpp"

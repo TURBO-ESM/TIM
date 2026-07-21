@@ -1,5 +1,10 @@
 // mom_interface_heights.hpp
 #pragma once
+/**
+ * @file mom_interface_heights.hpp
+ * @brief Box-level AMReX kernel declarations for converting MOM6 layer
+ *        thickness (H) to geometric layer thickness (Z).
+ */
 
 #include "mom_interface_heights_kernel.hpp"
 

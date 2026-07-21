@@ -1,4 +1,9 @@
 #pragma once
+/**
+ * @file turbotmp_mom_interface_heights_bridge.h
+ * @brief extern "C" bridge declarations between the MOM6 Fortran
+ *        shim and the AMReX thickness-to-dz kernel (temporary turbotmp layer).
+ */
 
 #include "turbotmp_bridge_c_types.h"
 

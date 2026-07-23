@@ -29,11 +29,25 @@ enable_testing()
 
 if(AMReX_GPU_BACKEND STREQUAL "CUDA")
   enable_language(CUDA)
+  set_source_files_properties(
+    test_tim_main.cpp
+    smoke/test_smoke.cpp
+    runtime/test_runtime_owner.cpp
+    runtime/test_runtime_guest.cpp
+    PROPERTIES LANGUAGE CUDA)
 endif()
 
 add_executable(test_tim_smoke
   test_tim_main.cpp
   smoke/test_smoke.cpp
+)
+
+add_executable(test_tim_runtime_owner
+  runtime/test_runtime_owner.cpp
+)
+
+add_executable(test_tim_runtime_guest
+  runtime/test_runtime_guest.cpp
 )
 
 target_link_libraries(test_tim_smoke
@@ -42,15 +56,23 @@ target_link_libraries(test_tim_smoke
   PIO::PIO_C
 )
 
-if(AMReX_GPU_BACKEND STREQUAL "CUDA")
-  set_source_files_properties(
-    test_tim_main.cpp
-    smoke/test_smoke.cpp
-    PROPERTIES LANGUAGE CUDA)
-endif()
+foreach(runtime_test test_tim_runtime_owner test_tim_runtime_guest)
+  target_link_libraries(${runtime_test}
+    GTest::gtest
+    tim
+  )
+endforeach()
 
 include(GoogleTest)
 
 gtest_discover_tests(test_tim_smoke
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES LABELS "unit")
+
+gtest_discover_tests(test_tim_runtime_owner
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES LABELS "unit")
+
+gtest_discover_tests(test_tim_runtime_guest
   DISCOVERY_MODE PRE_TEST
   PROPERTIES LABELS "unit")

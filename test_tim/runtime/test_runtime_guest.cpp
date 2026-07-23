@@ -29,7 +29,7 @@ namespace {
 // by main() via emplace()/reset() (exactly one Runtime may exist per process).
 std::optional<TIM::Runtime> g_runtime;
 
-// Check that Tuntime adopts exactly the communicator it was handed, and it is
+// Check that Runtime adopts exactly the communicator it was handed, and it is
 // usable for direct MPI calls alongside AMReX.
 TEST(RuntimeGuest, MPICollectiveOnAdoptedCommunicator) {
     ASSERT_TRUE(g_runtime.has_value());

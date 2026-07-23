@@ -29,6 +29,14 @@ void enforceSingleRuntime() {
 
 Runtime::Runtime(int& argc, char**& argv) : owns_mpi_(true) {
     enforceSingleRuntime();
+
+    // Check if MPI is already finalized or initialized. If so, abort with a message.
+    int mpi_already_finalized = 0;
+    MPI_Finalized(&mpi_already_finalized);
+    if (mpi_already_finalized) {
+        amrex::Abort("TIM::Runtime (owner mode): MPI has already been "
+                     "finalized and cannot be initialized again.");
+    }
     int mpi_already_initialized = 0;
     MPI_Initialized(&mpi_already_initialized);
     if (mpi_already_initialized) {
@@ -40,13 +48,19 @@ Runtime::Runtime(int& argc, char**& argv) : owns_mpi_(true) {
     if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
         amrex::Abort("TIM::Runtime (owner mode): MPI_Init failed.");
     }
-    // AMReX is a guest on the communicator Runtime owns: it still sets up its
-    // internals (arenas, devices, ...) but does not own argc/argv or MPI.
+
+    // Having initialized MPI, initialize AMReX.
     amrex::Initialize(comm_);
 }
 
 Runtime::Runtime(MPI_Comm comm) : comm_(comm), owns_mpi_(false) {
     enforceSingleRuntime();
+
+    // Check that the adopted communicator is valid and that MPI is initialized but not finalized.
+    if (comm_ == MPI_COMM_NULL) {
+        amrex::Abort("TIM::Runtime (guest mode): the adopted communicator is "
+                     "MPI_COMM_NULL; pass a valid communicator.");
+    }
     int mpi_already_initialized = 0;
     MPI_Initialized(&mpi_already_initialized);
     if (!mpi_already_initialized) {
@@ -55,6 +69,14 @@ Runtime::Runtime(MPI_Comm comm) : comm_(comm), owns_mpi_(false) {
                      "MPI; use the owner-mode constructor if TIM should own MPI "
                      "startup/shutdown.");
     }
+    int mpi_already_finalized = 0;
+    MPI_Finalized(&mpi_already_finalized);
+    if (mpi_already_finalized) {
+        amrex::Abort("TIM::Runtime (guest mode): MPI has already been "
+                     "finalized; construct Runtime while MPI is alive.");
+    }
+
+    // Having verified that MPI is alive and the communicator is valid, initialize AMReX on it.
     amrex::Initialize(comm_);
 }
 

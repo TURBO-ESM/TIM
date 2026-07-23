@@ -34,9 +34,10 @@ public:
 
     /// @brief Guest mode: adopt @p comm from a caller that owns MPI (e.g.,
     ///        a coupler) and initialize AMReX on it.
-    /// @param comm The communicator TIM runs on; must belong to an already
-    ///             initialized MPI (aborts otherwise). It is never freed or
-    ///             finalized by TIM.
+    /// @param comm The communicator TIM runs on. Must not be MPI_COMM_NULL
+    ///             and must belong to an MPI that is initialized and not yet
+    ///             finalized (aborts otherwise). In guest mode, MPI is not
+    ///             freed or finalized by TIM.
     explicit Runtime(MPI_Comm comm);
 
     /// @brief Finalize AMReX. If in owner mode, finalize MPI too.

@@ -1,3 +1,8 @@
+/**
+ * @file tim_coms_infra.cpp
+ * @brief Implementation of the TIM checksum service.
+ */
+
 // #include <bit>
 
 #include <AMReX_Gpu.H>

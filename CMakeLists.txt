@@ -19,7 +19,7 @@
 
 # Copyright (c) GFDL, @underwoo
 
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 
 # add build type for debug, overrides default flags (set with $FCFLAGS, $CFLAGS)
 set(CMAKE_Fortran_FLAGS_DEBUG)
@@ -59,6 +59,8 @@ option(OPENMP "Build TIM with OpenMP support"        OFF)
 option(32BIT  "Build 32-bit (r4) TIM library"        OFF)
 option(64BIT  "Build 64-bit (r8) TIM library"         ON)
 option(FPIC   "Build with position independent code" OFF)
+option(TIM_ADD_TEST_TARGETS "Build C++ unit test targets (test_tim)"          OFF)
+option(TIM_FETCH_DEPS       "Fetch missing dependencies (GoogleTest, PIO)"     ON)
 
 # Options for compiler definitions
 option(INTERNAL_FILE_NML     "Enable compiler definition -DINTERNAL_FILE_NML"      ON)
@@ -82,6 +84,8 @@ endif()
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran)
 find_package(NetCDF REQUIRED COMPONENTS C Fortran)
 find_package(AMReX REQUIRED)
+
+include(FindOrFetchPIO) # find_package(PIO) or FetchContent pio2_6_8 -> PIO::PIO_C
 
 # Check for the OpenMP library and set the required compile flags
 if (OPENMP)
@@ -227,31 +231,8 @@ endif()
 include(fms_compiler_flags)
 
 # TIM C++ infrastructure layer
-add_library(tim STATIC
-    tim/cpp/tim_coms_infra.cpp
-    tim/cpp/tim_coms_infra_C_API.cpp
-    tim/cpp/tim_profile.cpp
-)
-target_include_directories(tim PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/tim/cpp>
-    $<INSTALL_INTERFACE:include/tim>)
-# tim's C++ object files and AMReX::amrex reference the C++ standard
-# library (e.g. __cxa_call_terminate). Position the runtime *after*
-# AMReX::amrex so it lands after libamrex_3d.a in the consumer's link
-# line -- otherwise GNU ld with --as-needed (default on some Linux
-# distros, incl. NCAR Derecho) drops libstdc++ before amrex's undefined
-# refs are seen.
-target_link_libraries(tim PUBLIC AMReX::amrex MPI::MPI_CXX
-                                 $<$<CXX_COMPILER_ID:GNU,IntelLLVM>:stdc++>
-                                 $<$<CXX_COMPILER_ID:Clang,AppleClang>:c++>)
-# PUBLIC so consumers including tim_profile.hpp / tim_coms_infra_C_API.h
-# (installed below) get the C++20 requirement propagated.
-target_compile_features(tim PUBLIC cxx_std_20)
-set_target_properties(tim PROPERTIES CXX_EXTENSIONS OFF)
-install(FILES
-    tim/cpp/tim_coms_infra_C_API.h
-    tim/cpp/tim_profile.hpp
-    DESTINATION include/tim)
+set(TIM_CPP_INSTALL ON) # full TIM builds install/export the tim target
+add_subdirectory(tim/cpp)
 
 foreach(kind ${kinds})
 
@@ -346,7 +327,7 @@ endforeach()
 
 
 install(
-  TARGETS ${LIB_TARGETS} tim
+  TARGETS ${LIB_TARGETS}
   EXPORT TIMExports
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
@@ -385,3 +366,9 @@ install(EXPORT TIMExports
   NAMESPACE TIM::
   FILE tim-targets.cmake
   DESTINATION ${CONFIG_INSTALL_DESTINATION})
+
+# C++ unit tests (reuses the AMReX/PIO/tim targets defined above).
+if(TIM_ADD_TEST_TARGETS)
+  enable_testing()
+  add_subdirectory(test_tim)
+endif()

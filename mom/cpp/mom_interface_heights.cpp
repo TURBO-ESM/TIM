@@ -1,4 +1,8 @@
 // mom_interface_heights.cpp
+/**
+ * @file mom_interface_heights.cpp
+ * @brief Box-level AMReX kernel implementation for the MOM6 thickness-to-dz conversion.
+ */
 #include "mom_interface_heights.hpp"
 
 using namespace amrex;

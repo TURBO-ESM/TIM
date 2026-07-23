@@ -1,3 +1,8 @@
+/**
+ * @file tim_coms_infra_C_API.cpp
+ * @brief C-API translation unit of the TIM checksum service.
+ */
+
 #include "tim_coms_infra_C_API.h"
 #include "tim_coms_infra.hpp"
 

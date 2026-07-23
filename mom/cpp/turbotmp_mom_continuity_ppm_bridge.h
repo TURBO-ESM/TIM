@@ -1,4 +1,9 @@
 #pragma once
+/**
+ * @file turbotmp_mom_continuity_ppm_bridge.h
+ * @brief extern "C" bridge declarations between the MOM6 Fortran
+ *        shim and the AMReX PPM continuity kernels (temporary turbotmp layer).
+ */
 
 #include "turbotmp_bridge_c_types.h"
 

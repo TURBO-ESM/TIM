@@ -92,3 +92,6 @@ settings.json
 *.code-workspace
 # Local History for Visual Studio Code
 .history/
+
+# generated tim/cpp doxygen output (docs/Doxyfile.tim_cpp)
+docs/tim_cpp_build/

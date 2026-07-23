@@ -1,4 +1,8 @@
 #pragma once
+/**
+ * @file mom_continuity_ppm_kernel.hpp
+ * @brief Per-cell device primitives for the MOM6 PPM continuity kernels.
+ */
 
 #include <AMReX_Box.H>
 #include <AMReX_Array4.H>
@@ -25,7 +29,7 @@ using namespace amrex::literals;
  *  @param h_R Right thickness in the reconstruction [H ~> m or kg m-2].
  *  @param h_min The minimum thickness that can be obtained by a concave
  *              parabolic fit [H ~> m or kg m-2]
- *  @return Modified thickness values @p HL and @p HR.
+ *  @note On return, @p h_L and @p h_R hold the modified thickness values.
  */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
@@ -73,7 +77,7 @@ void ppm_limit_pos_point(Real& h_L,
  *  @param h_L  Left thickness in the reconstruction [H ~> m or kg m-2].
  *  @param h_R Right thickness in the reconstruction [H ~> m or kg m-2].
  *
- *  @return  Modified thickness values for @p h_L and @p h_R.
+ *  @note On return, @p h_L and @p h_R hold the modified thickness values.
  */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
@@ -100,6 +104,15 @@ void ppm_limit_cw84_point(Real& h_L,
     }
 }
 
+/**
+ * @brief Upwind (1st-order) edge thickness: copy the cell thickness to both edges.
+ *
+ *  @param h_L  Left edge thickness [H ~> m or kg m-2].
+ *  @param h_R  Right edge thickness [H ~> m or kg m-2].
+ *  @param h_in Cell-average layer thickness [H ~> m or kg m-2].
+ *
+ *  @note On return, @p h_L and @p h_R are both set to @p h_in.
+ */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void edge_thickness_upwind_point(Real& h_L, Real& h_R, Real const h_in) noexcept

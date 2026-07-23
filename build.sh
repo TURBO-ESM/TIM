@@ -9,11 +9,14 @@
 #               directory, so it normally need not be set)
 #
 # Options:
-#   --debug         Full clean rebuild (deletes build dir and rebuilds from scratch)
+#   --clean         Full clean rebuild (deletes build dir and rebuilds from scratch)
+#   --debug         Build in Debug mode (default: Release)
 #   --ninja         Use Ninja generator instead of the default (Unix Makefiles)
 #   --build-dir DIR Override build directory (default: $TIM_ROOT/build)
 #   --prefix DIR    Install prefix (default: $build_dir/install)
 #   --parallel N    Build with N parallel jobs
+#   --tests         Build the C++ unit tests (test_tim) and run ctest. Requires
+#                   AMReX and PIO to be on CMAKE_PREFIX_PATH.
 
 set -eo pipefail
 
@@ -29,17 +32,21 @@ fi
 build_dir="$TIM_ROOT/build"
 build_type="Release"
 debug=false
+clean=false
 ninja=false
 parallel_jobs=""
 prefix=""
+run_tests=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --debug)        debug=true; shift ;;
+        --clean)        clean=true; shift ;;
         --ninja)        ninja=true; shift ;;
         --build-dir)    build_dir="$2"; shift 2 ;;
         --prefix)       prefix="$2"; shift 2 ;;
         --parallel)     parallel_jobs="$2"; shift 2 ;;
+        --tests)        run_tests=true; shift ;;
         *)              echo "Error: unknown argument '$1'" >&2; exit 1 ;;
     esac
 done
@@ -50,6 +57,9 @@ prefix="${prefix:-$build_dir/install}"
 
 if [[ "$debug" == true ]]; then
     build_type="Debug"
+fi
+
+if [[ "$clean" == true ]]; then
     rm -rf "$build_dir"
 fi
 
@@ -61,6 +71,7 @@ cmake_configure_opts=(
     -DCMAKE_INSTALL_PREFIX="$prefix"
 )
 [[ "$ninja" == true ]] && cmake_configure_opts+=(-G Ninja)
+[[ "$run_tests" == true ]] && cmake_configure_opts+=(-DTIM_ADD_TEST_TARGETS=ON)
 cmake "${cmake_configure_opts[@]}"
 
 # Build
@@ -71,3 +82,10 @@ cmake --build "${cmake_build_opts[@]}"
 # Install into $prefix so the build produces a consumable tree
 # (TIMConfig.cmake, libs, modules) like the other turbo deps.
 cmake --install "$build_dir"
+
+# Run the C++ unit tests if requested.
+if [[ "$run_tests" == true ]]; then
+    ctest_opts=(--test-dir "$build_dir" --output-on-failure)
+    [[ -n "$parallel_jobs" ]] && ctest_opts+=(-j "$parallel_jobs")
+    ctest "${ctest_opts[@]}"
+fi

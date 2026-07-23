@@ -1,4 +1,8 @@
-
+/**
+ * @file turbotmp_mom_continuity_ppm_bridge.cpp
+ * @brief Bridge that moves data (host to device, Fortran to C++ array order, and
+ *        Box setup) between the MOM6 Fortran shim and the AMReX PPM continuity kernels.
+ */
 #include "mom_continuity_ppm.hpp"
 #include "turbotmp_helper.hpp"
 #include "turbotmp_mom_continuity_ppm_bridge.h"
@@ -21,16 +25,17 @@ bool verbose = false;
  * to either capture the input, or output or execute the AMReX C++ 
  * implementation based on the setting of the @p mode parameter.
  *
- * @param h_in_HOST Layer thickness [H → m or kg m^-2] 
+ * @param bx_HOST   Box over which to iterate
+ * @param h_in_HOST Layer thickness [H → m or kg m^-2]
  * 	on the host in Fortran order
- * @param h_L_HOST, Left thickness of the reconstruction {host, Fortran order} 
+ * @param h_L_HOST Left thickness of the reconstruction {host, Fortran order} 
  * 	[H → m or kg m^-2]
- * @param h_R_HOST, Right thickness in the reconstruction {host, Fortran order} 
+ * @param h_R_HOST Right thickness in the reconstruction {host, Fortran order} 
  * 	[H → m or kg m^-2] 
- * @param hmin Minimum thickness allowed by the parabolic fit (host, Fortran order) 
+ * @param h_min Minimum thickness allowed by the parabolic fit (host, Fortran order) 
  * 	[H → m or kg m^-2]
  *
- * @return Modified thickness values @p h_L_HOST and @p h_R_HOST
+ * @note On return, @p h_L_HOST and @p h_R_HOST hold the modified thickness values.
  */
 void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
 		                   const RealArray_C* h_in_HOST,
@@ -82,12 +87,12 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
  * @param bx_HOST   Box over which to iterate 
  * @param h_in_HOST Layer thickness [H → m or kg m^-2]
  *      on the host in Fortran order
- * @param h_L_HOST, Left thickness of the reconstruction {host, Fortran order}
+ * @param h_L_HOST Left thickness of the reconstruction {host, Fortran order}
  *      [H → m or kg m^-2]
- * @param h_R_HOST, Right thickness in the reconstruction {host, Fortran order}
+ * @param h_R_HOST Right thickness in the reconstruction {host, Fortran order}
  *      [H → m or kg m^-2]
  *
- * @return Modified thickness values @p h_L_HOST and @p h_R_HOST
+ * @note On return, @p h_L_HOST and @p h_R_HOST hold the modified thickness values.
  */
 void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST,
 	                  const RealArray_C* h_in_HOST,
@@ -143,8 +148,9 @@ void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST,
  * @param h_min       Minimum thickness
  * @param monotonic   Use CW84 limiter if true
  * @param simple_2nd  Use simple 2nd order scheme if true
+ * @param obc         Open boundary control structure
  *
- * @return Modified thickness values @p h_S_HOST and @p h_N_HOST
+ * @note On return, @p h_S_HOST and @p h_N_HOST hold the modified thickness values.
  */
 void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
                                           const RealArray_C* h_in_HOST,
@@ -212,9 +218,9 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
  * @param h_min       Minimum thickness
  * @param monotonic   Use CW84 limiter if true
  * @param simple_2nd  Use simple 2nd order scheme if true
- * @param OBC         Open boundary control structure
+ * @param obc         Open boundary control structure
  *
- * @return Modified thickness values @p h_W_HOST and @p h_E_HOST
+ * @note On return, @p h_W_HOST and @p h_E_HOST hold the modified thickness values.
  */
 void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
                                           const RealArray_C* h_in_HOST,
@@ -283,7 +289,7 @@ void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
  * @param simple_2nd  Use simple 2nd order scheme if true
  * @param obc         Open boundary control structure
  *
- * @return Modified thickness values @p h_W_HOST and @p h_E_HOST
+ * @note On return, @p h_W_HOST and @p h_E_HOST hold the modified thickness values.
  */
 void turbotmp_zonal_edge_thickness_bridge(const Box_C* bx_HOST,
                                           const RealArray_C* h_in_HOST,
@@ -355,7 +361,7 @@ void turbotmp_zonal_edge_thickness_bridge(const Box_C* bx_HOST,
  * @param simple_2nd  Use simple 2nd order scheme if true
  * @param obc         Open boundary control structure
  *
- * @return Modified thickness values @p h_S_HOST and @p h_N_HOST
+ * @note On return, @p h_S_HOST and @p h_N_HOST hold the modified thickness values.
  */
 void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
                                                const RealArray_C* h_in_HOST,

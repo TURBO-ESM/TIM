@@ -7,6 +7,21 @@
 #         -DCMAKE_PREFIX_PATH="<amrex-install>;$NCAR_ROOT_PARALLELIO"
 #   cmake --build build --target test_tim_smoke
 #   ctest --test-dir build -L unit --output-on-failure
+# or standalone -- just tim/cpp and its tests, without the full TIM/FMS build
+#   cmake -S test_tim -B build -DCMAKE_PREFIX_PATH=<amrex-install>
+#   cmake --build build && ctest --test-dir build -L unit
+
+# Standalone configuration: provide what the top-level build provides
+# otherwise. AMReX comes from CMAKE_PREFIX_PATH. PIO comes from an install
+# on CMAKE_PREFIX_PATH / $PIO, or a libpioc source build (FindOrFetchPIO).
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+  cmake_minimum_required(VERSION 3.24)
+  project(TIM_cpp_tests LANGUAGES C CXX)
+  option(TIM_FETCH_DEPS "Fetch missing dependencies (GoogleTest, PIO)" ON)
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+  include(FindOrFetchPIO)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../tim/cpp" tim_cpp)
+endif()
 
 find_package(GTest QUIET)
 if(NOT GTest_FOUND)

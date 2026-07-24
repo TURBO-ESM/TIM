@@ -6,8 +6,6 @@
 // verify that Runtime adopts the communicator and brings up AMReX on it, and
 // after Runtime is destroyed inside main(), that MPI is still alive. 
 
-#include <cstdio>
-#include <cstdlib>
 #include <optional>
 
 #include <gtest/gtest.h>
@@ -19,11 +17,6 @@
 #include "core/tim_runtime.hpp"
 
 namespace {
-
-[[noreturn]] void fail(const char* msg) {
-    std::fprintf(stderr, "test_runtime_guest: FAIL -- %s\n", msg);
-    std::exit(1);
-}
 
 // The one Runtime of this test binary, owned here and constructed/destroyed
 // by main() via emplace()/reset() (exactly one Runtime may exist per process).
@@ -61,7 +54,7 @@ TEST(RuntimeGuest, MultiFabCollectiveReduction) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
-        fail("MPI_Init failed");
+        TIM::abort("test_runtime_guest: MPI_Init failed");
     }
     g_runtime.emplace(MPI_COMM_WORLD);
     const int rc = RUN_ALL_TESTS();
@@ -71,11 +64,11 @@ int main(int argc, char** argv) {
     int finalized = 1;
     MPI_Finalized(&finalized);
     if (finalized) {
-        fail("guest-mode Runtime finalized MPI");
+        TIM::abort("test_runtime_guest: guest-mode Runtime finalized MPI");
     }
     int size = -1;
     if (MPI_Comm_size(MPI_COMM_WORLD, &size) != MPI_SUCCESS || size < 1) {
-        fail("MPI unusable after Runtime teardown");
+        TIM::abort("test_runtime_guest: MPI unusable after Runtime teardown");
     }
     MPI_Finalize();
     return rc;

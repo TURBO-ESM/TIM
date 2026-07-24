@@ -32,8 +32,13 @@ void abort(const char* msg) {
 namespace {
 
 // Enforce that exactly one Runtime exists per process lifetime. If a second is
-// constructed, abort with a message.
+// constructed, abort with a message. (Deliberately never reset: the
+// one-per-lifetime rule outlives the Runtime itself.)
 std::atomic<bool> runtime_exists{false};
+
+// Whether the runtime is up right now: set once a constructor completes,
+// cleared when destruction begins. Backs Runtime::active().
+std::atomic<bool> runtime_active{false};
 
 void enforceSingleRuntime() {
     if (runtime_exists.exchange(true)) {
@@ -43,6 +48,10 @@ void enforceSingleRuntime() {
 }
 
 }  // namespace
+
+bool Runtime::active() {
+    return runtime_active.load();
+}
 
 Runtime::Runtime(int& argc, char**& argv) : owns_mpi_(true) {
     enforceSingleRuntime();
@@ -68,6 +77,8 @@ Runtime::Runtime(int& argc, char**& argv) : owns_mpi_(true) {
 
     // Having initialized MPI, initialize AMReX.
     amrex::Initialize(comm_);
+
+    runtime_active.store(true);
 }
 
 Runtime::Runtime(MPI_Comm comm) : comm_(comm), owns_mpi_(false) {
@@ -95,9 +106,12 @@ Runtime::Runtime(MPI_Comm comm) : comm_(comm), owns_mpi_(false) {
 
     // Having verified that MPI is alive and the communicator is valid, initialize AMReX on it.
     amrex::Initialize(comm_);
+
+    runtime_active.store(true);
 }
 
 Runtime::~Runtime() {
+    runtime_active.store(false);
     amrex::Finalize();
     if (owns_mpi_) {
         MPI_Finalize();

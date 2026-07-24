@@ -49,6 +49,7 @@ if(AMReX_GPU_BACKEND STREQUAL "CUDA")
     smoke/test_smoke.cpp
     runtime/test_runtime_owner.cpp
     runtime/test_runtime_guest.cpp
+    domain/test_tim_domain.cpp
     PROPERTIES LANGUAGE CUDA)
 endif()
 
@@ -65,13 +66,17 @@ add_executable(test_tim_runtime_guest
   runtime/test_runtime_guest.cpp
 )
 
+add_executable(test_tim_domain
+  domain/test_tim_domain.cpp
+)
+
 target_link_libraries(test_tim_smoke
   GTest::gtest
   tim
   PIO::PIO_C
 )
 
-foreach(runtime_test test_tim_runtime_owner test_tim_runtime_guest)
+foreach(runtime_test test_tim_runtime_owner test_tim_runtime_guest test_tim_domain)
   target_link_libraries(${runtime_test}
     GTest::gtest
     tim
@@ -89,5 +94,9 @@ gtest_discover_tests(test_tim_runtime_owner
   PROPERTIES LABELS "unit")
 
 gtest_discover_tests(test_tim_runtime_guest
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES LABELS "unit")
+
+gtest_discover_tests(test_tim_domain
   DISCOVERY_MODE PRE_TEST
   PROPERTIES LABELS "unit")

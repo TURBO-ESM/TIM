@@ -22,6 +22,11 @@ namespace {
 // by main() via emplace()/reset() (exactly one Runtime may exist per process).
 std::optional<TIM::Runtime> g_runtime;
 
+// With the guest-mode Runtime alive, the runtime-liveness query reports up.
+TEST(RuntimeGuest, RuntimeIsActiveWhileAlive) {
+    EXPECT_TRUE(TIM::Runtime::active());
+}
+
 // Check that Runtime adopts exactly the communicator it was handed, and it is
 // usable for direct MPI calls alongside AMReX.
 TEST(RuntimeGuest, MPICollectiveOnAdoptedCommunicator) {
@@ -59,8 +64,11 @@ int main(int argc, char** argv) {
     g_runtime.emplace(MPI_COMM_WORLD);
     const int rc = RUN_ALL_TESTS();
     g_runtime.reset();
-    // Runtime is destroyed; the guest must not have finalized MPI, and the
-    // caller's MPI must still be usable.
+    // Runtime is destroyed; the liveness query must report down, the guest
+    // must not have finalized MPI, and the caller's MPI must still be usable.
+    if (TIM::Runtime::active()) {
+        TIM::abort("test_runtime_guest: Runtime::active() still true after teardown");
+    }
     int finalized = 1;
     MPI_Finalized(&finalized);
     if (finalized) {

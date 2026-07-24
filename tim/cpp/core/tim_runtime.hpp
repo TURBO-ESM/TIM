@@ -52,6 +52,11 @@ public:
     ///         guest mode.
     MPI_Comm comm() const { return comm_; }
 
+    /// @brief Whether the infrastructure runtime is up. true if Runtime has been
+    /// constructed and not yet destroyed (and hence MPI and AMReX are alive.
+    /// @return true between a Runtime's construction and its destruction.
+    static bool active();
+
     // Exactly one Runtime per process (see class comment).
     Runtime(const Runtime&) = delete;
     Runtime& operator=(const Runtime&) = delete;

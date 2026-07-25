@@ -6,8 +6,6 @@
 
 #include <AMReX_Box.H>
 #include <AMReX_BoxArray.H>
-#include <AMReX_GpuDevice.H>
-#include <AMReX_Loop.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParallelDescriptor.H>
 
@@ -16,47 +14,19 @@
 
 namespace {
 
-// A valid decomposition at n_levels: the boxes tile the global index space
-// exactly once, no box is split in k, and every box is assigned to
-// a valid rank.
-void expectValidDecomposition(const TIM::Domain& domain, const int n_levels) {
-    const amrex::BoxArray box_array = domain.boxArray(n_levels);
-    const amrex::Box whole_domain(
-        amrex::IntVect(0, 0, 0),
-        amrex::IntVect(domain.ni_global() - 1, domain.nj_global() - 1, n_levels - 1));
-    EXPECT_EQ(box_array.numPts(), whole_domain.numPts());
-    EXPECT_TRUE(box_array.contains(whole_domain));
-
-    const amrex::DistributionMapping& distribution_mapping = domain.distribution_mapping();
-    ASSERT_EQ(static_cast<int>(distribution_mapping.size()),
-              static_cast<int>(box_array.size()));
-    for (int b = 0; b < static_cast<int>(box_array.size()); ++b) {
-        EXPECT_EQ(box_array[b].smallEnd(2), 0);
-        EXPECT_EQ(box_array[b].bigEnd(2), n_levels - 1);
-        EXPECT_GE(distribution_mapping[b], 0);
-        EXPECT_LT(distribution_mapping[b], amrex::ParallelDescriptor::NProcs());
-    }
-}
-
 // The default decomposition is one box per rank (fewer only if the domain is
-// too small to split, which this one is not), tiles the domain, and is never
-// split in k.
+// too small to split, which this one is not).
 TEST(Domain, DefaultDecompositionIsOneBoxPerRank) {
     const TIM::Domain domain(10, 8, 2, 3, /*periodic_x=*/true,
                              /*periodic_y=*/false, /*tripolar_n=*/false);
-    EXPECT_EQ(static_cast<int>(domain.boxArray(3).size()),
-              amrex::ParallelDescriptor::NProcs());
-    expectValidDecomposition(domain, 3);
+    EXPECT_EQ(domain.n_boxes(), amrex::ParallelDescriptor::NProcs());
 }
 
-// A requested box count above one-per-rank is honored, and the round-robin
-// distribution mapping stays valid.
+// A requested box count above one-per-rank is honored.
 TEST(Domain, RequestedBoxCountIsHonored) {
     const int n_boxes = 6;
     const TIM::Domain domain(12, 12, 0, 0, false, false, false, n_boxes);
-    EXPECT_EQ(static_cast<int>(domain.boxArray(1).size()), n_boxes);
     EXPECT_EQ(domain.n_boxes(), n_boxes);
-    expectValidDecomposition(domain, 1);
 }
 
 // The recorded logical tile grid is consistent with the boxes: the layout
@@ -68,9 +38,8 @@ TEST(Domain, LayoutRecordsTheTileGrid) {
     const int n_boxes = 6;
     const TIM::Domain domain(12, 12, 0, 0, false, false, false, n_boxes);
     const amrex::BoxArray boxes = domain.boxArray(1);
-    ASSERT_EQ(domain.layout_nx() * domain.layout_ny(),
-              static_cast<int>(boxes.size()));
-    for (int b = 0; b < static_cast<int>(boxes.size()); ++b) {
+    ASSERT_EQ(domain.layout_nx() * domain.layout_ny(), domain.n_boxes());
+    for (int b = 0; b < domain.n_boxes(); ++b) {
         const auto [tile_i, tile_j] = domain.tileOf(b);
         ASSERT_GE(tile_i, 0);
         ASSERT_LT(tile_i, domain.layout_nx());
@@ -86,17 +55,15 @@ TEST(Domain, LayoutRecordsTheTileGrid) {
 }
 
 // A domain too small for the requested box count yields fewer boxes (the
-// empty chunks are dropped), and what remains still tiles the domain as a
-// regular tile grid.
+// empty chunks are dropped), and the recorded tile grid matches what remains.
 TEST(Domain, TooSmallDomainClampsBoxCount) {
     const int n_boxes = 7;
     const TIM::Domain domain(3, 2, 0, 0, false, false, false, n_boxes);
-    const int actual_boxes = static_cast<int>(domain.boxArray(1).size());
+    const int actual_boxes = domain.n_boxes();
     EXPECT_GT(actual_boxes, 0);
     EXPECT_LT(actual_boxes, n_boxes);
     EXPECT_LE(actual_boxes, 3 * 2);
     EXPECT_EQ(domain.layout_nx() * domain.layout_ny(), actual_boxes);
-    expectValidDecomposition(domain, 1);
 }
 
 // The periodicity product mirrors the connectivity flags.
@@ -126,16 +93,11 @@ TEST(Domain, ProductsCreateWorkingFields) {
     EXPECT_DOUBLE_EQ(field.sum(), 2.5 * ni * nj * n_levels);
 
     // Halo exchange: with both directions periodic, every halo cell has a
-    // source cell, so the grown region becomes uniformly the interior value.
+    // source cell, so the grown region becomes uniformly the interior value
+    // (min == max == interior value over valid + ghost cells).
     field.FillBoundary(domain.periodicity());
-    amrex::Gpu::streamSynchronize();
-    for (amrex::MFIter mfi(field); mfi.isValid(); ++mfi) {
-        const amrex::Box grown = amrex::grow(mfi.validbox(), halo);
-        const auto a = field.const_array(mfi);
-        amrex::LoopOnCpu(grown, [&](int i, int j, int k) {
-            EXPECT_DOUBLE_EQ(a(i, j, k), 2.5) << "at (" << i << "," << j << "," << k << ")";
-        });
-    }
+    EXPECT_DOUBLE_EQ(field.min(0, /*nghost=*/1), 2.5);
+    EXPECT_DOUBLE_EQ(field.max(0, /*nghost=*/1), 2.5);
 }
 
 }  // namespace

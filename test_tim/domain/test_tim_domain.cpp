@@ -55,6 +55,47 @@ TEST(Domain, RequestedBoxCountIsHonored) {
     const int n_boxes = 6;
     const TIM::Domain domain(12, 12, 0, 0, false, false, false, n_boxes);
     EXPECT_EQ(static_cast<int>(domain.boxArray(1).size()), n_boxes);
+    EXPECT_EQ(domain.n_boxes(), n_boxes);
+    expectValidDecomposition(domain, 1);
+}
+
+// The recorded logical tile grid is consistent with the boxes: the layout
+// shape multiplies out to the box count, every box gets in-range tile
+// coordinates, and a box touches a global edge exactly when its tile sits on
+// the layout boundary (the property the future I/O decomposition's
+// tile-based edge ownership relies on).
+TEST(Domain, LayoutRecordsTheTileGrid) {
+    const int n_boxes = 6;
+    const TIM::Domain domain(12, 12, 0, 0, false, false, false, n_boxes);
+    const amrex::BoxArray boxes = domain.boxArray(1);
+    ASSERT_EQ(domain.layout_nx() * domain.layout_ny(),
+              static_cast<int>(boxes.size()));
+    for (int b = 0; b < static_cast<int>(boxes.size()); ++b) {
+        const auto [tile_i, tile_j] = domain.tileOf(b);
+        ASSERT_GE(tile_i, 0);
+        ASSERT_LT(tile_i, domain.layout_nx());
+        ASSERT_GE(tile_j, 0);
+        ASSERT_LT(tile_j, domain.layout_ny());
+        EXPECT_EQ(tile_i == 0, boxes[b].smallEnd(0) == 0);
+        EXPECT_EQ(tile_i == domain.layout_nx() - 1,
+                  boxes[b].bigEnd(0) == domain.ni_global() - 1);
+        EXPECT_EQ(tile_j == 0, boxes[b].smallEnd(1) == 0);
+        EXPECT_EQ(tile_j == domain.layout_ny() - 1,
+                  boxes[b].bigEnd(1) == domain.nj_global() - 1);
+    }
+}
+
+// A domain too small for the requested box count yields fewer boxes (the
+// empty chunks are dropped), and what remains still tiles the domain as a
+// regular tile grid.
+TEST(Domain, TooSmallDomainClampsBoxCount) {
+    const int n_boxes = 7;
+    const TIM::Domain domain(3, 2, 0, 0, false, false, false, n_boxes);
+    const int actual_boxes = static_cast<int>(domain.boxArray(1).size());
+    EXPECT_GT(actual_boxes, 0);
+    EXPECT_LT(actual_boxes, n_boxes);
+    EXPECT_LE(actual_boxes, 3 * 2);
+    EXPECT_EQ(domain.layout_nx() * domain.layout_ny(), actual_boxes);
     expectValidDecomposition(domain, 1);
 }
 

@@ -5,6 +5,9 @@
  * and the decomposition into rank-assigned boxes.
  */
 
+#include <array>
+#include <vector>
+
 #include <AMReX_BoxArray.H>
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_Periodicity.H>
@@ -30,7 +33,19 @@ namespace TIM {
 ///   the domain's index space.
 /// - todo: this class is the intended producer of TIM::IoDecomp values
 ///   ("Decomp2D produced from AMReX distribution maps"); an io_decomp()
-///   method will be added here once TIM's parallel IO layer merges.
+///   method will be added here once TIM's parallel IO layer merges. Its
+///   initial precondition is the default one-box-per-rank decomposition
+///   (IoDecomp describes one window per rank); supporting many boxes per
+///   rank (GPU tiling, makeSFC/makeKnapSack load balancing) requires
+///   generalizing the I/O DofMap generation to a list of windows per rank.
+/// - todo: land-block elimination (the FMS mask_table analogue, e.g.
+///   cesm_t232's masked 25x40 layout) is a planned Domain feature: drop
+///   all-land boxes from the BoxArray before distribution. The I/O layer's
+///   write-edge ownership is already mask-aware. This class would supply the
+///   tile-liveness mask. At that point the tile layout is recorded at
+///   decomposition time rather than derived from surviving box corners (the
+///   constructor's derived-origin consistency checks assume an unmasked
+///   grid).
 class Domain {
 public:
     /// @brief Build the domain and its horizontal decomposition.
@@ -42,14 +57,14 @@ public:
     /// @param periodic_y Whether the j-direction is periodic (cyclic).
     /// @param tripolar_n Whether the domain has tripolar connectivity (a
     ///        fold) at the northern edge. Not implemented yet; aborts if true.
-    /// @param n_boxes Number of boxes to decompose the domain into, or 0
+    /// @param n_boxes_in Number of boxes to decompose the domain into, or 0
     ///        (the default) for one box per rank. The actual box count can be
     ///        smaller if the domain is too small to split that finely.
     /// @pre The runtime is up (a TIM::Runtime exists); aborts otherwise.
     Domain(int ni_global, int nj_global,
            int ni_halo, int nj_halo,
            bool periodic_x, bool periodic_y,
-           bool tripolar_n, int n_boxes = 0);
+           bool tripolar_n, int n_boxes_in = 0);
 
     /// @brief Global number of cells in the i-direction (x).
     /// @return The global i-extent.
@@ -100,6 +115,25 @@ public:
     ///         non-periodic one.
     amrex::Periodicity periodicity() const;
 
+    /// @brief Number of boxes in the horizontal decomposition.
+    /// @return The box count.
+    int n_boxes() const { return static_cast<int>(box_array_2d_.size()); }
+
+    /// @brief Number of tiles in the i-direction of the logical tile grid.
+    /// @return Tiles in i.
+    int layout_nx() const { return static_cast<int>(tile_lo_i_.size()); }
+
+    /// @brief Number of tiles in the j-direction of the logical tile grid.
+    /// @return Tiles in j.
+    int layout_ny() const { return static_cast<int>(tile_lo_j_.size()); }
+
+    /// @brief The tile coordinates of a box in the logical
+    /// layout_nx() x layout_ny() tile grid.
+    /// @param box_index Index of the box in boxArray() /
+    ///        distribution_mapping(). Aborts if out of range.
+    /// @return {tile_i, tile_j}, 0-based.
+    std::array<int, 2> tileOf(int box_index) const;
+
 private:
     int ni_global_;
     int nj_global_;
@@ -113,6 +147,10 @@ private:
     amrex::BoxArray box_array_2d_;
     /// @brief The assignment of the horizontal boxes to MPI ranks.
     amrex::DistributionMapping distribution_mapping_;
+    /// @brief Sorted distinct box-corner coordinates: the tile-column and
+    /// tile-row origins of the logical tile grid (sizes = layout shape).
+    std::vector<int> tile_lo_i_;
+    std::vector<int> tile_lo_j_;
 };
 
 }  // namespace TIM

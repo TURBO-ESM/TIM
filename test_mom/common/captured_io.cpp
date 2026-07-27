@@ -157,9 +157,9 @@ amrex::FArrayBox CapturedFile::fab_host(const std::string& name,
     amrex::Box sbx(start, end);
     amrex::FArrayBox fab(sbx, 1, amrex::The_Pinned_Arena());
     auto arr = fab.array();
-    for(int k = sbx.smallEnd(2); k < sbx.bigEnd(2); ++k)
-      for(int j = sbx.smallEnd(1); j < sbx.bigEnd(1); ++j)
-        for(int i = sbx.smallEnd(0); i < sbx.bigEnd(0); ++i)
+    for(int k = sbx.smallEnd(2); k <= sbx.bigEnd(2); ++k)
+      for(int j = sbx.smallEnd(1); j <= sbx.bigEnd(1); ++j)
+        for(int i = sbx.smallEnd(0); i <= sbx.bigEnd(0); ++i)
             arr(i, j, k) = read_be_f64(bin_, off);
     return fab;
 }

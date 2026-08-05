@@ -1,0 +1,70 @@
+name: TIM C++ Tests
+
+# Build tim/cpp and its unit tests standalone (test_tim's standalone
+# configuration -- no full TIM/FMS build) and run them serially and on
+# 2 MPI ranks. AMReX is built from source once and cached; GTest and
+# libpioc are fetched and built by the configuration itself
+# (TIM_FETCH_DEPS, on by default in standalone mode).
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'tim/cpp/**'
+      - 'test_tim/**'
+      - 'cmake/FindOrFetchPIO.cmake'
+      - '.github/workflows/tim_cpp_tests.yml'
+
+env:
+  AMREX_TAG: "26.04"
+
+jobs:
+  tests:
+    name: Unit tests (serial + 2 MPI ranks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mpich libmpich-dev libnetcdf-dev
+
+      - name: Cache AMReX
+        id: cache-amrex
+        uses: actions/cache@v4
+        with:
+          path: amrex-install
+          key: amrex-${{ env.AMREX_TAG }}-mpich-${{ runner.os }}
+
+      - name: Build AMReX
+        if: steps.cache-amrex.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch ${{ env.AMREX_TAG }} \
+            https://github.com/AMReX-Codes/amrex.git amrex-src
+          cmake -S amrex-src -B amrex-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DAMReX_MPI=ON \
+            -DAMReX_FORTRAN=OFF \
+            -DAMReX_OMP=OFF \
+            -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/amrex-install
+          cmake --build amrex-build -j 4 --target install
+
+      - name: Configure tests (standalone tim/cpp + test_tim)
+        run: |
+          cmake -S test_tim -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=${{ github.workspace }}/amrex-install
+
+      - name: Build tests
+        run: cmake --build build -j 4
+
+      - name: Run unit tests (serial)
+        run: ctest --test-dir build -L unit --output-on-failure
+
+      - name: Run runtime tests on 2 MPI ranks
+        run: |
+          mpiexec -n 2 ./build/test_tim_runtime_owner
+          mpiexec -n 2 ./build/test_tim_runtime_guest

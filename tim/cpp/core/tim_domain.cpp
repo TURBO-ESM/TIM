@@ -92,6 +92,10 @@ Domain::Domain(const int ni_global, const int nj_global,
                    "logical tile grid; the I/O decomposition model requires "
                    "one box per tile.");
     }
+    if (static_cast<int>(tile_lo_i_.size() * tile_lo_j_.size()) != actual_boxes) {
+        TIM::abort("TIM::Domain: the decomposition does not form a complete "
+                   "rectangular tile grid (layout_nx * layout_ny != n_boxes).");
+    }
 }
 
 std::array<int, 2> Domain::tileOf(const int box_index) const {

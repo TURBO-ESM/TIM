@@ -88,16 +88,15 @@ TEST(Domain, ProductsCreateWorkingFields) {
     const amrex::IntVect halo(1, 1, 0);
     amrex::MultiFab field(domain.boxArray(n_levels),
                           domain.distribution_mapping(), 1, halo);
-    field.setVal(0.0);                        // everywhere, incl. the halos
+    constexpr double sentinel = 1.0e30;
+    field.setVal(sentinel);
     field.setVal(2.5, 0, 1, /*nghost=*/0);    // interior only
     EXPECT_DOUBLE_EQ(field.sum(), 2.5 * ni * nj * n_levels);
 
     // Halo exchange: with both directions periodic, every halo cell has a
-    // source cell, so the grown region becomes uniformly the interior value
-    // (min == max == interior value over valid + ghost cells).
+    // source cell, so no cell in the halo-grown region retains the sentinel.
     field.FillBoundary(domain.periodicity());
-    EXPECT_DOUBLE_EQ(field.min(0, /*nghost=*/1), 2.5);
-    EXPECT_DOUBLE_EQ(field.max(0, /*nghost=*/1), 2.5);
+    EXPECT_DOUBLE_EQ(field.norminf(0, 1, halo), 2.5);
 }
 
 }  // namespace

@@ -6,6 +6,7 @@
  */
 
 #include <array>
+#include <optional>
 #include <vector>
 
 #include <AMReX_BoxArray.H>
@@ -13,6 +14,22 @@
 #include <AMReX_Periodicity.H>
 
 namespace TIM {
+
+/// @brief The construction specification of a Domain.
+struct DomainSpec {
+    int ni_global = 0;   ///< Global number of cells in the i-direction (x).
+    int nj_global = 0;   ///< Global number of cells in the j-direction (y).
+    int ni_halo = 0;     ///< Halo width in the i-direction (metadata; see Domain docs).
+    int nj_halo = 0;     ///< Halo width in the j-direction (metadata; see Domain docs).
+    bool periodic_x = false;  ///< Whether the i-direction is periodic (cyclic).
+    bool periodic_y = false;  ///< Whether the j-direction is periodic (cyclic).
+    bool tripolar_n = false;  ///< Whether the domain has tripolar connectivity (a
+                              ///< fold) at the northern edge. Not implemented yet.
+    /// @brief Number of boxes to decompose the domain into; nullopt (the
+    /// default) means one box per rank. The actual box count can be smaller
+    /// if the domain is too small to split that finely.
+    std::optional<int> n_boxes = std::nullopt;
+};
 
 /// @brief The horizontal computational domain and its decomposition
 /// (Analogue of FMS mpp_domains, rebuilt on AMReX). A Domain owns the global
@@ -49,22 +66,10 @@ namespace TIM {
 class Domain {
 public:
     /// @brief Build the domain and its horizontal decomposition.
-    /// @param ni_global Global number of cells in the i-direction (x).
-    /// @param nj_global Global number of cells in the j-direction (y).
-    /// @param ni_halo   Halo width in the i-direction (metadata; see class docs).
-    /// @param nj_halo   Halo width in the j-direction (metadata; see class docs).
-    /// @param periodic_x Whether the i-direction is periodic (cyclic).
-    /// @param periodic_y Whether the j-direction is periodic (cyclic).
-    /// @param tripolar_n Whether the domain has tripolar connectivity (a
-    ///        fold) at the northern edge. Not implemented yet; aborts if true.
-    /// @param n_boxes_in Number of boxes to decompose the domain into, or 0
-    ///        (the default) for one box per rank. The actual box count can be
-    ///        smaller if the domain is too small to split that finely.
+    /// @param spec The domain specification; see DomainSpec. Aborts on an
+    ///        invalid or inconsistent specification.
     /// @pre The runtime is up (a TIM::Runtime exists); aborts otherwise.
-    Domain(int ni_global, int nj_global,
-           int ni_halo, int nj_halo,
-           bool periodic_x, bool periodic_y,
-           bool tripolar_n, int n_boxes_in = 0);
+    explicit Domain(const DomainSpec& spec);
 
     /// @brief Global number of cells in the i-direction (x).
     /// @return The global i-extent.

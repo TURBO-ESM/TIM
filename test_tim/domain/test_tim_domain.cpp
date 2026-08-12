@@ -17,15 +17,16 @@ namespace {
 // The default decomposition is one box per rank (fewer only if the domain is
 // too small to split, which this one is not).
 TEST(Domain, DefaultDecompositionIsOneBoxPerRank) {
-    const TIM::Domain domain(10, 8, 2, 3, /*periodic_x=*/true,
-                             /*periodic_y=*/false, /*tripolar_n=*/false);
+    const TIM::Domain domain({.ni_global = 10, .nj_global = 8,
+                              .ni_halo = 2, .nj_halo = 3,
+                              .periodic_x = true});
     EXPECT_EQ(domain.n_boxes(), amrex::ParallelDescriptor::NProcs());
 }
 
 // A requested box count above one-per-rank is honored.
 TEST(Domain, RequestedBoxCountIsHonored) {
     const int n_boxes = 6;
-    const TIM::Domain domain(12, 12, 0, 0, false, false, false, n_boxes);
+    const TIM::Domain domain({.ni_global = 12, .nj_global = 12, .n_boxes = n_boxes});
     EXPECT_EQ(domain.n_boxes(), n_boxes);
 }
 
@@ -36,7 +37,7 @@ TEST(Domain, RequestedBoxCountIsHonored) {
 // tile-based edge ownership relies on).
 TEST(Domain, LayoutRecordsTheTileGrid) {
     const int n_boxes = 6;
-    const TIM::Domain domain(12, 12, 0, 0, false, false, false, n_boxes);
+    const TIM::Domain domain({.ni_global = 12, .nj_global = 12, .n_boxes = n_boxes});
     const amrex::BoxArray boxes = domain.boxArray(1);
     ASSERT_EQ(domain.layout_nx() * domain.layout_ny(), domain.n_boxes());
     for (int b = 0; b < domain.n_boxes(); ++b) {
@@ -58,7 +59,7 @@ TEST(Domain, LayoutRecordsTheTileGrid) {
 // empty chunks are dropped), and the recorded tile grid matches what remains.
 TEST(Domain, TooSmallDomainClampsBoxCount) {
     const int n_boxes = 7;
-    const TIM::Domain domain(3, 2, 0, 0, false, false, false, n_boxes);
+    const TIM::Domain domain({.ni_global = 3, .nj_global = 2, .n_boxes = n_boxes});
     const int actual_boxes = domain.n_boxes();
     EXPECT_GT(actual_boxes, 0);
     EXPECT_LT(actual_boxes, n_boxes);
@@ -68,7 +69,9 @@ TEST(Domain, TooSmallDomainClampsBoxCount) {
 
 // The periodicity product mirrors the connectivity flags.
 TEST(Domain, PeriodicityFollowsTheConnectivityFlags) {
-    const TIM::Domain domain(10, 8, 2, 3, true, false, false);
+    const TIM::Domain domain({.ni_global = 10, .nj_global = 8,
+                              .ni_halo = 2, .nj_halo = 3,
+                              .periodic_x = true});
     const amrex::Periodicity periodicity = domain.periodicity();
     EXPECT_TRUE(periodicity.isPeriodic(0));
     EXPECT_FALSE(periodicity.isPeriodic(1));
@@ -82,7 +85,9 @@ TEST(Domain, ProductsCreateWorkingFields) {
     const int ni = 8;
     const int nj = 8;
     const int n_levels = 2;
-    const TIM::Domain domain(ni, nj, 1, 1, true, true, false);
+    const TIM::Domain domain({.ni_global = ni, .nj_global = nj,
+                              .ni_halo = 1, .nj_halo = 1,
+                              .periodic_x = true, .periodic_y = true});
 
     // Halos are horizontal-only, matching the domain's halo metadata.
     const amrex::IntVect halo(1, 1, 0);

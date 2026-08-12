@@ -11,6 +11,7 @@
 
 #include <AMReX_BoxArray.H>
 #include <AMReX_DistributionMapping.H>
+#include <AMReX_Geometry.H>
 #include <AMReX_IntVect.H>
 #include <AMReX_Periodicity.H>
 
@@ -154,6 +155,11 @@ private:
     bool periodic_y_;
     bool tripolar_n_;
 
+    /// @brief The AMReX geometry of the (single-level) global index space:
+    /// owns the connectivity/periodicity detail. Index-space only: its
+    /// RealBox stays a placeholder unit box, since physical metrics live
+    /// with the horizontal grid.
+    amrex::Geometry geometry_2d_;
     /// @brief The horizontal (single-level) decomposition.
     amrex::BoxArray box_array_2d_;
     /// @brief The assignment of the horizontal boxes to MPI ranks.

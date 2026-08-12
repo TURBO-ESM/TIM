@@ -51,6 +51,17 @@ Domain::Domain(const DomainSpec& spec)
     const amrex::Box domain_2d(amrex::IntVect(0, 0, 0),
                                amrex::IntVect(ni_global_ - 1, nj_global_ - 1, 0));
 
+    // The AMReX geometry of the index space, which owns the connectivity/
+    // periodicity detail. Cartesian, always: this Geometry is index-space
+    // bookkeeping. Physical metrics arrive as discrete fields with the
+    // model-specific horizontal grid, as in MOM6, where the grid
+    // (not the domain) carries dx/dy/area arrays.
+    geometry_2d_.define(domain_2d,
+                        amrex::RealBox({AMREX_D_DECL(0., 0., 0.)},
+                                       {AMREX_D_DECL(1., 1., 1.)}),
+                        amrex::CoordSys::cartesian,
+                        {periodic_x_ ? 1 : 0, periodic_y_ ? 1 : 0, 0});
+
     // Split into near-square horizontal boxes, one per rank by default (the
     // requested count is an upper bound: a domain too small to split that
     // finely yields fewer boxes).
@@ -131,9 +142,7 @@ amrex::BoxArray Domain::boxArray(const int n_levels) const {
 }
 
 amrex::Periodicity Domain::periodicity() const {
-    return amrex::Periodicity(amrex::IntVect(periodic_x_ ? ni_global_ : 0,
-                                             periodic_y_ ? nj_global_ : 0,
-                                             0));
+    return geometry_2d_.periodicity();
 }
 
 }  // namespace TIM

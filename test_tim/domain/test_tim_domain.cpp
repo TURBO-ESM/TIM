@@ -89,8 +89,8 @@ TEST(Domain, ProductsCreateWorkingFields) {
                               .ni_halo = 1, .nj_halo = 1,
                               .periodic_x = true, .periodic_y = true});
 
-    // Halos are horizontal-only, matching the domain's halo metadata.
-    const amrex::IntVect halo(1, 1, 0);
+    // The domain's halo metadata, as the ghost-cell vector (horizontal-only).
+    const amrex::IntVect halo = domain.nghost();
     amrex::MultiFab field(domain.boxArray(n_levels),
                           domain.distribution_mapping(), 1, halo);
     constexpr double sentinel = 1.0e30;

@@ -11,6 +11,7 @@
 
 #include <AMReX_BoxArray.H>
 #include <AMReX_DistributionMapping.H>
+#include <AMReX_IntVect.H>
 #include <AMReX_Periodicity.H>
 
 namespace TIM {
@@ -86,6 +87,11 @@ public:
     /// @brief Halo width in the j-direction (metadata for field creation).
     /// @return The j-direction halo width.
     int nj_halo() const { return nj_halo_; }
+
+    /// @brief The halo widths as a MultiFab ghost-cell vector. Horizontal-only:
+    /// the k-component is always 0.
+    /// @return {ni_halo, nj_halo, 0}.
+    amrex::IntVect nghost() const { return amrex::IntVect(ni_halo_, nj_halo_, 0); }
 
     /// @brief True if the i-direction is periodic (cyclic).
     /// @return The i-direction periodicity flag.

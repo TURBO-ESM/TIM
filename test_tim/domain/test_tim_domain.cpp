@@ -1,6 +1,6 @@
 // Unit tests for TIM::Domain, the horizontal computational domain and its
-// decomposition. A Domain requires a live runtime, hence the main() below,
-// which brings one up in owner mode.
+// decomposition. A Domain requires a live runtime, provided by the shared
+// entry point (test_tim_main.cpp), which brings one up in owner mode.
 
 #include <gtest/gtest.h>
 
@@ -10,7 +10,6 @@
 #include <AMReX_ParallelDescriptor.H>
 
 #include "core/tim_domain.hpp"
-#include "core/tim_runtime.hpp"
 
 namespace {
 
@@ -105,12 +104,3 @@ TEST(Domain, ProductsCreateWorkingFields) {
 }
 
 }  // namespace
-
-// Test-binary entry point: initialize GTest, bring up the infrastructure
-// layer in owner mode (Runtime calls MPI_Init itself), and run all tests.
-// The Runtime is destroyed when main returns, before static teardown.
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    const TIM::Runtime runtime(argc, argv);
-    return RUN_ALL_TESTS();
-}

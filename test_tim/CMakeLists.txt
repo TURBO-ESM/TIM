@@ -67,6 +67,7 @@ add_executable(test_tim_runtime_guest
 )
 
 add_executable(test_tim_domain
+  test_tim_main.cpp
   domain/test_tim_domain.cpp
 )
 

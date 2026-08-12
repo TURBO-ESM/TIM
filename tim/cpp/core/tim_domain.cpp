@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <set>
+#include <string>
 #include <utility>
 
+#include <AMReX.H>
 #include <AMReX_Box.H>
 #include <AMReX_IntVect.H>
 #include <AMReX_ParallelDescriptor.H>
@@ -57,6 +59,18 @@ Domain::Domain(const DomainSpec& spec)
     box_array_2d_ = amrex::decompose(domain_2d, target_boxes,
                                      {true, true, false});
     const int actual_boxes = n_boxes();
+
+    // The default one-box-per-rank decomposition can fall short of the rank
+    // count (e.g., for a small domain on many ranks), leaving some ranks with
+    // no boxes. This is valid but likely a misconfiguration, so warn the user
+    // about it. (An explicit n_boxes request is an upper bound by contract,
+    // so no warning in that case.)
+    if (!spec.n_boxes.has_value() && actual_boxes < nranks) {
+        amrex::Warning("TIM::Domain: the default one-box-per-rank decomposition "
+                       "yielded " + std::to_string(actual_boxes) + " boxes for " +
+                       std::to_string(nranks) + " ranks; the ranks beyond the box "
+                       "count own no cells.");
+    }
 
     // Deterministic round-robin assignment of boxes to ranks (sort=false:
     // sorting orders ranks by current load via a collective, making the map

@@ -77,8 +77,8 @@ target_link_libraries(test_tim_smoke
   PIO::PIO_C
 )
 
-foreach(runtime_test test_tim_runtime_owner test_tim_runtime_guest test_tim_domain)
-  target_link_libraries(${runtime_test}
+foreach(tim_test test_tim_runtime_owner test_tim_runtime_guest test_tim_domain)
+  target_link_libraries(${tim_test}
     GTest::gtest
     tim
   )

@@ -20,22 +20,20 @@
 namespace TIM {
 
 Domain::Domain(const DomainSpec& spec)
-    : ni_global_(spec.ni_global), nj_global_(spec.nj_global),
-      ni_halo_(spec.ni_halo), nj_halo_(spec.nj_halo),
-      periodic_x_(spec.periodic_x), periodic_y_(spec.periodic_y),
+    : ni_halo_(spec.ni_halo), nj_halo_(spec.nj_halo),
       tripolar_n_(spec.tripolar_n) {
 
     if (!Runtime::active()) {
         TIM::abort("TIM::Domain: the infrastructure runtime is not up; "
                    "construct a TIM::Runtime before constructing a Domain.");
     }
-    if (ni_global_ <= 0 || nj_global_ <= 0) {
+    if (spec.ni_global <= 0 || spec.nj_global <= 0) {
         TIM::abort("TIM::Domain: global extents must be positive.");
     }
     if (ni_halo_ < 0 || nj_halo_ < 0) {
         TIM::abort("TIM::Domain: halo widths must be non-negative.");
     }
-    if (periodic_y_ && tripolar_n_) {
+    if (spec.periodic_y && tripolar_n_) {
         TIM::abort("TIM::Domain: periodic_y and tripolar_n cannot both be true.");
     }
     if (tripolar_n_) {
@@ -49,7 +47,7 @@ Domain::Domain(const DomainSpec& spec)
     // The global cell-centered index space. The decomposition is
     // horizontal-only, hence the single-level (k = 0) box.
     const amrex::Box domain_2d(amrex::IntVect(0, 0, 0),
-                               amrex::IntVect(ni_global_ - 1, nj_global_ - 1, 0));
+                               amrex::IntVect(spec.ni_global - 1, spec.nj_global - 1, 0));
 
     // The AMReX geometry of the index space, which owns the connectivity/
     // periodicity detail. Cartesian, always: this Geometry is index-space
@@ -60,7 +58,7 @@ Domain::Domain(const DomainSpec& spec)
                         amrex::RealBox({AMREX_D_DECL(0., 0., 0.)},
                                        {AMREX_D_DECL(1., 1., 1.)}),
                         amrex::CoordSys::cartesian,
-                        {periodic_x_ ? 1 : 0, periodic_y_ ? 1 : 0, 0});
+                        {spec.periodic_x ? 1 : 0, spec.periodic_y ? 1 : 0, 0});
 
     // Split into near-square horizontal boxes, one per rank by default (the
     // requested count is an upper bound: a domain too small to split that

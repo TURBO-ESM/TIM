@@ -75,11 +75,11 @@ public:
 
     /// @brief Global number of cells in the i-direction (x).
     /// @return The global i-extent.
-    int ni_global() const { return ni_global_; }
+    int ni_global() const { return geometry_2d_.Domain().length(0); }
 
     /// @brief Global number of cells in the j-direction (y).
     /// @return The global j-extent.
-    int nj_global() const { return nj_global_; }
+    int nj_global() const { return geometry_2d_.Domain().length(1); }
 
     /// @brief Halo width in the i-direction (metadata for field creation).
     /// @return The i-direction halo width.
@@ -96,11 +96,11 @@ public:
 
     /// @brief True if the i-direction is periodic (cyclic).
     /// @return The i-direction periodicity flag.
-    bool periodic_x() const { return periodic_x_; }
+    bool periodic_x() const { return geometry_2d_.isPeriodic(0); }
 
     /// @brief True if the j-direction is periodic (cyclic).
     /// @return The j-direction periodicity flag.
-    bool periodic_y() const { return periodic_y_; }
+    bool periodic_y() const { return geometry_2d_.isPeriodic(1); }
 
     /// @brief True if the domain has tripolar connectivity at the northern edge.
     /// @return The tripolar connectivity flag.
@@ -147,12 +147,8 @@ public:
     std::array<int, 2> tileOf(int box_index) const;
 
 private:
-    int ni_global_;
-    int nj_global_;
     int ni_halo_;
     int nj_halo_;
-    bool periodic_x_;
-    bool periodic_y_;
     bool tripolar_n_;
 
     /// @brief The AMReX geometry of the (single-level) global index space:

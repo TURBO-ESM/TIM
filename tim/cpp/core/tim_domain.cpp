@@ -30,13 +30,13 @@ Domain::Domain(const DomainSpec& spec)
     if (spec.ni_global <= 0 || spec.nj_global <= 0) {
         TIM::abort("TIM::Domain: global extents must be positive.");
     }
-    if (ni_halo_ < 0 || nj_halo_ < 0) {
+    if (spec.ni_halo < 0 || spec.nj_halo < 0) {
         TIM::abort("TIM::Domain: halo widths must be non-negative.");
     }
-    if (spec.periodic_y && tripolar_n_) {
+    if (spec.periodic_y && spec.tripolar_n) {
         TIM::abort("TIM::Domain: periodic_y and tripolar_n cannot both be true.");
     }
-    if (tripolar_n_) {
+    if (spec.tripolar_n) {
         TIM::abort("TIM::Domain: tripolar connectivity (tripolar_n) is not "
                    "implemented yet.");
     }

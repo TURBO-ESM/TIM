@@ -5,6 +5,7 @@
 // with a Runtime alive, direct MPI calls on Runtime's communicator and AMReX
 // data structures/collectives work side by side in one process.
 
+#include <cstdio>
 #include <optional>
 
 #include <gtest/gtest.h>
@@ -20,6 +21,11 @@ namespace {
 // The one Runtime of this test binary, owned here and constructed/destroyed
 // by main() via emplace()/reset() (exactly one Runtime may exist per process).
 std::optional<TIM::Runtime> g_runtime;
+
+// With the Runtime alive, the runtime-liveness query reports up.
+TEST(RuntimeOwner, RuntimeIsActiveWhileAlive) {
+    EXPECT_TRUE(TIM::Runtime::active());
+}
 
 // The communicator Runtime owns is usable for direct MPI calls alongside
 // AMReX: a collective sum of one contribution per rank equals the comm size.
@@ -55,5 +61,9 @@ int main(int argc, char** argv) {
     g_runtime.emplace(argc, argv);
     const int rc = RUN_ALL_TESTS();
     g_runtime.reset();  // finalize AMReX and MPI before static teardown
+    if (TIM::Runtime::active()) {
+        std::fprintf(stderr, "test_runtime_owner: Runtime::active() still true after teardown\n");
+        return 1;
+    }
     return rc;
 }

@@ -64,7 +64,8 @@ jobs:
       - name: Run unit tests (serial)
         run: ctest --test-dir build -L unit --output-on-failure
 
-      - name: Run runtime tests on 2 MPI ranks
+      - name: Run runtime and domain tests on 2 MPI ranks
         run: |
           mpiexec -n 2 ./build/test_tim_runtime_owner
           mpiexec -n 2 ./build/test_tim_runtime_guest
+          mpiexec -n 2 ./build/test_tim_domain

@@ -143,4 +143,34 @@ TEST(Domain, MakeFieldStaggersAndSizesFields) {
     EXPECT_EQ(wide_halo.nGrowVect(), wide);
 }
 
+// A staggered field does not tile its index space: the extra plane per nodal
+// direction means the boxes on either side of an internal boundary each hold
+// a valid copy of the plane between them. The duplicates are stored, and
+// whole-field reductions see them.
+TEST(Domain, MakeFieldStaggeredBoxesShareBoundaryPlanes) {
+    const int ni = 8;
+    const int nj = 6;
+    const TIM::Domain domain({.ni_global = ni, .nj_global = nj, .n_boxes = 4});
+    ASSERT_EQ(domain.n_boxes(), 4);
+
+    const amrex::MultiFab cell = domain.make_field(TIM::Stagger::Cell, 1, 1);
+    const amrex::MultiFab node = domain.make_field(TIM::Stagger::Node, 1, 1);
+
+    // A cell-centered decomposition tiles exactly: the boxes' point counts add
+    // up to the distinct points they cover.
+    EXPECT_EQ(cell.boxArray().numPts(), cell.boxArray().minimalBox().numPts());
+    EXPECT_EQ(cell.boxArray().minimalBox().numPts(), ni * nj);
+
+    // A node field covers (ni+1) x (nj+1) distinct points, but its boxes hold
+    // more than that between them: the shared planes are stored twice.
+    EXPECT_EQ(node.boxArray().minimalBox().numPts(), (ni + 1) * (nj + 1));
+    EXPECT_GT(node.boxArray().numPts(), node.boxArray().minimalBox().numPts());
+
+    // So a reduction counts every stored point, shared planes included, rather
+    // than every distinct point.
+    amrex::MultiFab ones = domain.make_field(TIM::Stagger::Node, 1, 1);
+    ones.setVal(1.0);
+    EXPECT_DOUBLE_EQ(ones.sum(), static_cast<double>(node.boxArray().numPts()));
+}
+
 }  // namespace

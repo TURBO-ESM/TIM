@@ -53,6 +53,20 @@ struct DomainSpec {
 ///   per-field property (the ghost cells of a MultiFab), so the halo widths
 ///   stored here are consumed at field-creation sites rather than baked into
 ///   the domain's index space.
+/// - A staggered field is not a clean tiling of its index space. Converting
+///   the cell-centered decomposition to a face or node index type grows every
+///   box by one plane per nodal direction, so the boxes on either side of an
+///   internal boundary each hold a valid copy of the plane between them, and
+///   on a periodic axis the plane at the far edge is the image of the one at
+///   the near edge. This mirrors FMS symmetric memory, where neighboring PEs
+///   likewise both hold a shared u/v/q edge -- but nothing above this class
+///   assigns ownership, so the duplicates are the caller's to handle:
+///   whole-field reductions count them more than once (dedupe with
+///   FabArray::OwnerMask when an exact total matters), and the copies must be
+///   made to agree, either by computing the plane from a rule both boxes
+///   evaluate identically or by reconciling them afterwards
+///   (FabArray::OverrideSync / SumBoundary). FillBoundary fills ghost cells
+///   from valid ones; it leaves disagreeing valid copies alone. 
 /// - todo: this class is the intended producer of TIM::IoDecomp values
 ///   ("Decomp2D produced from AMReX distribution maps"); an io_decomp()
 ///   method will be added here once TIM's parallel IO layer merges. Its
@@ -133,6 +147,9 @@ public:
     /// @param nghost Ghost-cell widths of the field. The default is the domain's
     ///        halo widths. Halos are horizontal-only.
     /// @return The newly created field.
+    /// @note A non-Cell staggering duplicates the planes that neighboring
+    ///       boxes share; see the Domain class notes before reducing over
+    ///       such a field.
     amrex::MultiFab make_field(Stagger stagger, int n_levels, int ncomp,
                                std::optional<amrex::IntVect> nghost = std::nullopt) const;
 

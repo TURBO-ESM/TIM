@@ -142,6 +142,9 @@ amrex::BoxArray Domain::boxArray(const int n_levels) const {
 amrex::MultiFab Domain::make_field(const Stagger stagger, const int n_levels,
                                    const int ncomp,
                                    const std::optional<amrex::IntVect> nghost) const {
+    if (n_levels <= 0) {
+        TIM::abort("TIM::Domain::make_field: n_levels must be positive.");
+    }
     if (ncomp <= 0) {
         TIM::abort("TIM::Domain::make_field: ncomp must be positive.");
     }

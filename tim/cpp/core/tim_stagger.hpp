@@ -23,7 +23,7 @@ enum class Stagger {
 
 /// @brief The AMReX nodality of a staggering: 0 corresponds to cell centers
 /// while 1 corresponds to points sitting on cell boundaries (nodes).
-/// This class is used to specify horizontal staggering only
+/// Horizontal staggering only: the k-component is always 0.
 /// @param stagger The staggering.
 /// @return The nodal flag vector (consumable by amrex::convert).
 inline amrex::IntVect nodality(const Stagger stagger) {

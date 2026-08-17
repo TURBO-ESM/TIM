@@ -118,6 +118,14 @@ TEST(Domain, MakeFieldStaggersAndSizesFields) {
     const amrex::MultiFab y_face = domain.make_field(TIM::Stagger::YFace, 1, 1);
     const amrex::MultiFab node = domain.make_field(TIM::Stagger::Node, 3, 2);
 
+    // The fields sit on this domain's decomposition: the same boxes on the
+    // same ranks, staggering aside (which changes the boxes but not how many
+    // there are, nor who owns them).
+    EXPECT_EQ(cell.boxArray(), domain.boxArray(1));
+    EXPECT_EQ(cell.DistributionMap(), domain.distribution_mapping());
+    EXPECT_EQ(node.DistributionMap(), domain.distribution_mapping());
+    EXPECT_EQ(node.boxArray().size(), cell.boxArray().size());
+
     EXPECT_TRUE(cell.ixType().cellCentered());
     EXPECT_EQ(x_face.ixType(), amrex::IndexType(amrex::IntVect(1, 0, 0)));
     EXPECT_EQ(y_face.ixType(), amrex::IndexType(amrex::IntVect(0, 1, 0)));

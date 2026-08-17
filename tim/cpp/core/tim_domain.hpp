@@ -66,7 +66,7 @@ struct DomainSpec {
 ///   made to agree, either by computing the plane from a rule both boxes
 ///   evaluate identically or by reconciling them afterwards
 ///   (FabArray::OverrideSync / SumBoundary). FillBoundary fills ghost cells
-///   from valid ones; it leaves disagreeing valid copies alone. 
+///   from valid ones; it leaves disagreeing valid copies alone.
 /// - todo: this class is the intended producer of TIM::IoDecomp values
 ///   ("Decomp2D produced from AMReX distribution maps"); an io_decomp()
 ///   method will be added here once TIM's parallel IO layer merges. Its
@@ -146,7 +146,7 @@ public:
     /// @param ncomp Number of field components. Must be positive.
     /// @param nghost Ghost-cell widths of the field. The default is the domain's
     ///        halo widths. Halos are horizontal-only.
-    /// @return The newly created field.
+    /// @return The newly created field, with uninitialized contents.
     /// @note A non-Cell staggering duplicates the planes that neighboring
     ///       boxes share; see the Domain class notes before reducing over
     ///       such a field.

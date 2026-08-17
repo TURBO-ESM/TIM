@@ -139,6 +139,24 @@ amrex::BoxArray Domain::boxArray(const int n_levels) const {
     return box_array;
 }
 
+amrex::MultiFab Domain::make_field(const Stagger stagger, const int n_levels,
+                                   const int ncomp,
+                                   const std::optional<amrex::IntVect> nghost) const {
+    if (ncomp <= 0) {
+        TIM::abort("TIM::Domain::make_field: ncomp must be positive.");
+    }
+    const amrex::IntVect ng = nghost.value_or(this->nghost());
+    if (ng[0] < 0 || ng[1] < 0) {
+        TIM::abort("TIM::Domain::make_field: ghost-cell widths must be non-negative.");
+    }
+    if (ng[2] != 0) {
+        TIM::abort("TIM::Domain::make_field: halos are horizontal-only; the "
+                   "k-direction ghost-cell width must be 0.");
+    }
+    return amrex::MultiFab(amrex::convert(boxArray(n_levels), nodality(stagger)),
+                           distribution_mapping_, ncomp, ng);
+}
+
 amrex::Periodicity Domain::periodicity() const {
     return geometry_2d_.periodicity();
 }

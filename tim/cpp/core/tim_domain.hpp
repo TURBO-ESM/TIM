@@ -13,7 +13,10 @@
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_Geometry.H>
 #include <AMReX_IntVect.H>
+#include <AMReX_MultiFab.H>
 #include <AMReX_Periodicity.H>
+
+#include "tim_stagger.hpp"
 
 namespace TIM {
 
@@ -120,6 +123,18 @@ public:
     const amrex::DistributionMapping& distribution_mapping() const {
         return distribution_mapping_;
     }
+
+    /// @brief Create a distributed field on this domain's decomposition: a
+    /// MultiFab with the requested staggering, vertical extent, and component
+    /// count, carrying the domain's halo widths as ghost cells unless overridden.
+    /// @param stagger Where the field's values sit within a grid cell.
+    /// @param n_levels Number of vertical levels of the field. Must be positive.
+    /// @param ncomp Number of field components. Must be positive.
+    /// @param nghost Ghost-cell widths of the field. The default is the domain's
+    ///        halo widths. Halos are horizontal-only.
+    /// @return The newly created field.
+    amrex::MultiFab make_field(Stagger stagger, int n_levels, int ncomp,
+                               std::optional<amrex::IntVect> nghost = std::nullopt) const;
 
     /// @brief The domain's periodicity in index space, for halo exchanges
     /// (e.g. MultiFab::FillBoundary).

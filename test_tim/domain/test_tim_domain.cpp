@@ -103,4 +103,44 @@ TEST(Domain, ProductsCreateWorkingFields) {
     EXPECT_DOUBLE_EQ(field.norminf(0, 1, halo), 2.5);
 }
 
+// make_field creates fields on the domain's decomposition with the requested
+// staggering expressed as AMReX index-type nodality (one extra plane of
+// points in each nodal direction), the requested vertical extent and
+// component count, and the domain's halo widths as ghost cells.
+TEST(Domain, MakeFieldStaggersAndSizesFields) {
+    const int ni = 8;
+    const int nj = 6;
+    const TIM::Domain domain({.ni_global = ni, .nj_global = nj,
+                              .ni_halo = 2, .nj_halo = 1});
+
+    const amrex::MultiFab cell = domain.make_field(TIM::Stagger::Cell, 1, 1);
+    const amrex::MultiFab x_face = domain.make_field(TIM::Stagger::XFace, 1, 1);
+    const amrex::MultiFab y_face = domain.make_field(TIM::Stagger::YFace, 1, 1);
+    const amrex::MultiFab node = domain.make_field(TIM::Stagger::Node, 3, 2);
+
+    EXPECT_TRUE(cell.ixType().cellCentered());
+    EXPECT_EQ(x_face.ixType(), amrex::IndexType(amrex::IntVect(1, 0, 0)));
+    EXPECT_EQ(y_face.ixType(), amrex::IndexType(amrex::IntVect(0, 1, 0)));
+    EXPECT_EQ(node.ixType(), amrex::IndexType(amrex::IntVect(1, 1, 0)));
+
+    EXPECT_EQ(cell.boxArray().minimalBox().length(0), ni);
+    EXPECT_EQ(x_face.boxArray().minimalBox().length(0), ni + 1);
+    EXPECT_EQ(y_face.boxArray().minimalBox().length(1), nj + 1);
+    EXPECT_EQ(node.boxArray().minimalBox().length(0), ni + 1);
+    EXPECT_EQ(node.boxArray().minimalBox().length(2), 3);  // n_levels
+
+    EXPECT_EQ(cell.nComp(), 1);
+    EXPECT_EQ(node.nComp(), 2);
+    EXPECT_EQ(cell.nGrowVect(), domain.nghost());
+    EXPECT_EQ(node.nGrowVect(), domain.nghost());
+
+    // An explicit ghost-cell width overrides the domain's halo widths.
+    const amrex::IntVect wide(4, 3, 0);
+    const amrex::MultiFab no_halo = domain.make_field(TIM::Stagger::Cell, 1, 1,
+                                                      amrex::IntVect(0, 0, 0));
+    const amrex::MultiFab wide_halo = domain.make_field(TIM::Stagger::Cell, 1, 1, wide);
+    EXPECT_EQ(no_halo.nGrowVect(), amrex::IntVect(0, 0, 0));
+    EXPECT_EQ(wide_halo.nGrowVect(), wide);
+}
+
 }  // namespace

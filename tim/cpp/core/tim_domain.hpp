@@ -36,6 +36,14 @@ struct DomainSpec {
     std::optional<int> n_boxes = std::nullopt;
 };
 
+/// @brief The optional arguments of Domain::make_field.
+struct FieldOpts {
+    int ncomp = 1;  ///< Number of field components. Must be positive.
+    /// @brief Ghost-cell width of the field, applied in both horizontal
+    /// directions. The default (nullopt) is the domain's halo widths.
+    std::optional<int> nghost = std::nullopt;
+};
+
 /// @brief The horizontal computational domain and its decomposition
 /// (Analogue of FMS mpp_domains, rebuilt on AMReX). A Domain owns the global
 /// cell-centered index space, the connectivity flags, and the decomposition of
@@ -125,12 +133,12 @@ public:
 
     /// @brief The cell-centered decomposition of the global domain, extended
     /// to the requested number of vertical levels. Every box spans the full
-    /// k-range [0, n_levels): the decomposition is horizontal-only.
-    /// @param n_levels Number of vertical levels of the field to be created:
+    /// k-range [0, nlevel): the decomposition is horizontal-only.
+    /// @param nlevel Number of vertical levels of the field to be created:
     ///        1 for 2-D fields, NK for 3-D layer fields, NK+1 for interface
     ///        fields, etc. Aborts if not positive.
     /// @return The cell-centered BoxArray with the requested k-extent.
-    amrex::BoxArray boxArray(int n_levels) const;
+    amrex::BoxArray boxArray(int nlevel) const;
 
     /// @brief The assignment of the horizontal boxes to MPI ranks.
     /// @return The distribution mapping of the horizontal decomposition.
@@ -142,16 +150,15 @@ public:
     /// MultiFab with the requested staggering, vertical extent, and component
     /// count, carrying the domain's halo widths as ghost cells unless overridden.
     /// @param stagger Where the field's values sit within a grid cell.
-    /// @param n_levels Number of vertical levels of the field. Must be positive.
-    /// @param ncomp Number of field components. Must be positive.
-    /// @param nghost Ghost-cell widths of the field. The default is the domain's
-    ///        halo widths. Halos are horizontal-only.
+    /// @param nlevel Number of vertical levels of the field. Must be positive.
+    /// @param opts The optional arguments (component count, ghost-cell
+    ///        width); see FieldOpts.
     /// @return The newly created field, with uninitialized contents.
     /// @note A non-Cell staggering duplicates the planes that neighboring
     ///       boxes share; see the Domain class notes before reducing over
     ///       such a field.
-    amrex::MultiFab make_field(Stagger stagger, int n_levels, int ncomp,
-                               std::optional<amrex::IntVect> nghost = std::nullopt) const;
+    amrex::MultiFab make_field(Stagger stagger, int nlevel,
+                               FieldOpts opts = {}) const;
 
     /// @brief The domain's periodicity in index space, for halo exchanges
     /// (e.g. MultiFab::FillBoundary).

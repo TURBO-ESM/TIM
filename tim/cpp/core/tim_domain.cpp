@@ -130,34 +130,30 @@ std::array<int, 2> Domain::tileOf(const int box_index) const {
     return {static_cast<int>(tile_i), static_cast<int>(tile_j)};
 }
 
-amrex::BoxArray Domain::boxArray(const int n_levels) const {
-    if (n_levels <= 0) {
-        TIM::abort("TIM::Domain::boxArray: n_levels must be positive.");
+amrex::BoxArray Domain::boxArray(const int nlevel) const {
+    if (nlevel <= 0) {
+        TIM::abort("TIM::Domain::boxArray: nlevel must be positive.");
     }
     amrex::BoxArray box_array = box_array_2d_;
-    box_array.growHi(2, n_levels - 1);  // k-range [0,0] -> [0,n_levels-1]
+    box_array.growHi(2, nlevel - 1);  // k-range [0,0] -> [0,nlevel-1]
     return box_array;
 }
 
-amrex::MultiFab Domain::make_field(const Stagger stagger, const int n_levels,
-                                   const int ncomp,
-                                   const std::optional<amrex::IntVect> nghost) const {
-    if (n_levels <= 0) {
-        TIM::abort("TIM::Domain::make_field: n_levels must be positive.");
+amrex::MultiFab Domain::make_field(const Stagger stagger, const int nlevel,
+                                   const FieldOpts opts) const {
+    if (nlevel <= 0) {
+        TIM::abort("TIM::Domain::make_field: nlevel must be positive.");
     }
-    if (ncomp <= 0) {
+    if (opts.ncomp <= 0) {
         TIM::abort("TIM::Domain::make_field: ncomp must be positive.");
     }
-    const amrex::IntVect ng = nghost.value_or(this->nghost());
-    if (ng[0] < 0 || ng[1] < 0) {
-        TIM::abort("TIM::Domain::make_field: ghost-cell widths must be non-negative.");
+    if (opts.nghost && *opts.nghost < 0) {
+        TIM::abort("TIM::Domain::make_field: the ghost-cell width must be non-negative.");
     }
-    if (ng[2] != 0) {
-        TIM::abort("TIM::Domain::make_field: halos are horizontal-only; the "
-                   "k-direction ghost-cell width must be 0.");
-    }
-    return amrex::MultiFab(amrex::convert(boxArray(n_levels), nodality(stagger)),
-                           distribution_mapping_, ncomp, ng);
+    const amrex::IntVect ng =
+        opts.nghost ? amrex::IntVect(*opts.nghost, *opts.nghost, 0) : this->nghost();
+    return amrex::MultiFab(amrex::convert(boxArray(nlevel), nodality(stagger)),
+                           distribution_mapping_, opts.ncomp, ng);
 }
 
 amrex::Periodicity Domain::periodicity() const {

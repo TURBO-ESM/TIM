@@ -83,19 +83,19 @@ TEST(Domain, PeriodicityFollowsTheConnectivityFlags) {
 TEST(Domain, ProductsCreateWorkingFields) {
     const int ni = 8;
     const int nj = 8;
-    const int n_levels = 2;
+    const int nlevel = 2;
     const TIM::Domain domain({.ni_global = ni, .nj_global = nj,
                               .ni_halo = 1, .nj_halo = 1,
                               .periodic_x = true, .periodic_y = true});
 
     // The domain's halo metadata, as the ghost-cell vector (horizontal-only).
     const amrex::IntVect halo = domain.nghost();
-    amrex::MultiFab field(domain.boxArray(n_levels),
+    amrex::MultiFab field(domain.boxArray(nlevel),
                           domain.distribution_mapping(), 1, halo);
     constexpr double sentinel = 1.0e30;
     field.setVal(sentinel);
     field.setVal(2.5, 0, 1, /*nghost=*/0);    // interior only
-    EXPECT_DOUBLE_EQ(field.sum(), 2.5 * ni * nj * n_levels);
+    EXPECT_DOUBLE_EQ(field.sum(), 2.5 * ni * nj * nlevel);
 
     // Halo exchange: with both directions periodic, every halo cell has a
     // source cell, so no cell in the halo-grown region retains the sentinel.
@@ -113,10 +113,10 @@ TEST(Domain, MakeFieldStaggersAndSizesFields) {
     const TIM::Domain domain({.ni_global = ni, .nj_global = nj,
                               .ni_halo = 2, .nj_halo = 1});
 
-    const amrex::MultiFab cell = domain.make_field(TIM::Stagger::Cell, 1, 1);
-    const amrex::MultiFab x_face = domain.make_field(TIM::Stagger::XFace, 1, 1);
-    const amrex::MultiFab y_face = domain.make_field(TIM::Stagger::YFace, 1, 1);
-    const amrex::MultiFab node = domain.make_field(TIM::Stagger::Node, 3, 2);
+    const amrex::MultiFab cell = domain.make_field(TIM::Stagger::Cell, 1);
+    const amrex::MultiFab x_face = domain.make_field(TIM::Stagger::XFace, 1);
+    const amrex::MultiFab y_face = domain.make_field(TIM::Stagger::YFace, 1);
+    const amrex::MultiFab node = domain.make_field(TIM::Stagger::Node, 3, {.ncomp = 2});
 
     // The fields sit on this domain's decomposition: the same boxes on the
     // same ranks, staggering aside (which changes the boxes but not how many
@@ -135,20 +135,19 @@ TEST(Domain, MakeFieldStaggersAndSizesFields) {
     EXPECT_EQ(x_face.boxArray().minimalBox().length(0), ni + 1);
     EXPECT_EQ(y_face.boxArray().minimalBox().length(1), nj + 1);
     EXPECT_EQ(node.boxArray().minimalBox().length(0), ni + 1);
-    EXPECT_EQ(node.boxArray().minimalBox().length(2), 3);  // n_levels
+    EXPECT_EQ(node.boxArray().minimalBox().length(2), 3);  // nlevel
 
     EXPECT_EQ(cell.nComp(), 1);
     EXPECT_EQ(node.nComp(), 2);
     EXPECT_EQ(cell.nGrowVect(), domain.nghost());
     EXPECT_EQ(node.nGrowVect(), domain.nghost());
 
-    // An explicit ghost-cell width overrides the domain's halo widths.
-    const amrex::IntVect wide(4, 3, 0);
-    const amrex::MultiFab no_halo = domain.make_field(TIM::Stagger::Cell, 1, 1,
-                                                      amrex::IntVect(0, 0, 0));
-    const amrex::MultiFab wide_halo = domain.make_field(TIM::Stagger::Cell, 1, 1, wide);
+    // An explicit ghost-cell width overrides the domain's halo widths, in
+    // both horizontal directions and never in k.
+    const amrex::MultiFab no_halo = domain.make_field(TIM::Stagger::Cell, 1, {.nghost = 0});
+    const amrex::MultiFab wide_halo = domain.make_field(TIM::Stagger::Cell, 1, {.nghost = 4});
     EXPECT_EQ(no_halo.nGrowVect(), amrex::IntVect(0, 0, 0));
-    EXPECT_EQ(wide_halo.nGrowVect(), wide);
+    EXPECT_EQ(wide_halo.nGrowVect(), amrex::IntVect(4, 4, 0));
 }
 
 // A staggered field does not tile its index space: the extra plane per nodal
@@ -161,8 +160,8 @@ TEST(Domain, MakeFieldStaggeredBoxesShareBoundaryPlanes) {
     const TIM::Domain domain({.ni_global = ni, .nj_global = nj, .n_boxes = 4});
     ASSERT_EQ(domain.n_boxes(), 4);
 
-    const amrex::MultiFab cell = domain.make_field(TIM::Stagger::Cell, 1, 1);
-    const amrex::MultiFab node = domain.make_field(TIM::Stagger::Node, 1, 1);
+    const amrex::MultiFab cell = domain.make_field(TIM::Stagger::Cell, 1);
+    const amrex::MultiFab node = domain.make_field(TIM::Stagger::Node, 1);
 
     // A cell-centered decomposition tiles exactly: the boxes' point counts add
     // up to the distinct points they cover.
@@ -176,7 +175,7 @@ TEST(Domain, MakeFieldStaggeredBoxesShareBoundaryPlanes) {
 
     // So a reduction counts every stored point, shared planes included, rather
     // than every distinct point.
-    amrex::MultiFab ones = domain.make_field(TIM::Stagger::Node, 1, 1);
+    amrex::MultiFab ones = domain.make_field(TIM::Stagger::Node, 1);
     ones.setVal(1.0);
     EXPECT_DOUBLE_EQ(ones.sum(), static_cast<double>(node.boxArray().numPts()));
 }

@@ -139,13 +139,13 @@ public:
     bool tripolar_n() const { return tripolar_n_; }
 
     /// @brief The cell-centered decomposition of the global domain, extended
-    /// to the requested number of vertical levels. Every box spans the full
-    /// k-range [0, nlevel): the decomposition is horizontal-only.
-    /// @param nlevel Number of vertical levels of the field to be created:
+    /// to the requested vertical extent. Every box spans the full
+    /// k-range [0, nk): the decomposition is horizontal-only.
+    /// @param nk Number of vertical points of the field to be created:
     ///        1 for 2-D fields, NK for 3-D layer fields, NK+1 for interface
     ///        fields, etc. Aborts if not positive.
     /// @return The cell-centered BoxArray with the requested k-extent.
-    amrex::BoxArray boxArray(int nlevel) const;
+    amrex::BoxArray boxArray(int nk) const;
 
     /// @brief The assignment of the horizontal boxes to MPI ranks.
     /// @return The distribution mapping of the horizontal decomposition.
@@ -157,14 +157,14 @@ public:
     /// MultiFab with the requested staggering, vertical extent, and component
     /// count, carrying the domain's halo widths as ghost cells unless overridden.
     /// @param stagger Where the field's values sit within a grid cell.
-    /// @param nlevel Number of vertical levels of the field. Must be positive.
+    /// @param nk Number of vertical points of the field. Must be positive.
     /// @param opts The optional arguments (component count, ghost-cell
     ///        width); see FieldOpts.
     /// @return The newly created field, with uninitialized contents.
     /// @note A non-Cell staggering duplicates the planes that neighboring
     ///       boxes share; see the Domain class notes before reducing over
     ///       such a field.
-    amrex::MultiFab make_field(Stagger stagger, int nlevel,
+    amrex::MultiFab make_field(Stagger stagger, int nk,
                                FieldOpts opts = {}) const;
 
     /// @brief The domain's periodicity in index space, for halo exchanges
@@ -197,12 +197,12 @@ private:
     int nj_halo_;
     bool tripolar_n_;
 
-    /// @brief The AMReX geometry of the (single-level) global index space:
+    /// @brief The AMReX geometry of the 2D (horizontal) global index space:
     /// owns the connectivity/periodicity detail. Index-space only: its
     /// RealBox stays a placeholder unit box, since physical metrics live
     /// with the horizontal grid.
     amrex::Geometry geometry_2d_;
-    /// @brief The horizontal (single-level) decomposition.
+    /// @brief The 2D (horizontal) decomposition.
     amrex::BoxArray box_array_2d_;
     /// @brief The assignment of the horizontal boxes to MPI ranks.
     amrex::DistributionMapping distribution_mapping_;

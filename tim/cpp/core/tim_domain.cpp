@@ -45,7 +45,7 @@ Domain::Domain(const DomainSpec& spec)
     }
 
     // The global cell-centered index space. The decomposition is
-    // horizontal-only, hence the single-level (k = 0) box.
+    // horizontal-only (k=0).
     const amrex::Box domain_2d(amrex::IntVect(0, 0, 0),
                                amrex::IntVect(spec.ni_global - 1, spec.nj_global - 1, 0));
 
@@ -130,19 +130,19 @@ std::array<int, 2> Domain::tileOf(const int box_index) const {
     return {static_cast<int>(tile_i), static_cast<int>(tile_j)};
 }
 
-amrex::BoxArray Domain::boxArray(const int nlevel) const {
-    if (nlevel <= 0) {
-        TIM::abort("TIM::Domain::boxArray: nlevel must be positive.");
+amrex::BoxArray Domain::boxArray(const int nk) const {
+    if (nk <= 0) {
+        TIM::abort("TIM::Domain::boxArray: nk must be positive.");
     }
     amrex::BoxArray box_array = box_array_2d_;
-    box_array.growHi(2, nlevel - 1);  // k-range [0,0] -> [0,nlevel-1]
+    box_array.growHi(2, nk - 1);  // k-range [0,0] -> [0,nk-1]
     return box_array;
 }
 
-amrex::MultiFab Domain::make_field(const Stagger stagger, const int nlevel,
+amrex::MultiFab Domain::make_field(const Stagger stagger, const int nk,
                                    const FieldOpts opts) const {
-    if (nlevel <= 0) {
-        TIM::abort("TIM::Domain::make_field: nlevel must be positive.");
+    if (nk <= 0) {
+        TIM::abort("TIM::Domain::make_field: nk must be positive.");
     }
     if (opts.ncomp <= 0) {
         TIM::abort("TIM::Domain::make_field: ncomp must be positive.");
@@ -152,7 +152,7 @@ amrex::MultiFab Domain::make_field(const Stagger stagger, const int nlevel,
     }
     const amrex::IntVect ng =
         opts.nghost ? amrex::IntVect(*opts.nghost, *opts.nghost, 0) : this->nghost();
-    return amrex::MultiFab(amrex::convert(boxArray(nlevel), nodality(stagger)),
+    return amrex::MultiFab(amrex::convert(boxArray(nk), nodality(stagger)),
                            distribution_mapping_, opts.ncomp, ng);
 }
 

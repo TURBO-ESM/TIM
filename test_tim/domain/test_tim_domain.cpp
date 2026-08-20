@@ -83,19 +83,19 @@ TEST(Domain, PeriodicityFollowsTheConnectivityFlags) {
 TEST(Domain, ProductsCreateWorkingFields) {
     const int ni = 8;
     const int nj = 8;
-    const int nlevel = 2;
+    const int nk = 2;
     const TIM::Domain domain({.ni_global = ni, .nj_global = nj,
                               .ni_halo = 1, .nj_halo = 1,
                               .periodic_x = true, .periodic_y = true});
 
     // The domain's halo metadata, as the ghost-cell vector (horizontal-only).
     const amrex::IntVect halo = domain.nghost();
-    amrex::MultiFab field(domain.boxArray(nlevel),
+    amrex::MultiFab field(domain.boxArray(nk),
                           domain.distribution_mapping(), 1, halo);
     constexpr double sentinel = 1.0e30;
     field.setVal(sentinel);
     field.setVal(2.5, 0, 1, /*nghost=*/0);    // interior only
-    EXPECT_DOUBLE_EQ(field.sum(), 2.5 * ni * nj * nlevel);
+    EXPECT_DOUBLE_EQ(field.sum(), 2.5 * ni * nj * nk);
 
     // Halo exchange: with both directions periodic, every halo cell has a
     // source cell, so no cell in the halo-grown region retains the sentinel.
@@ -139,7 +139,7 @@ TEST(Domain, MakeFieldStaggersAndSizesFields) {
     EXPECT_EQ(y_face.boxArray().minimalBox().length(1), nj + 1);
     EXPECT_EQ(node.boxArray().minimalBox().length(0), ni + 1);
     EXPECT_EQ(node.boxArray().minimalBox().length(1), nj + 1);
-    EXPECT_EQ(node.boxArray().minimalBox().length(2), 3);  // nlevel
+    EXPECT_EQ(node.boxArray().minimalBox().length(2), 3);  // nk
 
     EXPECT_EQ(cell.nComp(), 1);
     EXPECT_EQ(node.nComp(), 2);

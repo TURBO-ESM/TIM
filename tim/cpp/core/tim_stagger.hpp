@@ -16,9 +16,9 @@ namespace TIM {
 /// parameter (q points).
 enum class Stagger {
     Cell,   ///< Cell centers (h points).
-    XFace,  ///< Cell faces normal to x (u points).
-    YFace,  ///< Cell faces normal to y (v points).
-    Node    ///< Cell corners (q points).
+    XFace,  ///< Cell faces normal to x (u points; the west face).
+    YFace,  ///< Cell faces normal to y (v points; the south face).
+    Node    ///< Cell corners (q points; the southwest corner).
 };
 
 /// @brief The AMReX nodality of a staggering: 0 corresponds to cell centers

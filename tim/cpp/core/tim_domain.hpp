@@ -36,8 +36,15 @@ struct DomainSpec {
     std::optional<int> n_boxes = std::nullopt;
 };
 
-/// @brief The optional arguments of Domain::make_field.
-struct FieldOpts {
+/// @brief The construction specification of a field; see Domain::make_field.
+/// The required members (stagger, nk) default to invalid values and are
+/// validated at field creation.
+struct FieldSpec {
+    /// @brief Where the field's values sit within a grid cell. Must be set.
+    std::optional<Stagger> stagger = std::nullopt;
+    /// @brief Number of vertical layers of the field: 1 for 2-D fields, NK
+    /// for 3-D layer fields, NK+1 for interface fields, etc. Must be positive.
+    int nk = 0;
     int ncomp = 1;  ///< Number of field components. Must be positive.
     /// @brief Ghost-cell width of the field, applied in both horizontal
     /// directions. The default (nullopt) is the domain's halo widths.
@@ -158,16 +165,13 @@ public:
     /// @brief Create a distributed field on this domain's decomposition: a
     /// MultiFab with the requested staggering, vertical extent, and component
     /// count, carrying the domain's halo widths as ghost cells unless overridden.
-    /// @param stagger Where the field's values sit within a grid cell.
-    /// @param nk Number of vertical points of the field. Must be positive.
-    /// @param opts The optional arguments (component count, ghost-cell
-    ///        width); see FieldOpts.
+    /// @param spec The field specification; see FieldSpec. Aborts if the
+    ///        required members (stagger, nk) are unset or invalid.
     /// @return The newly created field, with uninitialized contents.
     /// @note A non-Cell staggering duplicates the planes that neighboring
     ///       boxes share; see the Domain class notes before reducing over
     ///       such a field.
-    amrex::MultiFab make_field(Stagger stagger, int nk,
-                               FieldOpts opts = {}) const;
+    amrex::MultiFab make_field(FieldSpec spec) const;
 
     /// @brief The domain's periodicity in index space, for halo exchanges
     /// (e.g. MultiFab::FillBoundary).

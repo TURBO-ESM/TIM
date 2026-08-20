@@ -139,21 +139,23 @@ amrex::BoxArray Domain::boxArray(const int nk) const {
     return box_array;
 }
 
-amrex::MultiFab Domain::make_field(const Stagger stagger, const int nk,
-                                   const FieldOpts opts) const {
-    if (nk <= 0) {
-        TIM::abort("TIM::Domain::make_field: nk must be positive.");
+amrex::MultiFab Domain::make_field(const FieldSpec spec) const {
+    if (!spec.stagger) {
+        TIM::abort("TIM::Domain::make_field: stagger must be set.");
     }
-    if (opts.ncomp <= 0) {
+    if (spec.nk <= 0) {
+        TIM::abort("TIM::Domain::make_field: nk must be set to a positive value.");
+    }
+    if (spec.ncomp <= 0) {
         TIM::abort("TIM::Domain::make_field: ncomp must be positive.");
     }
-    if (opts.nghost && *opts.nghost < 0) {
+    if (spec.nghost && *spec.nghost < 0) {
         TIM::abort("TIM::Domain::make_field: the ghost-cell width must be non-negative.");
     }
     const amrex::IntVect ng =
-        opts.nghost ? amrex::IntVect(*opts.nghost, *opts.nghost, 0) : this->nghost();
-    return amrex::MultiFab(amrex::convert(boxArray(nk), nodality(stagger)),
-                           distribution_mapping_, opts.ncomp, ng);
+        spec.nghost ? amrex::IntVect(*spec.nghost, *spec.nghost, 0) : this->nghost();
+    return amrex::MultiFab(amrex::convert(boxArray(spec.nk), nodality(*spec.stagger)),
+                           distribution_mapping_, spec.ncomp, ng);
 }
 
 amrex::Periodicity Domain::periodicity() const {

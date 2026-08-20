@@ -64,17 +64,24 @@ struct FieldOpts {
 /// - A staggered field is not a clean tiling of its index space. Converting
 ///   the cell-centered decomposition to a face or node index type grows every
 ///   box by one plane per nodal direction, so the boxes on either side of an
-///   internal boundary each hold a valid copy of the plane between them, and
-///   on a periodic axis the plane at the far edge is the image of the one at
-///   the near edge. This mirrors FMS symmetric memory, where neighboring PEs
-///   likewise both hold a shared u/v/q edge -- but nothing above this class
-///   assigns ownership, so the duplicates are the caller's to handle:
-///   whole-field reductions count them more than once (dedupe with
-///   FabArray::OwnerMask when an exact total matters), and the copies must be
-///   made to agree, either by computing the plane from a rule both boxes
-///   evaluate identically or by reconciling them afterwards
-///   (FabArray::OverrideSync / SumBoundary). FillBoundary fills ghost cells
-///   from valid ones; it leaves disagreeing valid copies alone.
+///   internal boundary each hold a copy of the plane between them, and on a
+///   periodic axis the plane at the far edge is the image of the one at the
+///   near edge. This mirrors FMS symmetric memory, where neighboring PEs
+///   likewise both hold a shared u/v/q edge. The contract for these shared
+///   planes:
+///   - Ownership follows AMReX's convention: the lowest-index box containing
+///     a point owns it. That is the rule FabArray::OwnerMask, sum_unique,
+///     and OverrideSync all apply, so a reduction that must count each point
+///     once uses sum_unique (or masks with OwnerMask); a plain reduction
+///     counts the stored copies.
+///   - The copies are kept in agreement by computing shared planes
+///     redundantly, from a rule both boxes evaluate identically (e.g.
+///     analytically from global indices). Where redundant computation is not
+///     possible, OverrideSync(periodicity()) reconciles them afterwards by
+///     the same ownership rule.
+///   FillBoundary fills ghost cells from valid ones and leaves disagreeing
+///   valid copies alone, so agreement is the producer's obligation; halo
+///   exchanges do not restore it.
 /// - todo: this class is the intended producer of TIM::IoDecomp values
 ///   ("Decomp2D produced from AMReX distribution maps"); an io_decomp()
 ///   method will be added here once TIM's parallel IO layer merges. Its

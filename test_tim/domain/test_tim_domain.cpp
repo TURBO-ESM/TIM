@@ -132,9 +132,13 @@ TEST(Domain, MakeFieldStaggersAndSizesFields) {
     EXPECT_EQ(node.ixType(), amrex::IndexType(amrex::IntVect(1, 1, 0)));
 
     EXPECT_EQ(cell.boxArray().minimalBox().length(0), ni);
+    EXPECT_EQ(cell.boxArray().minimalBox().length(1), nj);
     EXPECT_EQ(x_face.boxArray().minimalBox().length(0), ni + 1);
+    EXPECT_EQ(x_face.boxArray().minimalBox().length(1), nj);
+    EXPECT_EQ(y_face.boxArray().minimalBox().length(0), ni);
     EXPECT_EQ(y_face.boxArray().minimalBox().length(1), nj + 1);
     EXPECT_EQ(node.boxArray().minimalBox().length(0), ni + 1);
+    EXPECT_EQ(node.boxArray().minimalBox().length(1), nj + 1);
     EXPECT_EQ(node.boxArray().minimalBox().length(2), 3);  // nlevel
 
     EXPECT_EQ(cell.nComp(), 1);

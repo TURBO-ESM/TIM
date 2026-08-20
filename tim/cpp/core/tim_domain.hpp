@@ -52,11 +52,13 @@ struct FieldOpts {
 /// these products.
 ///
 /// Design notes:
-/// - This Domain class is model-agnostic.
-/// - The decomposition is horizontal-only: boxes span the full k-range and
-///   are never split in the vertical. By default the global domain is split
-///   into one box per rank. A different box count can be requested for testing
-///   or finer-grained load balancing.
+/// - The Domain owns index-space bookkeeping.
+/// - The decomposition is horizontal-only by design: boxes are never split
+///   in the vertical, and a field's k-extent is supplied at creation
+///   (boxArray(nk)).
+/// - By default the global domain is split into one box per rank. A
+///   different box count can be requested for testing or finer-grained load
+///   balancing.
 /// - Halo widths are carried as metadata only. In AMReX, halos are a
 ///   per-field property (the ghost cells of a MultiFab), so the halo widths
 ///   stored here are consumed at field-creation sites rather than baked into

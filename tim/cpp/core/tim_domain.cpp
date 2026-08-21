@@ -134,9 +134,17 @@ amrex::BoxArray Domain::boxArray(const int nk) const {
     if (nk <= 0) {
         TIM::abort("TIM::Domain::boxArray: nk must be positive.");
     }
-    amrex::BoxArray box_array = box_array_2d_;
-    box_array.growHi(2, nk - 1);  // k-range [0,0] -> [0,nk-1]
-    return box_array;
+    if (nk == 1) {
+        return box_array_2d_;
+    }
+
+    // If a BoxArray with the requested k-extent has already been built, return it.
+    // Otherwise, build it by growing the 2-D boxes in the k-direction to [0,nk-1].
+    const auto [it, inserted] = box_array_3d_.try_emplace(nk, box_array_2d_);
+    if (inserted) {
+        it->second.growHi(2, nk - 1);  // k-range [0,0] -> [0,nk-1]
+    }
+    return it->second;
 }
 
 amrex::MultiFab Domain::make_field(const FieldSpec spec) const {

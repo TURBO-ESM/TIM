@@ -6,6 +6,7 @@
  */
 
 #include <array>
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -210,6 +211,10 @@ private:
     amrex::Geometry geometry_2d_;
     /// @brief The 2D (horizontal) decomposition.
     amrex::BoxArray box_array_2d_;
+    /// @brief The 3D decomposition (box_array_2d_ grown in k), memoized by nk
+    /// so all fields of the same nk share one FabArray cache key. Grown
+    /// lazily in boxArray(), which assumes single-threaded field creation.
+    mutable std::map<int, amrex::BoxArray> box_array_3d_;
     /// @brief The assignment of the horizontal boxes to MPI ranks.
     amrex::DistributionMapping distribution_mapping_;
     /// @brief Sorted distinct box-corner coordinates: the tile-column and

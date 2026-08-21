@@ -147,14 +147,15 @@ TEST(Domain, MakeFieldStaggersAndSizesFields) {
     EXPECT_EQ(cell.nGrowVect(), domain.nghost());
     EXPECT_EQ(node.nGrowVect(), domain.nghost());
 
-    // An explicit ghost-cell width overrides the domain's halo widths, in
-    // both horizontal directions and never in k.
+    // Explicit ghost-cell widths override the domain's halo widths per
+    // direction (unset directions keep the domain's), and never apply in k.
     const amrex::MultiFab no_halo =
-        domain.make_field({.stagger = TIM::Stagger::Cell, .nk = 1, .nghost = 0});
-    const amrex::MultiFab wide_halo =
-        domain.make_field({.stagger = TIM::Stagger::Cell, .nk = 1, .nghost = 4});
+        domain.make_field({.stagger = TIM::Stagger::Cell, .nk = 1,
+                           .nghost_i = 0, .nghost_j = 0});
+    const amrex::MultiFab wide_i_halo =
+        domain.make_field({.stagger = TIM::Stagger::Cell, .nk = 1, .nghost_i = 4});
     EXPECT_EQ(no_halo.nGrowVect(), amrex::IntVect(0, 0, 0));
-    EXPECT_EQ(wide_halo.nGrowVect(), amrex::IntVect(4, 4, 0));
+    EXPECT_EQ(wide_i_halo.nGrowVect(), amrex::IntVect(4, 1, 0));
 }
 
 // A staggered field does not tile its index space: the extra plane per nodal

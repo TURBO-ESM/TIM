@@ -157,11 +157,11 @@ amrex::MultiFab Domain::make_field(const FieldSpec spec) const {
     if (spec.ncomp <= 0) {
         TIM::abort("TIM::Domain::make_field: ncomp must be positive.");
     }
-    if (spec.nghost && *spec.nghost < 0) {
-        TIM::abort("TIM::Domain::make_field: the ghost-cell width must be non-negative.");
+    if ((spec.nghost_i && *spec.nghost_i < 0) || (spec.nghost_j && *spec.nghost_j < 0)) {
+        TIM::abort("TIM::Domain::make_field: the ghost-cell widths must be non-negative.");
     }
-    const amrex::IntVect ng =
-        spec.nghost ? amrex::IntVect(*spec.nghost, *spec.nghost, 0) : this->nghost();
+    const amrex::IntVect ng(spec.nghost_i.value_or(ni_halo_),
+                            spec.nghost_j.value_or(nj_halo_), 0);
     return amrex::MultiFab(amrex::convert(boxArray(spec.nk), nodality(*spec.stagger)),
                            distribution_mapping_, spec.ncomp, ng);
 }

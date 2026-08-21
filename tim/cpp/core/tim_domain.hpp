@@ -47,9 +47,12 @@ struct FieldSpec {
     /// for 3-D layer fields, NK+1 for interface fields, etc. Must be positive.
     int nk = 0;
     int ncomp = 1;  ///< Number of field components. Must be positive.
-    /// @brief Ghost-cell width of the field, applied in both horizontal
-    /// directions. The default (nullopt) is the domain's halo widths.
-    std::optional<int> nghost = std::nullopt;
+    /// @brief Ghost-cell width of the field in the i-direction. The default
+    /// (nullopt) is the domain's ni_halo.
+    std::optional<int> nghost_i = std::nullopt;
+    /// @brief Ghost-cell width of the field in the j-direction. The default
+    /// (nullopt) is the domain's nj_halo.
+    std::optional<int> nghost_j = std::nullopt;
 };
 
 /// @brief The horizontal computational domain and its decomposition

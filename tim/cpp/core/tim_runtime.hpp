@@ -6,11 +6,9 @@
 
 #include <mpi.h>
 
-namespace TIM {
+#include "tim_abort.hpp"  // TIM::abort
 
-/// @brief Abort the run with the diagnostic @p msg. Safe in any MPI/AMReX state
-/// @param msg The diagnostic message to print before aborting.
-[[noreturn]] void abort(const char* msg);
+namespace TIM {
 
 /// @brief RAII encapsulation of the infrastructure runtime. Brings up MPI and
 /// AMReX in order on construction, and shuts them down in reverse order on

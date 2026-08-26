@@ -118,7 +118,11 @@ amrex::Box CapturedFile::box(const std::string& name) const {
                       amrex::IntVect(idxE[0] - 1, idxE[1] - 1, idxE[2] - 1));
 }
 
-amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
+amrex::FArrayBox CapturedFile::fab_host(const std::string& name,
+                                        int startx,
+                                        int starty,
+                                        int startz) const
+{
     const auto& e = lookup(name, "RealArray_t");
     std::size_t off = e.offset - 1;
     int ndim = read_be_i32(bin_, off);
@@ -127,17 +131,11 @@ amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
             "captured_io: fab expects 2D or 3D arrays (got ndim=" +
             std::to_string(ndim) + ") for '" + name + "'");
     }
-    int shape[3] = {1, 1, 1};
+    amrex::IntVect shape(1, 1, 1);
     for (int i = 0; i < ndim; ++i) shape[i] = read_be_i32(bin_, off);
     for (int i = 0; i < ndim; ++i) {
         int lb = read_be_i32(bin_, off);
         int ub = read_be_i32(bin_, off);
-        if (lb != 1) {
-            throw std::runtime_error(
-                "captured_io: fab assumes Fortran lb==1 (got " +
-                std::to_string(lb) + " on dim " + std::to_string(i) +
-                ") for '" + name + "'");
-        }
         if (ub - lb + 1 != shape[i]) {
             throw std::runtime_error(
                 "captured_io: fab bounds inconsistent with shape on dim " +
@@ -154,15 +152,15 @@ amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
             std::to_string(nelem) + ", expected " + std::to_string(expected) +
             ")");
     }
-    amrex::Box sbx(amrex::IntVect(0, 0, 0),
-                   amrex::IntVect(shape[0] - 1, shape[1] - 1, shape[2] - 1));
+    amrex::IntVect start(startx, starty, startz);
+    amrex::IntVect end = start + (shape - 1);
+    amrex::Box sbx(start, end);
     amrex::FArrayBox fab(sbx, 1, amrex::The_Pinned_Arena());
     auto arr = fab.array();
-    // Fortran column-major in the file: i fastest, then j, then k.
-    for (int k = 0; k < shape[2]; ++k)
-        for (int j = 0; j < shape[1]; ++j)
-            for (int i = 0; i < shape[0]; ++i)
-                arr(i, j, k) = read_be_f64(bin_, off);
+    for(int k = sbx.smallEnd(2); k <= sbx.bigEnd(2); ++k)
+      for(int j = sbx.smallEnd(1); j <= sbx.bigEnd(1); ++j)
+        for(int i = sbx.smallEnd(0); i <= sbx.bigEnd(0); ++i)
+            arr(i, j, k) = read_be_f64(bin_, off);
     return fab;
 }
 

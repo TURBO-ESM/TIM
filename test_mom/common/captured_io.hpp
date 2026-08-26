@@ -61,7 +61,7 @@ public:
     explicit CapturedFile(const std::filesystem::path& base);
 
     amrex::Box       box       (const std::string& name) const;
-    amrex::FArrayBox fab_host  (const std::string& name) const;
+    amrex::FArrayBox fab_host  (const std::string& name, int startx=0, int starty=0, int startz=0) const;
     amrex::FArrayBox fab_device(const std::string& name) const;
     double           real64    (const std::string& name) const;
     bool             logical   (const std::string& name) const;

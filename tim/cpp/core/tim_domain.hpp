@@ -6,6 +6,7 @@
  */
 
 #include <array>
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -13,7 +14,10 @@
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_Geometry.H>
 #include <AMReX_IntVect.H>
+#include <AMReX_MultiFab.H>
 #include <AMReX_Periodicity.H>
+
+#include "tim_stagger.hpp"
 
 namespace TIM {
 
@@ -33,6 +37,24 @@ struct DomainSpec {
     std::optional<int> n_boxes = std::nullopt;
 };
 
+/// @brief The construction specification of a field; see Domain::make_field.
+/// The required members (stagger, nk) default to invalid values and are
+/// validated at field creation.
+struct FieldSpec {
+    /// @brief Where the field's values sit within a grid cell. Must be set.
+    std::optional<Stagger> stagger = std::nullopt;
+    /// @brief Number of vertical layers of the field: 1 for 2-D fields, NK
+    /// for 3-D layer fields, NK+1 for interface fields, etc. Must be positive.
+    int nk = 0;
+    int ncomp = 1;  ///< Number of field components. Must be positive.
+    /// @brief Ghost-cell width of the field in the i-direction. The default
+    /// (nullopt) is the domain's ni_halo.
+    std::optional<int> nghost_i = std::nullopt;
+    /// @brief Ghost-cell width of the field in the j-direction. The default
+    /// (nullopt) is the domain's nj_halo.
+    std::optional<int> nghost_j = std::nullopt;
+};
+
 /// @brief The horizontal computational domain and its decomposition
 /// (Analogue of FMS mpp_domains, rebuilt on AMReX). A Domain owns the global
 /// cell-centered index space, the connectivity flags, and the decomposition of
@@ -41,15 +63,38 @@ struct DomainSpec {
 /// these products.
 ///
 /// Design notes:
-/// - This Domain class is model-agnostic.
-/// - The decomposition is horizontal-only: boxes span the full k-range and
-///   are never split in the vertical. By default the global domain is split
-///   into one box per rank. A different box count can be requested for testing
-///   or finer-grained load balancing.
+/// - The Domain owns index-space bookkeeping.
+/// - The decomposition is horizontal-only by design: boxes are never split
+///   in the vertical, and a field's k-extent is supplied at creation
+///   (boxArray(nk)).
+/// - By default the global domain is split into one box per rank. A
+///   different box count can be requested for testing or finer-grained load
+///   balancing.
 /// - Halo widths are carried as metadata only. In AMReX, halos are a
 ///   per-field property (the ghost cells of a MultiFab), so the halo widths
 ///   stored here are consumed at field-creation sites rather than baked into
 ///   the domain's index space.
+/// - A staggered field is not a clean tiling of its index space. Converting
+///   the cell-centered decomposition to a face or node index type grows every
+///   box by one plane per nodal direction, so the boxes on either side of an
+///   internal boundary each hold a copy of the plane between them, and on a
+///   periodic axis the plane at the far edge is the image of the one at the
+///   near edge. This mirrors FMS symmetric memory, where neighboring PEs
+///   likewise both hold a shared u/v/q edge. The contract for these shared
+///   planes:
+///   - Ownership follows AMReX's convention: the lowest-index box containing
+///     a point owns it. That is the rule FabArray::OwnerMask, sum_unique,
+///     and OverrideSync all apply, so a reduction that must count each point
+///     once uses sum_unique (or masks with OwnerMask); a plain reduction
+///     counts the stored copies.
+///   - The copies are kept in agreement by computing shared planes
+///     redundantly, from a rule both boxes evaluate identically (e.g.
+///     analytically from global indices). Where redundant computation is not
+///     possible, OverrideSync(periodicity()) reconciles them afterwards by
+///     the same ownership rule.
+///   FillBoundary fills ghost cells from valid ones and leaves disagreeing
+///   valid copies alone, so agreement is the producer's obligation; halo
+///   exchanges do not restore it.
 /// - todo: this class is the intended producer of TIM::IoDecomp values
 ///   ("Decomp2D produced from AMReX distribution maps"); an io_decomp()
 ///   method will be added here once TIM's parallel IO layer merges. Its
@@ -107,19 +152,30 @@ public:
     bool tripolar_n() const { return tripolar_n_; }
 
     /// @brief The cell-centered decomposition of the global domain, extended
-    /// to the requested number of vertical levels. Every box spans the full
-    /// k-range [0, n_levels): the decomposition is horizontal-only.
-    /// @param n_levels Number of vertical levels of the field to be created:
+    /// to the requested vertical extent. Every box spans the full
+    /// k-range [0, nk): the decomposition is horizontal-only.
+    /// @param nk Number of vertical points of the field to be created:
     ///        1 for 2-D fields, NK for 3-D layer fields, NK+1 for interface
     ///        fields, etc. Aborts if not positive.
     /// @return The cell-centered BoxArray with the requested k-extent.
-    amrex::BoxArray boxArray(int n_levels) const;
+    amrex::BoxArray boxArray(int nk) const;
 
     /// @brief The assignment of the horizontal boxes to MPI ranks.
     /// @return The distribution mapping of the horizontal decomposition.
     const amrex::DistributionMapping& distribution_mapping() const {
         return distribution_mapping_;
     }
+
+    /// @brief Create a distributed field on this domain's decomposition: a
+    /// MultiFab with the requested staggering, vertical extent, and component
+    /// count, carrying the domain's halo widths as ghost cells unless overridden.
+    /// @param spec The field specification; see FieldSpec. Aborts if the
+    ///        required members (stagger, nk) are unset or invalid.
+    /// @return The newly created field, with uninitialized contents.
+    /// @note A non-Cell staggering duplicates the planes that neighboring
+    ///       boxes share; see the Domain class notes before reducing over
+    ///       such a field.
+    amrex::MultiFab make_field(FieldSpec spec) const;
 
     /// @brief The domain's periodicity in index space, for halo exchanges
     /// (e.g. MultiFab::FillBoundary).
@@ -151,13 +207,17 @@ private:
     int nj_halo_;
     bool tripolar_n_;
 
-    /// @brief The AMReX geometry of the (single-level) global index space:
+    /// @brief The AMReX geometry of the 2D (horizontal) global index space:
     /// owns the connectivity/periodicity detail. Index-space only: its
     /// RealBox stays a placeholder unit box, since physical metrics live
     /// with the horizontal grid.
     amrex::Geometry geometry_2d_;
-    /// @brief The horizontal (single-level) decomposition.
+    /// @brief The 2D (horizontal) decomposition.
     amrex::BoxArray box_array_2d_;
+    /// @brief The 3D decomposition (box_array_2d_ grown in k), memoized by nk
+    /// so all fields of the same nk share one FabArray cache key. Grown
+    /// lazily in boxArray(), which assumes single-threaded field creation.
+    mutable std::map<int, amrex::BoxArray> box_array_3d_;
     /// @brief The assignment of the horizontal boxes to MPI ranks.
     amrex::DistributionMapping distribution_mapping_;
     /// @brief Sorted distinct box-corner coordinates: the tile-column and

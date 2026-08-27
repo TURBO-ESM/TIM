@@ -1,6 +1,8 @@
-# MOM C++ kernels library.
+# MOM C++ kernels, and the Fortran<->C++ bridge MOM6 calls under -D_TIM.
 #
-# Builds the AMReX-based MOM kernels as a static library
+#   mom_continuity  the AMReX kernels alone, for test_mom. EXCLUDE_FROM_ALL.
+#   mom_bridge      kernels + bridge, exported as TIM::mom_bridge. Built only
+#                   when the top level sets TIM_ENABLE_MOM_BRIDGE.
 
 if(NOT TARGET AMReX::amrex_3d AND NOT TARGET amrex_3d)
     find_package(AMReX REQUIRED)

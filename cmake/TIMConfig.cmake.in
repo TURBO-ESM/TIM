@@ -8,8 +8,8 @@
 #  * MOM_BRIDGE - MOM Fortran<->C++ bridge (if built with TIM_ENABLE_MOM_BRIDGE=ON)
 #
 # Imported targets provided:
-#  * TIM::tim_r4    - real32 library target (if built with 32BIT=ON)
-#  * TIM::tim_r8    - real64 library target (if built with 64BIT=ON)
+#  * TIM::tim_r4     - real32 library target (if built with 32BIT=ON)
+#  * TIM::tim_r8     - real64 library target (if built with 64BIT=ON)
 #  * TIM::mom_bridge - MOM bridge (if built with TIM_ENABLE_MOM_BRIDGE=ON)
 
 include(CMakeFindDependencyMacro)

@@ -3,12 +3,14 @@
 # TIMConfig.cmake
 #
 # Valid Find COMPONENTS:
-#  * R4 - 32-bit library
-#  * R8 - 64-bit library
+#  * R4         - 32-bit library
+#  * R8         - 64-bit library
+#  * MOM_BRIDGE - MOM Fortran<->C++ bridge (if built with TIM_ENABLE_MOM_BRIDGE=ON)
 #
 # Imported targets provided:
-#  * TIM::tim_r4 - real32 library target (if built with 32BIT=ON)
-#  * TIM::tim_r8 - real64 library target (if built with 64BIT=ON)
+#  * TIM::tim_r4    - real32 library target (if built with 32BIT=ON)
+#  * TIM::tim_r8    - real64 library target (if built with 64BIT=ON)
+#  * TIM::mom_bridge - MOM bridge (if built with TIM_ENABLE_MOM_BRIDGE=ON)
 
 include(CMakeFindDependencyMacro)
 
@@ -37,7 +39,7 @@ set(TIMVersion "${PACKAGE_VERSION}")
 set_and_check(TIM_INSTALL_PREFIX "${PACKAGE_PREFIX_DIR}")
 
 # Component validation — mirrors FMS's fms-config.cmake pattern.
-list(APPEND _possible_tim_components "R4" "R8")
+list(APPEND _possible_tim_components "R4" "R8" "MOM_BRIDGE")
 foreach(_comp ${_possible_tim_components})
   set(_name_${_comp} ${_comp})
 endforeach()
@@ -78,15 +80,35 @@ if(@64BIT@)
   list(APPEND TIM_POSSIBLE_COMPONENTS R8)
 endif()
 
+# ON/OFF reflects whether TIM was built with TIM_ENABLE_MOM_BRIDGE=ON.
+#
+# Unlike R4/R8 this is a feature rather than a precision, so it is never added to
+# the default component list above -- asking for it has to be deliberate. That is
+# the point: a consumer that compiles MOM6's `#ifdef _TIM` branches names
+# MOM_BRIDGE and gets a configure-time error against a TIM built without it,
+# instead of six undefined references at link time.
+set(TIM_MOM_BRIDGE_FOUND 0)
+if(@TIM_ENABLE_MOM_BRIDGE@)
+  set(TIM_MOM_BRIDGE_FOUND 1)
+  get_property(TIM_MOM_BRIDGE_LIBRARIES TARGET TIM::mom_bridge PROPERTY LOCATION)
+  list(APPEND TIM_POSSIBLE_COMPONENTS MOM_BRIDGE)
+endif()
+
 check_required_components("TIM")
 
 message(STATUS "Found TIM: \"${TIM_INSTALL_PREFIX}\" (Version: \"${TIMVersion}\")")
 message(STATUS "TIM targets:")
 foreach(_comp ${_search_tim_components})
   string(TOLOWER "${_comp}" _comp_lower)
-  if(TIM_${_comp}_FOUND)
-    message(STATUS "  - TIM::tim_${_comp_lower} [Lib: ${TIM_${_comp}_LIBRARIES}]")
+  # R4/R8 name the target tim_r4 / tim_r8; MOM_BRIDGE names mom_bridge.
+  if(_comp STREQUAL "MOM_BRIDGE")
+    set(_tgt "TIM::mom_bridge")
   else()
-    message(STATUS "  - TIM::tim_${_comp_lower} [COMPONENT ${_comp} NOT FOUND]")
+    set(_tgt "TIM::tim_${_comp_lower}")
+  endif()
+  if(TIM_${_comp}_FOUND)
+    message(STATUS "  - ${_tgt} [Lib: ${TIM_${_comp}_LIBRARIES}]")
+  else()
+    message(STATUS "  - ${_tgt} [COMPONENT ${_comp} NOT FOUND]")
   endif()
 endforeach()

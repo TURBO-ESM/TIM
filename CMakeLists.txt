@@ -60,6 +60,7 @@ option(32BIT  "Build 32-bit (r4) TIM library"        OFF)
 option(64BIT  "Build 64-bit (r8) TIM library"         ON)
 option(FPIC   "Build with position independent code" OFF)
 option(TIM_ADD_TEST_TARGETS "Build C++ unit test targets (test_tim)"          OFF)
+option(TIM_ENABLE_MOM_BRIDGE "Build the MOM Fortran<->C++ bridge (TIM::mom_bridge)" OFF)
 option(TIM_FETCH_DEPS       "Fetch missing dependencies (GoogleTest, PIO)"     ON)
 
 # Options for compiler definitions
@@ -233,6 +234,17 @@ include(fms_compiler_flags)
 # TIM C++ infrastructure layer
 set(TIM_CPP_INSTALL ON) # full TIM builds install/export the tim target
 add_subdirectory(tim/cpp)
+
+# MOM C++ kernels and the Fortran<->C++ bridge MOM6 calls under -D_TIM
+# (target: TIM::mom_bridge, find_package component MOM_BRIDGE).
+#
+# Off by default: TIM is general infrastructure, and these are MOM-specific AMReX
+# kernels. Consumers that do not compile MOM6's `#ifdef _TIM` branches -- which is
+# every consumer today except the turbo-stack dev/turbo-debug lane -- should not
+# pay for building them or carry them in their link line.
+if(TIM_ENABLE_MOM_BRIDGE)
+  add_subdirectory(mom/cpp)
+endif()
 
 foreach(kind ${kinds})
 

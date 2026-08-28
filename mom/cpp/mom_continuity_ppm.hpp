@@ -10,6 +10,21 @@
 
 struct OceanOBC;    // Undefined at the moment
 
+/// @brief Options controlling the transport adjustment and barotropic-consistency
+/// iteration used by the continuity solver. Field-for-field mirror of the Fortran
+/// `bind(C)` type `transport_adjust_CS_C` -- order and types must not change.
+struct transport_adjust_CS_C {
+    double tol_eta;            ///< Tolerance for free-surface height discrepancies.
+    double tol_vel;            ///< Tolerance for barotropic velocity discrepancies.
+    double CFL_limit_adjust;   ///< Maximum CFL of the adjusted velocities.
+    bool   aggress_adjust;     ///< If true, allow a larger relative CFL change.
+    bool   vol_CFL;            ///< If true, use the ratio of open face lengths to
+                                ///< tracer cell areas when estimating CFL numbers.
+    bool   better_iter;        ///< If true, use a velocity-based iteration criterion.
+    bool   use_visc_rem_max;   ///< If true, use limiting bounds for viscous columns.
+    bool   marginal_faces;     ///< If true, use marginal face areas as barotropic weights.
+};
+
 /// @brief AMReX ports of MOM6 numerical kernels.
 namespace MOM {
 using amrex::Box;

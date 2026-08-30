@@ -68,5 +68,6 @@ if(TIM_CPP_INSTALL)
       core/tim_abort.hpp
       core/tim_domain.hpp
       core/tim_runtime.hpp
+      core/tim_stagger.hpp
       DESTINATION include/tim/core)
 endif()

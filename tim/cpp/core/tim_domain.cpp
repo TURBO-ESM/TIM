@@ -45,7 +45,7 @@ Domain::Domain(const DomainSpec& spec)
     }
 
     // The global cell-centered index space. The decomposition is
-    // horizontal-only, hence the single-level (k = 0) box.
+    // horizontal-only (k=0).
     const amrex::Box domain_2d(amrex::IntVect(0, 0, 0),
                                amrex::IntVect(spec.ni_global - 1, spec.nj_global - 1, 0));
 
@@ -130,13 +130,40 @@ std::array<int, 2> Domain::tileOf(const int box_index) const {
     return {static_cast<int>(tile_i), static_cast<int>(tile_j)};
 }
 
-amrex::BoxArray Domain::boxArray(const int n_levels) const {
-    if (n_levels <= 0) {
-        TIM::abort("TIM::Domain::boxArray: n_levels must be positive.");
+amrex::BoxArray Domain::boxArray(const int nk) const {
+    if (nk <= 0) {
+        TIM::abort("TIM::Domain::boxArray: nk must be positive.");
     }
-    amrex::BoxArray box_array = box_array_2d_;
-    box_array.growHi(2, n_levels - 1);  // k-range [0,0] -> [0,n_levels-1]
-    return box_array;
+    if (nk == 1) {
+        return box_array_2d_;
+    }
+
+    // If a BoxArray with the requested k-extent has already been built, return it.
+    // Otherwise, build it by growing the 2-D boxes in the k-direction to [0,nk-1].
+    const auto [it, inserted] = box_array_3d_.try_emplace(nk, box_array_2d_);
+    if (inserted) {
+        it->second.growHi(2, nk - 1);  // k-range [0,0] -> [0,nk-1]
+    }
+    return it->second;
+}
+
+amrex::MultiFab Domain::make_field(const FieldSpec spec) const {
+    if (!spec.stagger) {
+        TIM::abort("TIM::Domain::make_field: stagger must be set.");
+    }
+    if (spec.nk <= 0) {
+        TIM::abort("TIM::Domain::make_field: nk must be set to a positive value.");
+    }
+    if (spec.ncomp <= 0) {
+        TIM::abort("TIM::Domain::make_field: ncomp must be positive.");
+    }
+    if ((spec.nghost_i && *spec.nghost_i < 0) || (spec.nghost_j && *spec.nghost_j < 0)) {
+        TIM::abort("TIM::Domain::make_field: the ghost-cell widths must be non-negative.");
+    }
+    const amrex::IntVect ng(spec.nghost_i.value_or(ni_halo_),
+                            spec.nghost_j.value_or(nj_halo_), 0);
+    return amrex::MultiFab(amrex::convert(boxArray(spec.nk), nodality(*spec.stagger)),
+                           distribution_mapping_, spec.ncomp, ng);
 }
 
 amrex::Periodicity Domain::periodicity() const {

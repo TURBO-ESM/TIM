@@ -12,8 +12,9 @@
 
 namespace TIM {
 
-void abort(const char* msg) {
-    std::fprintf(stderr, "%s\n", msg);
+void abort(const std::string_view msg) {
+    // Not necessarily null-terminated, so bound the write by its size.
+    std::fprintf(stderr, "%.*s\n", static_cast<int>(msg.size()), msg.data());
     std::fflush(stderr);
     int mpi_initialized = 0;
     MPI_Initialized(&mpi_initialized);

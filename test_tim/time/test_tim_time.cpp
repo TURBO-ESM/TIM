@@ -101,6 +101,39 @@ TEST(Time, CalendarIncrements) {
     EXPECT_EQ(leap.add_years(cal, 4).to_date(cal), (Date{2028, 2, 29}));
 }
 
+// add_months keeps the day of month, so an increment landing on a day the
+// target month does not have is fatal.
+TEST(TimeDeathTest, MonthEndIncrementAborts) {
+    const Calendar cal = Calendar::Gregorian;
+    const Time jan31 = Date{2024, 1, 31}.to_time(cal);
+    EXPECT_DEATH(jan31.add_months(cal, 1), "invalid date 2024-02-31");
+    // Increments do not decompose: the same offset in one call is fine.
+    EXPECT_EQ(jan31.add_months(cal, 2).to_date(cal), (Date{2024, 3, 31}));
+    // add_years keeps month and day, so it aborts the same way off a leap day.
+    const Time leap = Date{2024, 2, 29}.to_time(cal);
+    EXPECT_DEATH(leap.add_years(cal, 1), "invalid date 2025-02-29");
+}
+
+// NO_CALENDAR is pure time spans: it has no dates, so both conversions abort
+// rather than silently picking a calendar.
+TEST(TimeDeathTest, NoCalendarHasNoDates) {
+    EXPECT_DEATH(Time{}.to_date(Calendar::NoCalendar),
+                 "TIM::Time::to_date: undefined for NO_CALENDAR");
+    EXPECT_DEATH(Date{}.to_time(Calendar::NoCalendar),
+                 "TIM::Date::to_time: undefined for NO_CALENDAR");
+    EXPECT_DEATH(Time{}.add_months(Calendar::NoCalendar, 1),
+                 "TIM::Time::add_months: undefined for NO_CALENDAR");
+}
+
+// A point before the calendar base is a legitimate span endpoint, but has no date.
+TEST(TimeDeathTest, TimeBeforeBaseDateHasNoDate) {
+    const Time before = Time{} - 1s;
+    EXPECT_LT(before, Time{});
+    EXPECT_EQ(Time{} - before, 1s);
+    EXPECT_DEATH(before.to_date(Calendar::Gregorian),
+                 "precedes the calendar base date \\(0001-01-01\\) by 1 s");
+}
+
 // The enumerator values are the FMS time_manager parameters, so the bridge can
 // pass get_calendar_type() straight through.
 TEST(Calendar, MatchesFmsParameterValues) {

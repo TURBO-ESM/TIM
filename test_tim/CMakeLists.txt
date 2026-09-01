@@ -73,7 +73,6 @@ add_executable(test_tim_domain
 )
 
 add_executable(test_tim_time
-  test_tim_main.cpp
   time/test_tim_time.cpp
 )
 
@@ -83,13 +82,17 @@ target_link_libraries(test_tim_smoke
   PIO::PIO_C
 )
 
-foreach(tim_test test_tim_runtime_owner test_tim_runtime_guest test_tim_domain
-                 test_tim_time)
+foreach(tim_test test_tim_runtime_owner test_tim_runtime_guest test_tim_domain)
   target_link_libraries(${tim_test}
     GTest::gtest
     tim
   )
 endforeach()
+
+target_link_libraries(test_tim_time
+  GTest::gtest_main
+  tim
+)
 
 include(GoogleTest)
 

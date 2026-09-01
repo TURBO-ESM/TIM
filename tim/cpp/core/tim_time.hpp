@@ -56,7 +56,8 @@ struct Date {
     /// Chronological ordering
     friend constexpr auto operator<=>(const Date&, const Date&) = default;
 
-    /// @brief "YYYY-MM-DD hh:mm:ss", for diagnostics and error messages.
+    /// @brief Render this date for diagnostics and error messages.
+    /// @return The date as "YYYY-MM-DD hh:mm:ss".
     std::string to_string() const;
 
     /// @brief This date as a point on the time axis (FMS set_date).
@@ -76,21 +77,58 @@ public:
     /// @param since_base The exact span from the calendar base date (in seconds)
     constexpr explicit Time(Duration since_base) noexcept : since_base_(since_base) {}
 
-    /// @brief The exact span from the calendar base date to this point (in seconds).
+    /// @brief The exact span from the calendar base date to this point.
+    /// @return That span, in seconds; negative if this point precedes the base date.
     constexpr Duration since_base() const noexcept { return since_base_; }
 
     /// @brief Chronological ordering.
     friend constexpr auto operator<=>(const Time&, const Time&) = default;
 
     // ---- calendar-free arithmetic ----
+    //
+    // A Duration is an exact span, so shifting a Time by one needs no calendar:
+    // the result is the same point in every calendar. Only the conversions
+    // below (to_date, add_months, add_years) have to know what a month is.
+    //
+    // Time deliberately has no operator* or operator/, which FMS provides on
+    // time_type: scaling and dividing are span operations, and std::chrono
+    // already supplies them on Duration.
 
+    /// @brief Advance a point by a span.
+    /// @param t The starting point.
+    /// @param d The span to advance by; negative moves backwards.
+    /// @return The point @p d after @p t.
     friend constexpr Time operator+(Time t, Duration d) noexcept { return Time{t.since_base_ + d}; }
+
+    /// @brief Advance a point by a span (commuted form).
+    /// @param d The span to advance by; negative moves backwards.
+    /// @param t The starting point.
+    /// @return The point @p d after @p t.
     friend constexpr Time operator+(Duration d, Time t) noexcept { return t + d; }
+
+    /// @brief Move a point back by a span.
+    /// @param t The starting point.
+    /// @param d The span to retreat by; negative moves forwards.
+    /// @return The point @p d before @p t.
     friend constexpr Time operator-(Time t, Duration d) noexcept { return Time{t.since_base_ - d}; }
+
+    /// @brief The span between two points. Unlike FMS, which clamps the
+    /// difference at zero, this is signed and needs no caller-side workaround.
+    /// @param to The later point (by convention).
+    /// @param from The earlier point (by convention).
+    /// @return The exact span from @p from to @p to; negative if @p to precedes it.
     friend constexpr Duration operator-(Time to, Time from) noexcept {
         return to.since_base_ - from.since_base_;
     }
+
+    /// @brief Advance this point in place by a span.
+    /// @param d The span to advance by; negative moves backwards.
+    /// @return This point, advanced.
     constexpr Time& operator+=(Duration d) noexcept { since_base_ += d; return *this; }
+
+    /// @brief Move this point back in place by a span.
+    /// @param d The span to retreat by; negative moves forwards.
+    /// @return This point, moved back.
     constexpr Time& operator-=(Duration d) noexcept { since_base_ -= d; return *this; }
 
     // ---- calendar-dependent (FMS get_date / increment_date) ----

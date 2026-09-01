@@ -1,6 +1,6 @@
 /**
  * @file tim_abort.cpp
- * @brief Implementation of TIM's fatal-error path.hpp).
+ * @brief Implementation of TIM's fatal-error path.
  */
 
 #include <cstdio>

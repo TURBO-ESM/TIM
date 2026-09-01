@@ -104,8 +104,6 @@ void meridional_edge_thickness(
     bool,
     bool,
     OceanOBC*);
-                                  //!< time-step's barotropic acceleration a layer experiences [nondim];
-                                  //!< between 0 (bottom) and 1 (far above the bottom)
 
 /**
  * @brief Zonal continuity update — advances layer thickness by the

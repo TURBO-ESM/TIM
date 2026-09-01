@@ -75,7 +75,7 @@ void copy_FortranHost_to_array4(const double* f, A4Box& a4)
     Gpu::copy(Gpu::hostToDevice, f, f+n, d_f);
 
 
-    // Tranpose array from Fortran to C
+    // Transpose array from Fortran to C
     ParallelFor(bx, ncomp,  [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
     {
         int ii = i - lo.x;
@@ -183,7 +183,7 @@ void copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4)
     // Copy host -> device
     Gpu::copy(Gpu::hostToDevice, f, f+n, d_f);
 
-    // Tranpose array from Fortran to C
+    // Transpose array from Fortran to C
     ParallelFor(bx, ncomp,  [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
     {
         int ii = i - lo.x;

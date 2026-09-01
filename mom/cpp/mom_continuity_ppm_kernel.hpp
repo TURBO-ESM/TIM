@@ -120,4 +120,30 @@ void edge_thickness_upwind_point(Real& h_L, Real& h_R, Real const h_in) noexcept
     h_L = h_in;
     h_R = h_in;
 }
+
+/**
+ * @brief Advances a layer thickness by the convergence of a thickness flux.
+ *
+ *  Shared by continuity_zonal_convergence (flux_out/flux_in = uh(i,j,k)/uh(i-1,j,k))
+ *  and continuity_meridional_convergence (flux_out/flux_in = vh(i,j,k)/vh(i,j-1,k)),
+ *  and by both branches of each (h_prev = hin(i,j,k) when present, else h(i,j,k)
+ *  itself) -- the stencil read happens at the call site, this primitive only
+ *  combines already-indexed scalars.
+ *
+ *  @param h_prev   Thickness before this update -- hin(i,j,k), or h(i,j,k) itself
+ *                  when hin is absent [H ~> m or kg m-2].
+ *  @param flux_out Thickness flux out of the cell's high-index face [H L2 T-1 ~> m3 s-1].
+ *  @param flux_in  Thickness flux out of the cell's low-index face [H L2 T-1 ~> m3 s-1].
+ *  @param dt       Time increment [T ~> s].
+ *  @param IareaT   1/areaT for this column [L-2 ~> m-2].
+ *  @param h_min    The minimum layer thickness [H ~> m or kg m-2].
+ *  @return         The updated layer thickness, floored at @p h_min [H ~> m or kg m-2].
+ */
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+Real continuity_convergence_point(Real const h_prev, Real const flux_out, Real const flux_in,
+                                  Real const dt, Real const IareaT, Real const h_min) noexcept
+{
+    return amrex::max(h_prev - dt * IareaT * (flux_out - flux_in), h_min);
+}
 }

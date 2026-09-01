@@ -1,4 +1,5 @@
 // mom_continuity_ppm.hpp
+// SKILLS: 0.3.1
 #pragma once
 /**
  * @file mom_continuity_ppm.hpp
@@ -103,4 +104,36 @@ void meridional_edge_thickness(
     bool,
     bool,
     OceanOBC*);
+                                  //!< time-step's barotropic acceleration a layer experiences [nondim];
+                                  //!< between 0 (bottom) and 1 (far above the bottom)
+
+/**
+ * @brief Zonal continuity update — advances layer thickness by the
+ * convergence of the zonal thickness flux
+ */
+void continuity_zonal_convergence(
+    const Box&,                  //!< Iteration box for continuity solver
+    Array4<Real> const&,         //!< Final layer thickness [H ~> m or kg m-2]
+    Array4<const Real> const&,   //!< Zonal thickness flux, u*h*dy [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Real,                        //!< Time increment [T ~> s]
+    Array4<const Real> const&,   //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,   //!< Initial layer thickness [H ~> m or kg m-2]; may be absent
+                                  //!< (.p == nullptr), in which case the final thickness is also
+                                  //!< used as the initial thickness
+    Real);                       //!< The minimum layer thickness [H ~> m or kg m-2]
+
+/**
+ * @brief Meridional continuity update — advances layer thickness by the
+ * convergence of the meridional thickness flux
+ */
+void continuity_meridional_convergence(
+    const Box&,                  //!< Iteration box for continuity solver
+    Array4<Real> const&,         //!< Final layer thickness [H ~> m or kg m-2]
+    Array4<const Real> const&,   //!< Meridional thickness flux, v*h*dx [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Real,                        //!< Time increment [T ~> s]
+    Array4<const Real> const&,   //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,   //!< Initial layer thickness [H ~> m or kg m-2]; may be absent
+                                  //!< (.p == nullptr), in which case the final thickness is also
+                                  //!< used as the initial thickness
+    Real);                       //!< The minimum layer thickness [H ~> m or kg m-2]
 }

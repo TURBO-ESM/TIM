@@ -3,6 +3,7 @@
  * @brief Bridge that moves data (host to device, Fortran to C++ array order, and
  *        Box setup) between the MOM6 Fortran shim and the AMReX PPM continuity kernels.
  */
+// SKILLS: 0.3.1
 #include "mom_continuity_ppm.hpp"
 #include "turbotmp_helper.hpp"
 #include "turbotmp_mom_continuity_ppm_bridge.h"
@@ -417,4 +418,150 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
     turbotmp::free_array4(h_S_DEV);
     turbotmp::free_array4(h_N_DEV);
     turbotmp::free_array4(mask2dT_DEV);
+}
+
+/**
+ * @brief Bridge for continuity_zonal_convergence
+ *
+ * @param bxC_HOST    Box over which to iterate
+ * @param h_HOST      Final layer thickness (host, Fortran order)
+ * @param uh_HOST     Zonal thickness flux, u*h*dy (host, Fortran order)
+ * @param dt          Time increment
+ * @param IareaT_HOST 1/areaT, 2D (host, Fortran order)
+ * @param hin_HOST    Initial layer thickness (host, Fortran order); may be
+ *                    absent (data == nullptr), in which case the final
+ *                    thickness is also used as the initial thickness
+ * @param h_min       The minimum layer thickness
+ *
+ * @return Modified thickness values @p h_HOST
+ */
+void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST,
+                                                  RealArray_C* h_HOST,
+                                                  const RealArray_C* uh_HOST,
+                                                  const double dt,
+                                                  const RealArray_C* IareaT_HOST,
+                                                  const RealArray_C* hin_HOST,
+                                                  const double h_min)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays (IareaT is 2D: nz=1)
+    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0],      h_HOST->shape[1],      h_HOST->shape[2], 1);
+    auto uh_DEV     = turbotmp::make_array4(uh_HOST->shape[0],     uh_HOST->shape[1],     uh_HOST->shape[2], 1);
+    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1,                1);
+
+    /// hin_HOST may be absent (data == nullptr); only allocate/copy it when present.
+    const bool has_hin = (hin_HOST->data != nullptr);
+    turbotmp::A4Box hin_DEV{};
+    if (has_hin) {
+        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1);
+    }
+
+    /// Copy host → device (h is inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(h_HOST->data,      h_DEV);
+    turbotmp::copy_FortranHost_to_array4(uh_HOST->data,     uh_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data, IareaT_DEV);
+    if (has_hin) {
+        turbotmp::copy_FortranHost_to_array4(hin_HOST->data, hin_DEV);
+    }
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_continuity_zonal_convergence_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::continuity_zonal_convergence(bx,
+                                      h_DEV.arr,
+                                      uh_DEV.arr,
+                                      dt,
+                                      IareaT_DEV.arr,
+                                      hin_DEV.arr,
+                                      h_min);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (h is the only output)
+    turbotmp::copy_array4_to_FortranHost(h_DEV, h_HOST->data);
+
+    /// Free memory from a4 containers (free_array4 on a never-allocated
+    /// hin_DEV is a safe no-op -- its .data/.data_f are both null)
+    turbotmp::free_array4(h_DEV);
+    turbotmp::free_array4(uh_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(hin_DEV);
+}
+
+/**
+ * @brief Bridge for continuity_meridional_convergence
+ *
+ * @param bxC_HOST    Box over which to iterate
+ * @param h_HOST      Final layer thickness (host, Fortran order)
+ * @param vh_HOST     Meridional thickness flux, v*h*dx (host, Fortran order)
+ * @param dt          Time increment
+ * @param IareaT_HOST 1/areaT, 2D (host, Fortran order)
+ * @param hin_HOST    Initial layer thickness (host, Fortran order); may be
+ *                    absent (data == nullptr), in which case the final
+ *                    thickness is also used as the initial thickness
+ * @param h_min       The minimum layer thickness
+ *
+ * @return Modified thickness values @p h_HOST
+ */
+void turbotmp_continuity_meridional_convergence_bridge(const Box_C* bxC_HOST,
+                                                       RealArray_C* h_HOST,
+                                                       const RealArray_C* vh_HOST,
+                                                       const double dt,
+                                                       const RealArray_C* IareaT_HOST,
+                                                       const RealArray_C* hin_HOST,
+                                                       const double h_min)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays (IareaT is 2D: nz=1)
+    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0],      h_HOST->shape[1],      h_HOST->shape[2], 1);
+    auto vh_DEV     = turbotmp::make_array4(vh_HOST->shape[0],     vh_HOST->shape[1],     vh_HOST->shape[2], 1);
+    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1,                1);
+
+    /// hin_HOST may be absent (data == nullptr); only allocate/copy it when present.
+    const bool has_hin = (hin_HOST->data != nullptr);
+    turbotmp::A4Box hin_DEV{};
+    if (has_hin) {
+        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1);
+    }
+
+    /// Copy host → device (h is inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(h_HOST->data,      h_DEV);
+    turbotmp::copy_FortranHost_to_array4(vh_HOST->data,     vh_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data, IareaT_DEV);
+    if (has_hin) {
+        turbotmp::copy_FortranHost_to_array4(hin_HOST->data, hin_DEV);
+    }
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_continuity_meridional_convergence_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::continuity_meridional_convergence(bx,
+                                           h_DEV.arr,
+                                           vh_DEV.arr,
+                                           dt,
+                                           IareaT_DEV.arr,
+                                           hin_DEV.arr,
+                                           h_min);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (h is the only output)
+    turbotmp::copy_array4_to_FortranHost(h_DEV, h_HOST->data);
+
+    /// Free memory from a4 containers (free_array4 on a never-allocated
+    /// hin_DEV is a safe no-op -- its .data/.data_f are both null)
+    turbotmp::free_array4(h_DEV);
+    turbotmp::free_array4(vh_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(hin_DEV);
 }

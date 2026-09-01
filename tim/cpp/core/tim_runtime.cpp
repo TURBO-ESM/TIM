@@ -9,6 +9,7 @@
 #include <AMReX.H>
 
 #include "tim_runtime.hpp"
+#include "tim_abort.hpp"
 
 namespace TIM {
 

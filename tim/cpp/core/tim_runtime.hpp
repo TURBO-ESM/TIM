@@ -6,8 +6,6 @@
 
 #include <mpi.h>
 
-#include "tim_abort.hpp"  // TIM::abort
-
 namespace TIM {
 
 /// @brief RAII encapsulation of the infrastructure runtime. Brings up MPI and

@@ -1,3 +1,4 @@
+// SKILLS: 0.3.1
 #pragma once
 /**
  * @file turbotmp_mom_continuity_ppm_bridge.h
@@ -8,6 +9,10 @@
 #include "turbotmp_bridge_c_types.h"
 
 struct OceanOBC;    // Undefined at the moment
+struct transport_adjust_CS_C;   // Defined in mom_continuity_ppm.hpp -- field-for-field
+                                 // mirror of the Fortran bind(C) type of the same name.
+                                 // A forward declaration suffices here: every prototype
+                                 // below only takes a pointer to it.
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +37,12 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST, const RealA
                         const double h_min, const bool upwind_1st, const bool monotonic,
                         const bool simple_2nd, OceanOBC* obc);
 
+void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST, RealArray_C* h_HOST,
+                        const RealArray_C* uh_HOST, const double dt, const RealArray_C* IareaT_HOST,
+                        const RealArray_C* hin_HOST, const double h_min);
+void turbotmp_continuity_meridional_convergence_bridge(const Box_C* bxC_HOST, RealArray_C* h_HOST,
+                        const RealArray_C* vh_HOST, const double dt, const RealArray_C* IareaT_HOST,
+                        const RealArray_C* hin_HOST, const double h_min);
 #ifdef __cplusplus
 }
 #endif

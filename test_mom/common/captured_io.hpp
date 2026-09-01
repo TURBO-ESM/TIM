@@ -8,19 +8,25 @@
 //       <name>  <type>  <offset>
 //
 //   where <offset> is a 1-based byte offset into <basename>.bin. <type> is
-//   one of: Box_t, RealArray_t, real64, logical.
+//   one of: Box_t, RealArray_t, LogicalArray_t, real64, logical.
 //
 //   The .bin payload is big-endian and uses these layouts:
 //
-//     Box_t       : int32 ndim
-//                   int32 idxS[ndim]
-//                   int32 idxE[ndim]
+//     Box_t          : int32 ndim
+//                      int32 idxS[ndim]
+//                      int32 idxE[ndim]
 //
-//     RealArray_t : int32 ndim
-//                   int32 shape[ndim]
-//                   (int32 lb, int32 ub)[ndim]    // interleaved
-//                   int32 nelem
-//                   float64 data[nelem]           // Fortran column-major
+//     RealArray_t    : int32 ndim
+//                      int32 shape[ndim]
+//                      (int32 lb, int32 ub)[ndim]    // interleaved
+//                      int32 nelem
+//                      float64 data[nelem]           // Fortran column-major
+//
+//     LogicalArray_t : same layout as RealArray_t, but the payload is
+//                      int32 data[nelem] (0 = false, non-zero = true)
+//                      instead of float64 -- mirrors the Fortran side's
+//                      write_binaryLogical, which mirrors write_binary
+//                      (RealArray_t) field-for-field.
 //
 //     real64      : float64
 //     logical     : int32 (0 = false, non-zero = true)
@@ -37,7 +43,10 @@
 // ----------------
 //   fab_host() allocates on The_Pinned_Arena(); fab_device() allocates on
 //   The_Arena() (device memory on GPU builds, host on CPU builds) and stages
-//   the payload through a pinned-host buffer.
+//   the payload through a pinned-host buffer. int_fab_host()/int_fab_device()
+//   are the LogicalArray_t counterparts, returning amrex::IArrayBox.
+
+// SKILLS: 0.3.1
 
 #pragma once
 
@@ -49,23 +58,27 @@
 
 #include <AMReX_Box.H>
 #include <AMReX_FArrayBox.H>
+#include <AMReX_IArrayBox.H>
 
 namespace test_mom {
 
 // Loads a .meta / .bin pair given the base path (no extension). The .meta
 // directory is parsed eagerly; payload values are decoded on each accessor
-// call. fab_host()/fab_device() return a fresh FArrayBox by move, so the
-// caller owns it and may mutate it (e.g. pass to a kernel as in/out storage).
+// call. fab_host()/fab_device()/int_fab_host()/int_fab_device() return a
+// fresh FArrayBox/IArrayBox by move, so the caller owns it and may mutate it
+// (e.g. pass to a kernel as in/out storage).
 class CapturedFile {
 public:
     explicit CapturedFile(const std::filesystem::path& base);
 
-    amrex::Box       box       (const std::string& name) const;
-    amrex::FArrayBox fab_host  (const std::string& name) const;
-    amrex::FArrayBox fab_device(const std::string& name) const;
-    double           real64    (const std::string& name) const;
-    bool             logical   (const std::string& name) const;
-    int              integer   (const std::string& name) const;
+    amrex::Box       box           (const std::string& name) const;
+    amrex::FArrayBox fab_host      (const std::string& name) const;
+    amrex::FArrayBox fab_device    (const std::string& name) const;
+    amrex::IArrayBox int_fab_host  (const std::string& name) const;
+    amrex::IArrayBox int_fab_device(const std::string& name) const;
+    double           real64       (const std::string& name) const;
+    bool             logical      (const std::string& name) const;
+    int              integer      (const std::string& name) const;
 
 private:
     struct Entry {

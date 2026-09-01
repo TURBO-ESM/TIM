@@ -1,4 +1,5 @@
 // mom_continuity_ppm.hpp
+// SKILLS: 0.3.1
 #pragma once
 /**
  * @file mom_continuity_ppm.hpp
@@ -9,6 +10,21 @@
 #include "mom_continuity_ppm_kernel.hpp"
 
 struct OceanOBC;    // Undefined at the moment
+
+/// @brief Options controlling the transport adjustment and barotropic-consistency
+/// iteration used by the continuity solver. Field-for-field mirror of the Fortran
+/// `bind(C)` type `transport_adjust_CS_C` -- order and types must not change.
+struct transport_adjust_CS_C {
+    double tol_eta;            ///< Tolerance for free-surface height discrepancies.
+    double tol_vel;            ///< Tolerance for barotropic velocity discrepancies.
+    double CFL_limit_adjust;   ///< Maximum CFL of the adjusted velocities.
+    bool   aggress_adjust;     ///< If true, allow a larger relative CFL change.
+    bool   vol_CFL;            ///< If true, use the ratio of open face lengths to
+                                ///< tracer cell areas when estimating CFL numbers.
+    bool   better_iter;        ///< If true, use a velocity-based iteration criterion.
+    bool   use_visc_rem_max;   ///< If true, use limiting bounds for viscous columns.
+    bool   marginal_faces;     ///< If true, use marginal face areas as barotropic weights.
+};
 
 /// @brief AMReX ports of MOM6 numerical kernels.
 namespace MOM {
@@ -88,4 +104,30 @@ void meridional_edge_thickness(
     bool,
     bool,
     OceanOBC*);
+
+/**
+ * @brief Zonal continuity update — advances layer thickness by the
+ * convergence of the zonal thickness flux
+ */
+void continuity_zonal_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
+
+/**
+ * @brief Meridional continuity update — advances layer thickness by the
+ * convergence of the meridional thickness flux
+ */
+void continuity_meridional_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
 }

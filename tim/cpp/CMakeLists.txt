@@ -22,8 +22,10 @@ if(NOT TARGET AMReX::amrex)
 endif()
 
 add_library(tim STATIC
+    core/tim_abort.cpp
     core/tim_domain.cpp
     core/tim_runtime.cpp
+    core/tim_time.cpp
     tim_coms_infra.cpp
     tim_coms_infra_C_API.cpp
     tim_profile.cpp
@@ -64,8 +66,10 @@ if(TIM_CPP_INSTALL)
       tim_profile.hpp
       DESTINATION include/tim)
   install(FILES
+      core/tim_abort.hpp
       core/tim_domain.hpp
       core/tim_runtime.hpp
       core/tim_stagger.hpp
+      core/tim_time.hpp
       DESTINATION include/tim/core)
 endif()

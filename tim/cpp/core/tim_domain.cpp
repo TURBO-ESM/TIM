@@ -15,6 +15,7 @@
 #include <AMReX_ParallelDescriptor.H>
 
 #include "tim_domain.hpp"
+#include "tim_abort.hpp"
 #include "tim_runtime.hpp"
 
 namespace TIM {

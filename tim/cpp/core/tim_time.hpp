@@ -33,6 +33,7 @@ enum class Calendar : int {
 /// @brief Maps an FMS calendar-type integer to a Calendar.
 /// @param fms_type FMS calendar parameter value (0..4).
 /// @return The matching calendar.
+/// @note Aborts if @p fms_type is outside 0..4.
 Calendar calendar_from_fms(int fms_type);
 
 /// @brief The length of a month in days.
@@ -40,11 +41,12 @@ Calendar calendar_from_fms(int fms_type);
 /// @param year Calendar year.
 /// @param month Month of year.
 /// @return The number of days in that month.
+/// @note Aborts if @p month is outside 1..12.
 int days_in_month(Calendar cal, int year, int month);
 
 class Time;
 
-/// @brief A calendar date and time-of-day agregate
+/// @brief A calendar date and time-of-day aggregate.
 struct Date {
     int year = 1;    ///< Calendar year (>= 1; there is no year 0).
     int month = 1;   ///< Month of year, 1..12.
@@ -63,6 +65,7 @@ struct Date {
     /// @brief This date as a point on the time axis (FMS set_date).
     /// @param cal The calendar to read this date in.
     /// @return The resulting time.
+    /// @note Aborts if this date does not exist in @p cal.
     Time to_time(Calendar cal) const;
 };
 
@@ -136,18 +139,24 @@ public:
     /// @brief Convert this time to a date.
     /// @param cal The calendar to express the date in.
     /// @return The resulting date.
+    /// @note Aborts if this point has no date in @p cal.
     Date to_date(Calendar cal) const;
 
     /// @brief This time advanced by @p n months, keeping the day of month.
     /// @param cal The calendar deciding what a month is.
     /// @param n Month count; negative allowed.
     /// @return The advanced point.
+    /// @note The day of month is kept as-is, so this aborts whenever that day
+    /// does not exist in the target month: Jan 31 + 1 month is 2024-02-31,
+    /// which is fatal.
     Time add_months(Calendar cal, int n) const;
 
     /// @brief This time advanced by @p n years, keeping the month and day.
     /// @param cal The calendar deciding what a year is.
     /// @param n Year count; negative allowed.
     /// @return The advanced point.
+    /// @note As with add_months, the day of month is kept as-is: Feb 29 + 1
+    /// year is 2025-02-29, which aborts.
     Time add_years(Calendar cal, int n) const;
 
 private:

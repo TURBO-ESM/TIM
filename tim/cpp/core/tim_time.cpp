@@ -126,7 +126,6 @@ YearDoy split_year(const Calendar cal, const std::int64_t days) {
     }
 }
 
-
 // Shift time t by whole calendar years and months, keeping day and clock time.
 Time add_calendar_interval(const Time t, const Calendar cal, const std::int64_t years,
                            const std::int64_t months, const char* const who) {

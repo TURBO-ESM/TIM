@@ -7,7 +7,7 @@
 
 namespace turbotmp {
 
-A4Box make_array4(int nx, int ny, int nz, int ncomp)
+A4Box make_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
 {
     using namespace amrex;
 
@@ -18,7 +18,12 @@ A4Box make_array4(int nx, int ny, int nz, int ncomp)
     a4.nz = nz;
     a4.ncomp = ncomp;
 
-    a4.bx = Box(IntVect(0,0,0), IntVect(nx-1, ny-1, nz-1));
+    // lbx/lby/lbz are Fortran 1-based; position the box at the array's true
+    // absolute location (matching the bridge's own -1 conversion for
+    // Box_C), not just [0, shape-1] -- staggered-grid arrays legitimately
+    // have lb != 1.
+    a4.bx = Box(IntVect(lbx-1, lby-1, lbz-1),
+               IntVect(lbx-1 + nx-1, lby-1 + ny-1, lbz-1 + nz-1));
 
     const Long npts = ncomp*a4.bx.numPts();
 
@@ -115,7 +120,7 @@ void copy_array4_to_FortranHost(const A4Box& a4, double* f)
 
 }
 
-IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp)
+IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
 {
     using namespace amrex;
 
@@ -126,7 +131,9 @@ IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp)
     a4.nz = nz;
     a4.ncomp = ncomp;
 
-    a4.bx = Box(IntVect(0,0,0), IntVect(nx-1, ny-1, nz-1));
+    // See make_array4()'s lbx/lby/lbz comment -- identical convention.
+    a4.bx = Box(IntVect(lbx-1, lby-1, lbz-1),
+               IntVect(lbx-1 + nx-1, lby-1 + ny-1, lbz-1 + nz-1));
 
     const Long npts = ncomp*a4.bx.numPts();
 

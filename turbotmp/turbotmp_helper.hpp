@@ -15,7 +15,15 @@ struct A4Box
     int nx, ny, nz, ncomp;
 };
 
-   A4Box make_array4(int nx, int ny, int nz, int ncomp);
+   // lbx/lby/lbz are the array's Fortran 1-based lower bounds (pass 1 for a
+   // faked-out 2D dimension, matching how nz=1 is passed for 2D arrays);
+   // the returned A4Box's box -- and therefore a4.arr's valid index range --
+   // is positioned at the array's true absolute location (lb-1 .. lb-1+n-1),
+   // not just [0, n-1]. Staggered-grid arrays (u/v-point fields) legitimately
+   // have lb != 1, and a kernel indexing multiple such arrays over one
+   // shared iteration box requires each array4 to be positioned at its own
+   // real offset for that shared indexing to land on the correct element.
+   A4Box make_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz);
    void free_array4(A4Box& a4);
    void copy_FortranHost_to_array4(const double* f, A4Box& a4);
    void copy_array4_to_FortranHost(const A4Box& a4, double* f);
@@ -33,7 +41,8 @@ struct IntA4Box
     int nx, ny, nz, ncomp;
 };
 
-   IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp);
+   // See make_array4()'s lbx/lby/lbz comment -- identical convention.
+   IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz);
    void free_int_array4(IntA4Box& a4);
    void copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4);
    void copy_int_array4_to_FortranHost(const IntA4Box& a4, int* f);

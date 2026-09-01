@@ -11,13 +11,14 @@
 
 #include <chrono>
 #include <compare>
+#include <cstdint>
 #include <string>
 
 namespace TIM {
 
 /// @brief An exact, calendar-free span: the difference between two Time
 /// points, and the increment for every unit of fixed length (seconds to days).
-using Duration = std::chrono::seconds;
+using Duration = std::chrono::duration<std::int64_t>;
 
 /// @brief The supported calendars. Enumerator values match the FMS
 /// time_manager parameters, so a bind(C) bridge can pass FMS
@@ -149,6 +150,9 @@ public:
     /// @note The day of month is kept as-is, so this aborts whenever that day
     /// does not exist in the target month: Jan 31 + 1 month is 2024-02-31,
     /// which is fatal.
+    /// @note Increments do not decompose: add_months(cal, 2) from Jan 31
+    /// succeeds where add_months(cal, 1) twice aborts on the intermediate.
+    /// Pass the full offset in one call rather than stepping.
     Time add_months(Calendar cal, int n) const;
 
     /// @brief This time advanced by @p n years, keeping the month and day.

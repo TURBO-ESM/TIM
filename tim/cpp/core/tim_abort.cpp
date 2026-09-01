@@ -3,12 +3,12 @@
  * @brief Implementation of TIM's fatal-error path.
  */
 
+#include "tim_abort.hpp"
+
 #include <cstdio>
 #include <cstdlib>
 
 #include <mpi.h>
-
-#include "tim_abort.hpp"
 
 namespace TIM {
 

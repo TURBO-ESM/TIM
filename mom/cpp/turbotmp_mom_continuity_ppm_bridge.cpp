@@ -424,7 +424,7 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
  * @brief Bridge for continuity_zonal_convergence
  *
  * @param bxC_HOST    Box over which to iterate
- * @param h_HOST      Final layer thickness (host, Fortran order)
+ * @param h_HOST      Final layer thickness (host, Fortran order); updated in place
  * @param uh_HOST     Zonal thickness flux, u*h*dy (host, Fortran order)
  * @param dt          Time increment
  * @param IareaT_HOST 1/areaT, 2D (host, Fortran order)
@@ -432,8 +432,6 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
  *                    absent (data == nullptr), in which case the final
  *                    thickness is also used as the initial thickness
  * @param h_min       The minimum layer thickness
- *
- * @return Modified thickness values @p h_HOST
  */
 void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST,
                                                   RealArray_C* h_HOST,
@@ -448,15 +446,15 @@ void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (IareaT is 2D: nz=1)
-    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0],      h_HOST->shape[1],      h_HOST->shape[2], 1);
-    auto uh_DEV     = turbotmp::make_array4(uh_HOST->shape[0],     uh_HOST->shape[1],     uh_HOST->shape[2], 1);
-    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1,                1);
+    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto uh_DEV     = turbotmp::make_array4(uh_HOST->shape[0], uh_HOST->shape[1], uh_HOST->shape[2], 1, uh_HOST->lb[0], uh_HOST->lb[1], uh_HOST->lb[2]);
+    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
 
     /// hin_HOST may be absent (data == nullptr); only allocate/copy it when present.
     const bool has_hin = (hin_HOST->data != nullptr);
     turbotmp::A4Box hin_DEV{};
     if (has_hin) {
-        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1);
+        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1, hin_HOST->lb[0], hin_HOST->lb[1], hin_HOST->lb[2]);
     }
 
     /// Copy host → device (h is inout: copy in before kernel)
@@ -497,7 +495,7 @@ void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST,
  * @brief Bridge for continuity_meridional_convergence
  *
  * @param bxC_HOST    Box over which to iterate
- * @param h_HOST      Final layer thickness (host, Fortran order)
+ * @param h_HOST      Final layer thickness (host, Fortran order); updated in place
  * @param vh_HOST     Meridional thickness flux, v*h*dx (host, Fortran order)
  * @param dt          Time increment
  * @param IareaT_HOST 1/areaT, 2D (host, Fortran order)
@@ -505,8 +503,6 @@ void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST,
  *                    absent (data == nullptr), in which case the final
  *                    thickness is also used as the initial thickness
  * @param h_min       The minimum layer thickness
- *
- * @return Modified thickness values @p h_HOST
  */
 void turbotmp_continuity_meridional_convergence_bridge(const Box_C* bxC_HOST,
                                                        RealArray_C* h_HOST,
@@ -521,15 +517,15 @@ void turbotmp_continuity_meridional_convergence_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (IareaT is 2D: nz=1)
-    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0],      h_HOST->shape[1],      h_HOST->shape[2], 1);
-    auto vh_DEV     = turbotmp::make_array4(vh_HOST->shape[0],     vh_HOST->shape[1],     vh_HOST->shape[2], 1);
-    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1,                1);
+    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto vh_DEV     = turbotmp::make_array4(vh_HOST->shape[0], vh_HOST->shape[1], vh_HOST->shape[2], 1, vh_HOST->lb[0], vh_HOST->lb[1], vh_HOST->lb[2]);
+    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
 
     /// hin_HOST may be absent (data == nullptr); only allocate/copy it when present.
     const bool has_hin = (hin_HOST->data != nullptr);
     turbotmp::A4Box hin_DEV{};
     if (has_hin) {
-        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1);
+        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1, hin_HOST->lb[0], hin_HOST->lb[1], hin_HOST->lb[2]);
     }
 
     /// Copy host → device (h is inout: copy in before kernel)

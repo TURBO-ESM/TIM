@@ -418,3 +418,193 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
     turbotmp::free_array4(h_N_DEV);
     turbotmp::free_array4(mask2dT_DEV);
 }
+
+/**
+ * @brief Bridge for zonal_BT_mass_flux
+ *
+ * @param bxC_HOST            Box over which to iterate
+ * @param u_HOST               Zonal velocity (host, Fortran order)
+ * @param h_in_HOST            Layer thickness used to calculate fluxes (host, Fortran order)
+ * @param h_W_HOST             Western edge thickness in the PPM reconstruction (host, Fortran order)
+ * @param h_E_HOST             Eastern edge thickness in the PPM reconstruction (host, Fortran order)
+ * @param uhbt_HOST            Summed volume flux through zonal faces (host, Fortran order)
+ * @param dt                   Time increment
+ * @param dy_Cu_HOST           The grid cell's unblocked u-face lengths (host, Fortran order)
+ * @param IareaT_HOST          1/areaT, 2D (host, Fortran order)
+ * @param IdxT_HOST            1/dxT, 2D (host, Fortran order)
+ * @param CS_HOST              Transport-adjustment and barotropic-consistency options
+ * @param obc                  Open boundary control structure; not yet implemented -- must be null
+ * @param por_face_areaU_HOST  Fractional open area of U-faces (host, Fortran order)
+ *
+ * @note On return, @p uhbt_HOST holds the modified value.
+ */
+void turbotmp_zonal_bt_mass_flux_bridge(const Box_C* bxC_HOST,
+                                        const RealArray_C* u_HOST,
+                                        const RealArray_C* h_in_HOST,
+                                        const RealArray_C* h_W_HOST,
+                                        const RealArray_C* h_E_HOST,
+                                        RealArray_C* uhbt_HOST,
+                                        const double dt,
+                                        const RealArray_C* dy_Cu_HOST,
+                                        const RealArray_C* IareaT_HOST,
+                                        const RealArray_C* IdxT_HOST,
+                                        const transport_adjust_CS_C* CS_HOST,
+                                        OceanOBC* obc,
+                                        const RealArray_C* por_face_areaU_HOST)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto uhbt_DEV            = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
+
+    /// Copy host → device (uhbt is inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_W_HOST->data,             h_W_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_E_HOST->data,             h_E_DEV);
+    turbotmp::copy_FortranHost_to_array4(uhbt_HOST->data,            uhbt_DEV);
+    turbotmp::copy_FortranHost_to_array4(dy_Cu_HOST->data,           dy_Cu_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdxT_HOST->data,            IdxT_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaU_HOST->data,  por_face_areaU_DEV);
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_zonal_bt_mass_flux_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::zonal_BT_mass_flux(bx,
+                            u_DEV.arr,
+                            h_in_DEV.arr,
+                            h_W_DEV.arr,
+                            h_E_DEV.arr,
+                            uhbt_DEV.arr,
+                            dt,
+                            dy_Cu_DEV.arr,
+                            IareaT_DEV.arr,
+                            IdxT_DEV.arr,
+                            *CS_HOST,
+                            obc,
+                            por_face_areaU_DEV.arr);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (uhbt is the only output)
+    turbotmp::copy_array4_to_FortranHost(uhbt_DEV, uhbt_HOST->data);
+
+    /// Free memory from a4 containers
+    turbotmp::free_array4(u_DEV);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_W_DEV);
+    turbotmp::free_array4(h_E_DEV);
+    turbotmp::free_array4(uhbt_DEV);
+    turbotmp::free_array4(dy_Cu_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdxT_DEV);
+    turbotmp::free_array4(por_face_areaU_DEV);
+}
+
+/**
+ * @brief Bridge for meridional_BT_mass_flux
+ *
+ * @param bxC_HOST            Box over which to iterate
+ * @param v_HOST               Meridional velocity (host, Fortran order)
+ * @param h_in_HOST            Layer thickness used to calculate fluxes (host, Fortran order)
+ * @param h_S_HOST             Southern edge thickness in the PPM reconstruction (host, Fortran order)
+ * @param h_N_HOST             Northern edge thickness in the PPM reconstruction (host, Fortran order)
+ * @param vhbt_HOST            Summed volume flux through meridional faces (host, Fortran order)
+ * @param dt                   Time increment
+ * @param dx_Cv_HOST           The grid cell's unblocked v-face lengths (host, Fortran order)
+ * @param IareaT_HOST          1/areaT, 2D (host, Fortran order)
+ * @param IdyT_HOST            1/dyT, 2D (host, Fortran order)
+ * @param CS_HOST              Transport-adjustment and barotropic-consistency options
+ * @param obc                  Open boundary control structure; not yet implemented -- must be null
+ * @param por_face_areaV_HOST  Fractional open area of V-faces (host, Fortran order)
+ *
+ * @note On return, @p vhbt_HOST holds the modified value.
+ */
+void turbotmp_meridional_bt_mass_flux_bridge(const Box_C* bxC_HOST,
+                                             const RealArray_C* v_HOST,
+                                             const RealArray_C* h_in_HOST,
+                                             const RealArray_C* h_S_HOST,
+                                             const RealArray_C* h_N_HOST,
+                                             RealArray_C* vhbt_HOST,
+                                             const double dt,
+                                             const RealArray_C* dx_Cv_HOST,
+                                             const RealArray_C* IareaT_HOST,
+                                             const RealArray_C* IdyT_HOST,
+                                             const transport_adjust_CS_C* CS_HOST,
+                                             OceanOBC* obc,
+                                             const RealArray_C* por_face_areaV_HOST)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto vhbt_DEV            = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1, vhbt_HOST->lb[0], vhbt_HOST->lb[1], 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
+
+    /// Copy host → device (vhbt is inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(v_HOST->data,               v_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_S_HOST->data,             h_S_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_N_HOST->data,             h_N_DEV);
+    turbotmp::copy_FortranHost_to_array4(vhbt_HOST->data,            vhbt_DEV);
+    turbotmp::copy_FortranHost_to_array4(dx_Cv_HOST->data,           dx_Cv_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdyT_HOST->data,            IdyT_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaV_HOST->data,  por_face_areaV_DEV);
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_meridional_bt_mass_flux_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::meridional_BT_mass_flux(bx,
+                                 v_DEV.arr,
+                                 h_in_DEV.arr,
+                                 h_S_DEV.arr,
+                                 h_N_DEV.arr,
+                                 vhbt_DEV.arr,
+                                 dt,
+                                 dx_Cv_DEV.arr,
+                                 IareaT_DEV.arr,
+                                 IdyT_DEV.arr,
+                                 *CS_HOST,
+                                 obc,
+                                 por_face_areaV_DEV.arr);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (vhbt is the only output)
+    turbotmp::copy_array4_to_FortranHost(vhbt_DEV, vhbt_HOST->data);
+
+    /// Free memory from a4 containers
+    turbotmp::free_array4(v_DEV);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_S_DEV);
+    turbotmp::free_array4(h_N_DEV);
+    turbotmp::free_array4(vhbt_DEV);
+    turbotmp::free_array4(dx_Cv_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdyT_DEV);
+    turbotmp::free_array4(por_face_areaV_DEV);
+}

@@ -28,6 +28,15 @@
 //                      write_binaryLogical, which mirrors write_binary
 //                      (RealArray_t) field-for-field.
 //
+//   A RealArray_t/LogicalArray_t entry can also be null-encoded: just
+//   int32 ndim == -1, no shape/lb/ub/nelem/payload -- this is how the
+//   Fortran side's write_binary(Logical) records an unassociated
+//   (Fortran-optional-and-absent) array container. Fields the Fortran
+//   shim captures unconditionally (regardless of %associated()) can
+//   still be null-encoded this way; check is_associated() before calling
+//   fab_host()/fab_device()/int_fab_host()/int_fab_device() on such a
+//   field, since those throw on ndim == -1 (a real 2D/3D array is required).
+//
 //     real64      : float64
 //     logical     : int32 (0 = false, non-zero = true)
 //
@@ -79,6 +88,12 @@ public:
     double           real64       (const std::string& name) const;
     bool             logical      (const std::string& name) const;
     int              integer      (const std::string& name) const;
+    // True unless a RealArray_t/LogicalArray_t entry is null-encoded
+    // (ndim == -1, i.e. the Fortran container was unassociated at capture
+    // time). Check this before calling fab_host()/fab_device()/
+    // int_fab_host()/int_fab_device() on a field the Fortran shim captures
+    // unconditionally.
+    bool             is_associated(const std::string& name) const;
 
 private:
     struct Entry {

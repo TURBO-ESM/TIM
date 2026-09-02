@@ -372,27 +372,33 @@ void meridional_edge_thickness(
 //  serializes on GPU-style parallel execution; do_I masks further updates
 //  to a column once it has converged.
 void zonal_flux_adjust(
-    const Box& bxC,
-    Array4<const Real> const& u,
-    Array4<const Real> const& h_in,
-    Array4<const Real> const& h_W,
-    Array4<const Real> const& h_E,
-    Array4<const Real> const& uh_tot_0,
-    Array4<const Real> const& duhdu_tot_0,
-    Array4<Real> const& du,
-    Array4<const Real> const& du_max_CFL,
-    Array4<const Real> const& du_min_CFL,
-    Real dt,
-    Array4<const Real> const& dy_Cu,
-    Array4<const Real> const& IareaT,
-    Array4<const Real> const& IdxT,
-    const transport_adjust_CS_C& CS,
-    Array4<const Real> const& visc_rem,
-    Array4<const int> const& do_I_in,
-    Array4<const Real> const& por_face_areaU,
-    Array4<const Real> const& uhbt,
-    Array4<Real> const& uh_3d,
-    OceanOBC* obc)
+    const Box& bxC,                          //!< Iteration box for continuity solver
+    Array4<const Real> const& u,             //!< Zonal velocity [L T-1 ~> m s-1]
+    Array4<const Real> const& h_in,          //!< Layer thickness used to calculate fluxes [H ~> m or kg m-2]
+    Array4<const Real> const& h_W,           //!< West edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const& h_E,           //!< East edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const& uh_tot_0,      //!< Summed transport with 0 adjustment [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Array4<const Real> const& duhdu_tot_0,   //!< Partial derivative of du_err with du at 0 adjustment
+                                              //!< [H L ~> m2 or kg m-1]
+    Array4<Real> const& du,                  //!< The barotropic velocity adjustment [L T-1 ~> m s-1]
+    Array4<const Real> const& du_max_CFL,    //!< Maximum acceptable value of du [L T-1 ~> m s-1]
+    Array4<const Real> const& du_min_CFL,    //!< Minimum acceptable value of du [L T-1 ~> m s-1]
+    Real dt,                                 //!< Time increment [T ~> s]
+    Array4<const Real> const& dy_Cu,         //!< The grid cell's unblocked lengths of the u-faces
+                                              //!< of the h-cell [L ~> m]
+    Array4<const Real> const& IareaT,        //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const& IdxT,          //!< The grid cell's 1/dxT [L-1 ~> m-1]
+    const transport_adjust_CS_C& CS,         //!< Options controlling the transport adjustment
+                                              //!< and barotropic-consistency iteration
+    Array4<const Real> const& visc_rem,      //!< Fraction of momentum/barotropic acceleration remaining
+                                              //!< after viscosity [nondim]
+    Array4<const int> const& do_I_in,        //!< Logical flag (0/1) indicating which I values to work on
+    Array4<const Real> const& por_face_areaU,//!< Fractional open area of U-faces [nondim]
+    Array4<const Real> const& uhbt,          //!< Summed volume flux through zonal faces
+                                              //!< [H L2 T-1 ~> m3 s-1 or kg s-1]; may be absent (.p == nullptr)
+    Array4<Real> const& uh_3d,               //!< Volume flux through zonal faces, u*h*dy
+                                              //!< [H L2 T-1 ~> m3 s-1 or kg s-1]; may be absent (.p == nullptr)
+    OceanOBC* obc)                           //!< Open boundary control structure
 {
     BL_PROFILE("zonal_flux_adjust");
 
@@ -529,27 +535,33 @@ void zonal_flux_adjust(
 //  serializes on GPU-style parallel execution; do_I masks further updates
 //  to a column once it has converged.
 void meridional_flux_adjust(
-    const Box& bxC,
-    Array4<const Real> const& v,
-    Array4<const Real> const& h_in,
-    Array4<const Real> const& h_S,
-    Array4<const Real> const& h_N,
-    Array4<const Real> const& vh_tot_0,
-    Array4<const Real> const& dvhdv_tot_0,
-    Array4<Real> const& dv,
-    Array4<const Real> const& dv_max_CFL,
-    Array4<const Real> const& dv_min_CFL,
-    Real dt,
-    Array4<const Real> const& dx_Cv,
-    Array4<const Real> const& IareaT,
-    Array4<const Real> const& IdyT,
-    const transport_adjust_CS_C& CS,
-    Array4<const Real> const& visc_rem,
-    Array4<const int> const& do_I_in,
-    Array4<const Real> const& por_face_areaV,
-    Array4<const Real> const& vhbt,
-    Array4<Real> const& vh_3d,
-    OceanOBC* obc)
+    const Box& bxC,                          //!< Iteration box for continuity solver
+    Array4<const Real> const& v,             //!< Meridional velocity [L T-1 ~> m s-1]
+    Array4<const Real> const& h_in,          //!< Layer thickness used to calculate fluxes [H ~> m or kg m-2]
+    Array4<const Real> const& h_S,           //!< South edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const& h_N,           //!< North edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const& vh_tot_0,      //!< Summed transport with 0 adjustment [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Array4<const Real> const& dvhdv_tot_0,   //!< Partial derivative of dv_err with dv at 0 adjustment
+                                              //!< [H L ~> m2 or kg m-1]
+    Array4<Real> const& dv,                  //!< The barotropic velocity adjustment [L T-1 ~> m s-1]
+    Array4<const Real> const& dv_max_CFL,    //!< Maximum acceptable value of dv [L T-1 ~> m s-1]
+    Array4<const Real> const& dv_min_CFL,    //!< Minimum acceptable value of dv [L T-1 ~> m s-1]
+    Real dt,                                 //!< Time increment [T ~> s]
+    Array4<const Real> const& dx_Cv,         //!< The grid cell's unblocked lengths of the v-faces
+                                              //!< of the h-cell [L ~> m]
+    Array4<const Real> const& IareaT,        //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const& IdyT,          //!< The grid cell's 1/dyT [L-1 ~> m-1]
+    const transport_adjust_CS_C& CS,         //!< Options controlling the transport adjustment
+                                              //!< and barotropic-consistency iteration
+    Array4<const Real> const& visc_rem,      //!< Fraction of momentum/barotropic acceleration remaining
+                                              //!< after viscosity [nondim]
+    Array4<const int> const& do_I_in,        //!< Logical flag (0/1) indicating which I values to work on
+    Array4<const Real> const& por_face_areaV,//!< Fractional open area of V-faces [nondim]
+    Array4<const Real> const& vhbt,          //!< Summed volume flux through meridional faces
+                                              //!< [H L2 T-1 ~> m3 s-1 or kg s-1]; may be absent (.p == nullptr)
+    Array4<Real> const& vh_3d,               //!< Volume flux through meridional faces, v*h*dx
+                                              //!< [H L2 T-1 ~> m3 s-1 or kg s-1]; may be absent (.p == nullptr)
+    OceanOBC* obc)                           //!< Open boundary control structure
 {
     BL_PROFILE("meridional_flux_adjust");
 

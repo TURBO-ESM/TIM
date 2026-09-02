@@ -1,3 +1,5 @@
+// SKILLS: 0.3.1
+
 #include "captured_io.hpp"
 
 #include <cstdint>
@@ -169,6 +171,66 @@ amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
 amrex::FArrayBox CapturedFile::fab_device(const std::string& name) const {
     amrex::FArrayBox host = fab_host(name);
     amrex::FArrayBox dev(host.box(), host.nComp(), amrex::The_Arena());
+    const std::size_t n = static_cast<std::size_t>(host.box().numPts()) *
+                          static_cast<std::size_t>(host.nComp());
+    amrex::Gpu::copy(amrex::Gpu::hostToDevice,
+                     host.dataPtr(), host.dataPtr() + n,
+                     dev.dataPtr());
+    amrex::Gpu::streamSynchronize();
+    return dev;
+}
+
+amrex::IArrayBox CapturedFile::int_fab_host(const std::string& name) const {
+    const auto& e = lookup(name, "LogicalArray_t");
+    std::size_t off = e.offset - 1;
+    int ndim = read_be_i32(bin_, off);
+    if (ndim != 2 && ndim != 3) {
+        throw std::runtime_error(
+            "captured_io: int_fab expects 2D or 3D arrays (got ndim=" +
+            std::to_string(ndim) + ") for '" + name + "'");
+    }
+    int shape[3] = {1, 1, 1};
+    for (int i = 0; i < ndim; ++i) shape[i] = read_be_i32(bin_, off);
+    for (int i = 0; i < ndim; ++i) {
+        int lb = read_be_i32(bin_, off);
+        int ub = read_be_i32(bin_, off);
+        if (lb != 1) {
+            throw std::runtime_error(
+                "captured_io: int_fab assumes Fortran lb==1 (got " +
+                std::to_string(lb) + " on dim " + std::to_string(i) +
+                ") for '" + name + "'");
+        }
+        if (ub - lb + 1 != shape[i]) {
+            throw std::runtime_error(
+                "captured_io: int_fab bounds inconsistent with shape on dim " +
+                std::to_string(i) + " (lb=" + std::to_string(lb) + ", ub=" +
+                std::to_string(ub) + ", shape=" + std::to_string(shape[i]) +
+                ") for '" + name + "'");
+        }
+    }
+    int32_t nelem = read_be_i32(bin_, off);
+    int64_t expected = int64_t{shape[0]} * shape[1] * shape[2];
+    if (nelem != expected) {
+        throw std::runtime_error(
+            "captured_io: LogicalArray_t nelem mismatch for '" + name + "' (got " +
+            std::to_string(nelem) + ", expected " + std::to_string(expected) +
+            ")");
+    }
+    amrex::Box sbx(amrex::IntVect(0, 0, 0),
+                   amrex::IntVect(shape[0] - 1, shape[1] - 1, shape[2] - 1));
+    amrex::IArrayBox fab(sbx, 1, amrex::The_Pinned_Arena());
+    auto arr = fab.array();
+    // Fortran column-major in the file: i fastest, then j, then k.
+    for (int k = 0; k < shape[2]; ++k)
+        for (int j = 0; j < shape[1]; ++j)
+            for (int i = 0; i < shape[0]; ++i)
+                arr(i, j, k) = read_be_i32(bin_, off);
+    return fab;
+}
+
+amrex::IArrayBox CapturedFile::int_fab_device(const std::string& name) const {
+    amrex::IArrayBox host = int_fab_host(name);
+    amrex::IArrayBox dev(host.box(), host.nComp(), amrex::The_Arena());
     const std::size_t n = static_cast<std::size_t>(host.box().numPts()) *
                           static_cast<std::size_t>(host.nComp());
     amrex::Gpu::copy(amrex::Gpu::hostToDevice,

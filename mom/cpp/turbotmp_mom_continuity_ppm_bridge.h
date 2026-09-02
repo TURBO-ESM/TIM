@@ -36,6 +36,20 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST, const RealA
                         const double h_min, const bool upwind_1st, const bool monotonic,
                         const bool simple_2nd, OceanOBC* obc);
 
+void turbotmp_zonal_flux_thickness_bridge(const Box_C* bxC_HOST, const RealArray_C* u_HOST,
+                        const RealArray_C* h_HOST, const RealArray_C* h_W_HOST, const RealArray_C* h_E_HOST,
+                        RealArray_C* h_u_HOST, const double dt, const RealArray_C* dy_Cu_HOST,
+                        const RealArray_C* IareaT_HOST, const RealArray_C* IdxT_HOST,
+                        const bool vol_CFL, const bool marginal, OceanOBC* obc,
+                        const RealArray_C* por_face_areaU_HOST, const RealArray_C* visc_rem_u_HOST);
+
+void turbotmp_meridional_flux_thickness_bridge(const Box_C* bxC_HOST, const RealArray_C* v_HOST,
+                        const RealArray_C* h_HOST, const RealArray_C* h_S_HOST, const RealArray_C* h_N_HOST,
+                        RealArray_C* h_v_HOST, const double dt, const RealArray_C* dx_Cv_HOST,
+                        const RealArray_C* IareaT_HOST, const RealArray_C* IdyT_HOST,
+                        const bool vol_CFL, const bool marginal, OceanOBC* obc,
+                        const RealArray_C* por_face_areaV_HOST, const RealArray_C* visc_rem_v_HOST);
+
 #ifdef __cplusplus
 }
 #endif

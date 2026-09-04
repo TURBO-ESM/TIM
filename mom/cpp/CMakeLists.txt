@@ -69,12 +69,19 @@ if(TIM_ENABLE_MOM_BRIDGE)
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
-    # MOM6 declares the bridge with Fortran `interface` blocks and includes
-    # nothing, but a C or C++ consumer needs these.
+    # The bridge's public surface, and only that.  MOM6 declares the entry points
+    # with Fortran `interface` blocks and includes nothing, but a C or C++ consumer
+    # needs these two -- and needs no more, because
+    # turbotmp_mom_continuity_ppm_bridge.h includes only turbotmp_bridge_c_types.h,
+    # which in turn includes only <stdint.h> and <stddef.h>.
+    #
+    # turbotmp_helper.hpp is deliberately NOT installed: it is an implementation
+    # header (AMReX Array4/MultiFab helpers) reached only from the .cpp files, so
+    # installing it would put AMReX includes on the public path for no consumer.
+    # It stays visible to the build through the BUILD_INTERFACE entry above.
     install(FILES
         turbotmp_mom_continuity_ppm_bridge.h
         turbotmp_bridge_c_types.h
-        ${mom_turbotmp_dir}/turbotmp_helper.hpp
         DESTINATION include/tim/mom)
 endif()
 

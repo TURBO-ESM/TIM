@@ -344,7 +344,7 @@ void meridional_BT_mass_flux(
  * @brief Calculates the mass or volume fluxes through the zonal faces, and
  * other related quantities -- including, optionally, the barotropic
  * mass-flux correction (u_cor/du_cor) and the barotropic-consistency
- * face-area/velocity-correction diagnostics (FA_u_*/uBT_*)
+ * face-area/velocity-correction diagnostics (FA_u_W0/E0/WW/EE, uBT_WW/EE)
  */
 void zonal_mass_flux(
     const Box&,
@@ -380,7 +380,7 @@ void zonal_mass_flux(
  * @brief Calculates the mass or volume fluxes through the meridional faces,
  * and other related quantities -- including, optionally, the barotropic
  * mass-flux correction (v_cor/dv_cor) and the barotropic-consistency
- * face-area/velocity-correction diagnostics (FA_v_*/vBT_*)
+ * face-area/velocity-correction diagnostics (FA_v_S0/N0/SS/NN, vBT_SS/NN)
  */
 void meridional_mass_flux(
     const Box&,

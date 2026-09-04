@@ -1727,7 +1727,8 @@ void turbotmp_meridional_bt_mass_flux_bridge(const Box_C* bxC_HOST,
  *                            transport (host, Fortran order); may be absent (data == nullptr)
  *
  * @note On return, @p uh_HOST always holds the modified value; @p u_cor_HOST, @p du_cor_HOST, and
- *       the @p FA_u_*/@p uBT_* fields hold their modified values only if present on input.
+ *       the @p FA_u_W0_HOST, @p FA_u_E0_HOST, @p FA_u_WW_HOST, @p FA_u_EE_HOST, @p uBT_WW_HOST, and
+ *       @p uBT_EE_HOST fields hold their modified values only if present on input.
  */
 void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
                                      const RealArray_C* u_HOST,
@@ -1970,7 +1971,8 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
  *                            transport (host, Fortran order); may be absent (data == nullptr)
  *
  * @note On return, @p vh_HOST always holds the modified value; @p v_cor_HOST, @p dv_cor_HOST, and
- *       the @p FA_v_*/@p vBT_* fields hold their modified values only if present on input.
+ *       the @p FA_v_S0_HOST, @p FA_v_N0_HOST, @p FA_v_SS_HOST, @p FA_v_NN_HOST, @p vBT_SS_HOST, and
+ *       @p vBT_NN_HOST fields hold their modified values only if present on input.
  */
 void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
                                           const RealArray_C* v_HOST,

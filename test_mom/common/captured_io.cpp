@@ -261,8 +261,17 @@ int CapturedFile::integer(const std::string& name) const {
 bool CapturedFile::is_associated(const std::string& name) const {
     auto it = entries_.find(name);
     if (it == entries_.end()) {
-        throw std::runtime_error("captured_io: missing entry '" + name +
-                                 "' in " + base_.string());
+        // Two genuinely different Fortran-side conventions both mean "not
+        // associated" here. An independently-optional argument (e.g.
+        // uhbt/visc_rem_u) is captured unconditionally and null-encoded
+        // (ndim == -1) when absent. A field that is itself a member of an
+        // optionally-associated derived type (e.g. BT_cont%FA_u_W0) can't
+        // be captured that way at all -- rec%add(..., BT_cont%FA_u_W0)
+        // would dereference an unassociated BT_cont -- so the whole
+        // capture block for those fields is skipped entirely when the
+        // parent container is unassociated, leaving no entry at all. Both
+        // are legitimate "not associated" outcomes, not a stale fixture.
+        return false;
     }
     // Peek at the leading ndim marker only -- shared by both RealArray_t
     // and LogicalArray_t, whichever this entry actually is.

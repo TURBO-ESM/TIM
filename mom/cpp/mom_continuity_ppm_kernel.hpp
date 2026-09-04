@@ -222,4 +222,23 @@ void flux_elem_point(Real const u,
     }
     duhdu = tmp * h_marg * visc_rem;
 }
+
+/**
+ * @brief Maximum ratio of a/b or maxrat.
+ *
+ *  @param a      Numerator, in arbitrary units [A].
+ *  @param b      Denominator, in arbitrary units [B].
+ *  @param maxrat Maximum value of ratio [A B-1].
+ *  @return       a/b, capped at maxrat in magnitude [A B-1].
+ */
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+Real ratio_max_point(Real const a, Real const b, Real const maxrat) noexcept
+{
+    if (amrex::Math::abs(a) > amrex::Math::abs(maxrat * b)) {
+        return maxrat;
+    } else {
+        return a / b;
+    }
+}
 }

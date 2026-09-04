@@ -339,4 +339,78 @@ void meridional_BT_mass_flux(
     const transport_adjust_CS_C&,
     OceanOBC*,
     Array4<const Real> const&);
+
+/**
+ * @brief Calculates the mass or volume fluxes through the zonal faces, and
+ * other related quantities -- including, optionally, the barotropic
+ * mass-flux correction (u_cor/du_cor) and the barotropic-consistency
+ * face-area/velocity-correction diagnostics (FA_u_*/uBT_*)
+ */
+void zonal_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&);
+
+/**
+ * @brief Calculates the mass or volume fluxes through the meridional faces,
+ * and other related quantities -- including, optionally, the barotropic
+ * mass-flux correction (v_cor/dv_cor) and the barotropic-consistency
+ * face-area/velocity-correction diagnostics (FA_v_*/vBT_*)
+ */
+void meridional_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    int,
+    int,
+    Real,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&);
 }

@@ -22,3 +22,9 @@ struct Box_C {
     int* idxS;      ///< Per-dimension start indices.
     int* idxE;      ///< Per-dimension end indices.
 };
+
+/* C has no implicit `struct` elision, so a C translation unit cannot spell these
+ * as bare `RealArray_C` / `Box_C` the way C++ can.  The typedefs make the plain
+ * names usable from both languages; they are redundant-but-legal in C++. */
+typedef struct RealArray_C RealArray_C;
+typedef struct Box_C       Box_C;

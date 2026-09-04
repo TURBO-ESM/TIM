@@ -1,4 +1,5 @@
 // mom_continuity_ppm.hpp
+// SKILLS: 0.3.1
 #pragma once
 /**
  * @file mom_continuity_ppm.hpp
@@ -103,4 +104,30 @@ void meridional_edge_thickness(
     bool,
     bool,
     OceanOBC*);
+
+/**
+ * @brief Zonal continuity update — advances layer thickness by the
+ * convergence of the zonal thickness flux
+ */
+void continuity_zonal_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
+
+/**
+ * @brief Meridional continuity update — advances layer thickness by the
+ * convergence of the meridional thickness flux
+ */
+void continuity_meridional_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
 }

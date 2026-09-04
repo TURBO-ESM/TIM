@@ -36,6 +36,18 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST, const RealA
                         RealArray_C* h_S_HOST, RealArray_C* h_N_HOST, const RealArray_C* mask2dT_HOST,
                         const double h_min, const bool upwind_1st, const bool monotonic,
                         const bool simple_2nd, OceanOBC* obc);
+void turbotmp_zonal_bt_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray_C* u_HOST,
+                        const RealArray_C* h_in_HOST, const RealArray_C* h_W_HOST, const RealArray_C* h_E_HOST,
+                        RealArray_C* uhbt_HOST, const double dt, const RealArray_C* dy_Cu_HOST,
+                        const RealArray_C* IareaT_HOST, const RealArray_C* IdxT_HOST,
+                        const transport_adjust_CS_C* CS_HOST, OceanOBC* obc,
+                        const RealArray_C* por_face_areaU_HOST);
+void turbotmp_meridional_bt_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray_C* v_HOST,
+                        const RealArray_C* h_in_HOST, const RealArray_C* h_S_HOST, const RealArray_C* h_N_HOST,
+                        RealArray_C* vhbt_HOST, const double dt, const RealArray_C* dx_Cv_HOST,
+                        const RealArray_C* IareaT_HOST, const RealArray_C* IdyT_HOST,
+                        const transport_adjust_CS_C* CS_HOST, OceanOBC* obc,
+                        const RealArray_C* por_face_areaV_HOST);
 
 void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST, RealArray_C* h_HOST,
                         const RealArray_C* uh_HOST, const double dt, const RealArray_C* IareaT_HOST,

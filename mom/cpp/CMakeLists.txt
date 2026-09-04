@@ -4,7 +4,13 @@
 #   mom_bridge      kernels + bridge, exported as TIM::mom_bridge. Built only
 #                   when the top level sets TIM_ENABLE_MOM_BRIDGE.
 
-if(NOT TARGET AMReX::amrex_3d AND NOT TARGET amrex_3d)
+# AMReX defines AMReX::amrex_3d as an ALIAS of amrex_3d in the same breath
+# (Src/CMakeLists.txt), so the namespaced name covers both the add_subdirectory and
+# find_package paths.  The old second clause `AND NOT TARGET amrex_3d` was dead --
+# and worse than dead, since mom_cpp_configure() links AMReX::amrex_3d
+# unconditionally, so a hypothetical plain-only target would have skipped discovery
+# and then failed at the link.  Matches tim/cpp's single-clause guard.
+if(NOT TARGET AMReX::amrex_3d)
     find_package(AMReX REQUIRED)
 endif()
 
@@ -71,9 +77,9 @@ if(TIM_ENABLE_MOM_BRIDGE)
         ARCHIVE DESTINATION lib)
     # The bridge's public surface, and only that.  MOM6 declares the entry points
     # with Fortran `interface` blocks and includes nothing, but a C or C++ consumer
-    # needs these two -- and needs no more, because
-    # turbotmp_mom_continuity_ppm_bridge.h includes only turbotmp_bridge_c_types.h,
-    # which in turn includes only <stdint.h> and <stddef.h>.
+    # needs these two -- and needs no more: the bridge header pulls in only
+    # turbotmp_bridge_c_types.h plus <stdbool.h>, and that in turn only <stdint.h>
+    # and <stddef.h>.  Both parse as C as well as C++ (checked with -std=c11).
     #
     # turbotmp_helper.hpp is deliberately NOT installed: it is an implementation
     # header (AMReX Array4/MultiFab helpers) reached only from the .cpp files, so

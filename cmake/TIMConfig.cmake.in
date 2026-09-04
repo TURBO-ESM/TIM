@@ -38,7 +38,10 @@ include("${CMAKE_CURRENT_LIST_DIR}/tim-targets.cmake")
 set(TIMVersion "${PACKAGE_VERSION}")
 set_and_check(TIM_INSTALL_PREFIX "${PACKAGE_PREFIX_DIR}")
 
-# Component validation — mirrors FMS's fms-config.cmake pattern.
+# Component validation — mirrors FMS's fms-config.cmake pattern, with one
+# deliberate divergence: FMS also appends to an `FMS_POSSIBLE_COMPONENTS` variable
+# that nothing ever reads (the validation below uses _possible_tim_components).
+# That dead write is not copied here.
 list(APPEND _possible_tim_components "R4" "R8" "MOM_BRIDGE")
 foreach(_comp ${_possible_tim_components})
   set(_name_${_comp} ${_comp})
@@ -69,7 +72,6 @@ set(TIM_R4_FOUND 0)
 if(@32BIT@)
   set(TIM_R4_FOUND 1)
   get_property(TIM_R4_LIBRARIES TARGET TIM::tim_r4 PROPERTY LOCATION)
-  list(APPEND TIM_POSSIBLE_COMPONENTS R4)
 endif()
 
 # ON/OFF reflects whether TIM was built with 64BIT=ON
@@ -77,7 +79,6 @@ set(TIM_R8_FOUND 0)
 if(@64BIT@)
   set(TIM_R8_FOUND 1)
   get_property(TIM_R8_LIBRARIES TARGET TIM::tim_r8 PROPERTY LOCATION)
-  list(APPEND TIM_POSSIBLE_COMPONENTS R8)
 endif()
 
 # ON/OFF reflects whether TIM was built with TIM_ENABLE_MOM_BRIDGE=ON.
@@ -91,7 +92,6 @@ set(TIM_MOM_BRIDGE_FOUND 0)
 if(@TIM_ENABLE_MOM_BRIDGE@)
   set(TIM_MOM_BRIDGE_FOUND 1)
   get_property(TIM_MOM_BRIDGE_LIBRARIES TARGET TIM::mom_bridge PROPERTY LOCATION)
-  list(APPEND TIM_POSSIBLE_COMPONENTS MOM_BRIDGE)
 endif()
 
 check_required_components("TIM")

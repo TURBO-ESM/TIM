@@ -104,7 +104,6 @@ void meridional_edge_thickness(
     bool,
     bool,
     OceanOBC*);
-
 /**
  * @brief Zonal continuity update — advances layer thickness by the
  * convergence of the zonal thickness flux
@@ -173,5 +172,73 @@ void meridional_flux_thickness(
     bool,
     OceanOBC*,
     Array4<const Real> const&,
+    Array4<const Real> const&);
+
+/**
+ * @brief Sets the effective open face areas and barotropic velocity
+ * corrections at zonal faces that reproduce the summed layer
+ * transports for three test barotropic velocities, for use in the
+ * barotropic-consistency iteration
+ */
+void set_zonal_BT_cont(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
+    Array4<const Real> const&);
+
+/**
+ * @brief Sets the effective open face areas and barotropic velocity
+ * corrections at meridional faces that reproduce the summed layer
+ * transports for three test barotropic velocities, for use in the
+ * barotropic-consistency iteration
+ */
+void set_merid_BT_cont(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
     Array4<const Real> const&);
 }

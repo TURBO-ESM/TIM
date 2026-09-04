@@ -679,4 +679,280 @@ void meridional_flux_thickness(
     }
     */
 }
+
+//> Sets the effective open face areas and barotropic velocity corrections at
+//  zonal faces that reproduce the summed layer transports for three
+//  test barotropic velocities (westerly, easterly, and zero-adjustment),
+//  for use in the barotropic-consistency iteration.
+void set_zonal_BT_cont(
+    const Box& bxC,                          //!< Iteration box for continuity solver
+    Array4<const Real> const& u,             //!< Zonal velocity
+    Array4<const Real> const& h_in,          //!< Layer thickness used to calculate fluxes
+    Array4<const Real> const& h_W,           //!< West edge thickness in the reconstruction
+    Array4<const Real> const& h_E,           //!< East edge thickness in the reconstruction
+    Array4<Real> const& FA_u_W0,             //!< Effective open face area, west, 0 transport
+    Array4<Real> const& FA_u_E0,             //!< Effective open face area, east, 0 transport
+    Array4<Real> const& FA_u_WW,             //!< Effective open face area, westerly test velocity
+    Array4<Real> const& FA_u_EE,             //!< Effective open face area, easterly test velocity
+    Array4<Real> const& uBT_WW,              //!< Westerly correction to the barotropic velocity
+    Array4<Real> const& uBT_EE,              //!< Easterly correction to the barotropic velocity
+    Array4<const Real> const& du0,           //!< Barotropic velocity increment that gives 0 transport
+    Array4<const Real> const& uh_tot_0,      //!< Summed transport with 0 adjustment
+    Array4<const Real> const& duhdu_tot_0,   //!< Partial derivative of du_err with du at 0 adjustment
+    Array4<const Real> const& du_max_CFL,    //!< Maximum acceptable value of du
+    Array4<const Real> const& du_min_CFL,    //!< Minimum acceptable value of du
+    Real dt,                                 //!< Time increment
+    Array4<const Real> const& dxCu,          //!< The grid cell's u-point x-extent
+    Array4<const Real> const& dy_Cu,         //!< Unblocked u-face length (2D, addressed at k=0)
+    Array4<const Real> const& IareaT,        //!< 1/areaT (2D, addressed at k=0)
+    Array4<const Real> const& IdxT,          //!< 1/dxT (2D, addressed at k=0)
+    const transport_adjust_CS_C& CS,         //!< Transport-adjustment and barotropic-consistency options
+    Array4<const Real> const& visc_rem,      //!< Fraction of momentum/barotropic acceleration
+                                              //!< remaining after viscosity
+    Array4<const Real> const& visc_rem_max,  //!< Maximum allowable viscosity remnant
+    Array4<const int> const& do_I,           //!< Logical flag (0/1) indicating which I values to work on
+    Array4<const Real> const& por_face_areaU)//!< Fractional open area of U-faces
+{
+    BL_PROFILE("set_zonal_BT_cont");
+
+    const Real Idt = 1.0_rt / dt;
+    const Real min_visc_rem = 0.1_rt;
+    const Real CFL_min = 1.0e-6_rt;
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    // Iteration box for u-point (U-grid) fields: grown by 1 at the lower x-extent
+    Box bxU = growLo(bxC, 0, 1);
+    Box bx2d(IntVect(bxU.smallEnd(0), bxU.smallEnd(1), 0),
+             IntVect(bxU.bigEnd(0),   bxU.bigEnd(1),   0));
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        const bool active = (do_I(i,j,0) != 0);
+
+        // Determine the westerly- and easterly- fluxes. Choose a sufficiently
+        // negative velocity correction for the easterly-flux, and a sufficiently
+        // positive correction for the westerly-flux.
+        const Real du_CFL = (CFL_min * Idt) * dxCu(i,j,0);
+        Real duR = amrex::min(0.0_rt, du0(i,j,0) - du_CFL);
+        Real duL = amrex::max(0.0_rt, du0(i,j,0) + du_CFL);
+        Real FAmt_L = 0.0_rt, FAmt_R = 0.0_rt, FAmt_0 = 0.0_rt;
+        Real uhtot_L = 0.0_rt, uhtot_R = 0.0_rt;
+
+        if (active) {
+            for (int k = kmin; k <= kmax; ++k) {
+                Real const visc_rem_lim = amrex::max(visc_rem(i,j,k), min_visc_rem*visc_rem_max(i,j,0));
+                if (visc_rem_lim > 0.0_rt) { // This is almost always true for ocean points.
+                    if (u(i,j,k) + duR*visc_rem_lim > -du_CFL*visc_rem(i,j,k)) {
+                        duR = -(u(i,j,k) + du_CFL*visc_rem(i,j,k)) / visc_rem_lim;
+                    }
+                    if (u(i,j,k) + duL*visc_rem_lim < du_CFL*visc_rem(i,j,k)) {
+                        duL = -(u(i,j,k) - du_CFL*visc_rem(i,j,k)) / visc_rem_lim;
+                    }
+                }
+            }
+
+            for (int k = kmin; k <= kmax; ++k) {
+                Real const u_L = u(i,j,k) + duL * visc_rem(i,j,k);
+                Real const u_R = u(i,j,k) + duR * visc_rem(i,j,k);
+                Real const u_0 = u(i,j,k) + du0(i,j,0) * visc_rem(i,j,k);
+                Real uh_0, uh_L, uh_R, duhdu_0, duhdu_L, duhdu_R;
+                flux_elem_point(u_0, h_in(i,j,k), h_in(i+1,j,k), h_W(i,j,k), h_W(i+1,j,k),
+                                h_E(i,j,k), h_E(i+1,j,k), uh_0, duhdu_0, visc_rem(i,j,k),
+                                dy_Cu(i,j,0), IareaT(i,j,0), IareaT(i+1,j,0), IdxT(i,j,0), IdxT(i+1,j,0),
+                                dt, CS.vol_CFL, por_face_areaU(i,j,k));
+                flux_elem_point(u_L, h_in(i,j,k), h_in(i+1,j,k), h_W(i,j,k), h_W(i+1,j,k),
+                                h_E(i,j,k), h_E(i+1,j,k), uh_L, duhdu_L, visc_rem(i,j,k),
+                                dy_Cu(i,j,0), IareaT(i,j,0), IareaT(i+1,j,0), IdxT(i,j,0), IdxT(i+1,j,0),
+                                dt, CS.vol_CFL, por_face_areaU(i,j,k));
+                flux_elem_point(u_R, h_in(i,j,k), h_in(i+1,j,k), h_W(i,j,k), h_W(i+1,j,k),
+                                h_E(i,j,k), h_E(i+1,j,k), uh_R, duhdu_R, visc_rem(i,j,k),
+                                dy_Cu(i,j,0), IareaT(i,j,0), IareaT(i+1,j,0), IdxT(i,j,0), IdxT(i+1,j,0),
+                                dt, CS.vol_CFL, por_face_areaU(i,j,k));
+                FAmt_0 += duhdu_0;
+                FAmt_L += duhdu_L;
+                FAmt_R += duhdu_R;
+                uhtot_L += uh_L;
+                uhtot_R += uh_R;
+            }
+
+            Real FA_0 = FAmt_0, FA_avg = FAmt_0;
+            if ((duL - du0(i,j,0)) != 0.0_rt) {
+                FA_avg = uhtot_L / (duL - du0(i,j,0));
+            }
+            if (FA_avg > amrex::max(FA_0, FAmt_L)) {
+                FA_avg = amrex::max(FA_0, FAmt_L);
+            } else if (FA_avg < amrex::min(FA_0, FAmt_L)) {
+                FA_0 = FA_avg;
+            }
+
+            FA_u_W0(i,j,0) = FA_0; FA_u_WW(i,j,0) = FAmt_L;
+            if (amrex::Math::abs(FA_0 - FAmt_L) <= 1.0e-12_rt*FA_0) {
+                uBT_WW(i,j,0) = 0.0_rt;
+            } else {
+                uBT_WW(i,j,0) = (1.5_rt * (duL - du0(i,j,0))) * ((FAmt_L - FA_avg) / (FAmt_L - FA_0));
+            }
+
+            FA_0 = FAmt_0; FA_avg = FAmt_0;
+            if ((duR - du0(i,j,0)) != 0.0_rt) {
+                FA_avg = uhtot_R / (duR - du0(i,j,0));
+            }
+            if (FA_avg > amrex::max(FA_0, FAmt_R)) {
+                FA_avg = amrex::max(FA_0, FAmt_R);
+            } else if (FA_avg < amrex::min(FA_0, FAmt_R)) {
+                FA_0 = FA_avg;
+            }
+
+            FA_u_E0(i,j,0) = FA_0; FA_u_EE(i,j,0) = FAmt_R;
+            if (amrex::Math::abs(FAmt_R - FA_0) <= 1.0e-12_rt*FA_0) {
+                uBT_EE(i,j,0) = 0.0_rt;
+            } else {
+                uBT_EE(i,j,0) = (1.5_rt * (duR - du0(i,j,0))) * ((FAmt_R - FA_avg) / (FAmt_R - FA_0));
+            }
+        } else {
+            FA_u_W0(i,j,0) = 0.0_rt; FA_u_WW(i,j,0) = 0.0_rt;
+            FA_u_E0(i,j,0) = 0.0_rt; FA_u_EE(i,j,0) = 0.0_rt;
+            uBT_WW(i,j,0) = 0.0_rt; uBT_EE(i,j,0) = 0.0_rt;
+        }
+    });
+}
+
+//> Sets the effective open face areas and barotropic velocity corrections at
+//  meridional faces that reproduce the summed layer transports for three
+//  test barotropic velocities (southerly, northerly, and zero-adjustment),
+//  for use in the barotropic-consistency iteration.
+void set_merid_BT_cont(
+    const Box& bxC,                          //!< Iteration box for continuity solver
+    Array4<const Real> const& v,             //!< Meridional velocity
+    Array4<const Real> const& h_in,          //!< Layer thickness used to calculate fluxes
+    Array4<const Real> const& h_S,           //!< South edge thickness in the reconstruction
+    Array4<const Real> const& h_N,           //!< North edge thickness in the reconstruction
+    Array4<Real> const& FA_v_S0,             //!< Effective open face area, south, 0 transport
+    Array4<Real> const& FA_v_N0,             //!< Effective open face area, north, 0 transport
+    Array4<Real> const& FA_v_SS,             //!< Effective open face area, southerly test velocity
+    Array4<Real> const& FA_v_NN,             //!< Effective open face area, northerly test velocity
+    Array4<Real> const& vBT_SS,              //!< Southerly correction to the barotropic velocity
+    Array4<Real> const& vBT_NN,              //!< Northerly correction to the barotropic velocity
+    Array4<const Real> const& dv0,           //!< Barotropic velocity increment that gives 0 transport
+    Array4<const Real> const& vh_tot_0,      //!< Summed transport with 0 adjustment
+    Array4<const Real> const& dvhdv_tot_0,   //!< Partial derivative of du_err with dv at 0 adjustment
+    Array4<const Real> const& dv_max_CFL,    //!< Maximum acceptable value of dv
+    Array4<const Real> const& dv_min_CFL,    //!< Minimum acceptable value of dv
+    Real dt,                                 //!< Time increment
+    Array4<const Real> const& dyCv,          //!< The grid cell's v-point y-extent
+    Array4<const Real> const& dx_Cv,         //!< Unblocked v-face length (2D, addressed at k=0)
+    Array4<const Real> const& IareaT,        //!< 1/areaT (2D, addressed at k=0)
+    Array4<const Real> const& IdyT,          //!< 1/dyT (2D, addressed at k=0)
+    const transport_adjust_CS_C& CS,         //!< Transport-adjustment and barotropic-consistency options
+    Array4<const Real> const& visc_rem,      //!< Fraction of momentum/barotropic acceleration
+                                              //!< remaining after viscosity
+    Array4<const Real> const& visc_rem_max,  //!< Maximum allowable viscosity remnant
+    Array4<const int> const& do_I,           //!< Logical flag (0/1) indicating which I values to work on
+    Array4<const Real> const& por_face_areaV)//!< Fractional open area of V-faces
+{
+    BL_PROFILE("set_merid_BT_cont");
+
+    const Real Idt = 1.0_rt / dt;
+    const Real min_visc_rem = 0.1_rt;
+    const Real CFL_min = 1.0e-6_rt;
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    // Iteration box for v-point (V-grid) fields: grown by 1 at the lower y-extent
+    Box bxV = growLo(bxC, 1, 1);
+    Box bx2d(IntVect(bxV.smallEnd(0), bxV.smallEnd(1), 0),
+             IntVect(bxV.bigEnd(0),   bxV.bigEnd(1),   0));
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        const bool active = (do_I(i,j,0) != 0);
+
+        // Determine the southerly- and northerly- fluxes. Choose a sufficiently
+        // negative velocity correction for the northerly-flux, and a sufficiently
+        // positive correction for the southerly-flux.
+        const Real dv_CFL = (CFL_min * Idt) * dyCv(i,j,0);
+        Real dvR = amrex::min(0.0_rt, dv0(i,j,0) - dv_CFL);
+        Real dvL = amrex::max(0.0_rt, dv0(i,j,0) + dv_CFL);
+        Real FAmt_L = 0.0_rt, FAmt_R = 0.0_rt, FAmt_0 = 0.0_rt;
+        Real vhtot_L = 0.0_rt, vhtot_R = 0.0_rt;
+
+        if (active) {
+            for (int k = kmin; k <= kmax; ++k) {
+                Real const visc_rem_lim = amrex::max(visc_rem(i,j,k), min_visc_rem*visc_rem_max(i,j,0));
+                if (visc_rem_lim > 0.0_rt) { // This is almost always true for ocean points.
+                    if (v(i,j,k) + dvR*visc_rem_lim > -dv_CFL*visc_rem(i,j,k)) {
+                        dvR = -(v(i,j,k) + dv_CFL*visc_rem(i,j,k)) / visc_rem_lim;
+                    }
+                    if (v(i,j,k) + dvL*visc_rem_lim < dv_CFL*visc_rem(i,j,k)) {
+                        dvL = -(v(i,j,k) - dv_CFL*visc_rem(i,j,k)) / visc_rem_lim;
+                    }
+                }
+            }
+
+            for (int k = kmin; k <= kmax; ++k) {
+                Real const v_L = v(i,j,k) + dvL * visc_rem(i,j,k);
+                Real const v_R = v(i,j,k) + dvR * visc_rem(i,j,k);
+                Real const v_0 = v(i,j,k) + dv0(i,j,0) * visc_rem(i,j,k);
+                Real vh_0, vh_L, vh_R, dvhdv_0, dvhdv_L, dvhdv_R;
+                flux_elem_point(v_0, h_in(i,j,k), h_in(i,j+1,k), h_S(i,j,k), h_S(i,j+1,k),
+                                h_N(i,j,k), h_N(i,j+1,k), vh_0, dvhdv_0, visc_rem(i,j,k),
+                                dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
+                                dt, CS.vol_CFL, por_face_areaV(i,j,k));
+                flux_elem_point(v_L, h_in(i,j,k), h_in(i,j+1,k), h_S(i,j,k), h_S(i,j+1,k),
+                                h_N(i,j,k), h_N(i,j+1,k), vh_L, dvhdv_L, visc_rem(i,j,k),
+                                dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
+                                dt, CS.vol_CFL, por_face_areaV(i,j,k));
+                flux_elem_point(v_R, h_in(i,j,k), h_in(i,j+1,k), h_S(i,j,k), h_S(i,j+1,k),
+                                h_N(i,j,k), h_N(i,j+1,k), vh_R, dvhdv_R, visc_rem(i,j,k),
+                                dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
+                                dt, CS.vol_CFL, por_face_areaV(i,j,k));
+                FAmt_0 += dvhdv_0;
+                FAmt_L += dvhdv_L;
+                FAmt_R += dvhdv_R;
+                vhtot_L += vh_L;
+                vhtot_R += vh_R;
+            }
+
+            Real FA_0 = FAmt_0, FA_avg = FAmt_0;
+            if ((dvL - dv0(i,j,0)) != 0.0_rt) {
+                FA_avg = vhtot_L / (dvL - dv0(i,j,0));
+            }
+            if (FA_avg > amrex::max(FA_0, FAmt_L)) {
+                FA_avg = amrex::max(FA_0, FAmt_L);
+            } else if (FA_avg < amrex::min(FA_0, FAmt_L)) {
+                FA_0 = FA_avg;
+            }
+
+            FA_v_S0(i,j,0) = FA_0; FA_v_SS(i,j,0) = FAmt_L;
+            if (amrex::Math::abs(FA_0 - FAmt_L) <= 1.0e-12_rt*FA_0) {
+                vBT_SS(i,j,0) = 0.0_rt;
+            } else {
+                vBT_SS(i,j,0) = (1.5_rt * (dvL - dv0(i,j,0))) * ((FAmt_L - FA_avg) / (FAmt_L - FA_0));
+            }
+
+            FA_0 = FAmt_0; FA_avg = FAmt_0;
+            if ((dvR - dv0(i,j,0)) != 0.0_rt) {
+                FA_avg = vhtot_R / (dvR - dv0(i,j,0));
+            }
+            if (FA_avg > amrex::max(FA_0, FAmt_R)) {
+                FA_avg = amrex::max(FA_0, FAmt_R);
+            } else if (FA_avg < amrex::min(FA_0, FAmt_R)) {
+                FA_0 = FA_avg;
+            }
+
+            FA_v_N0(i,j,0) = FA_0; FA_v_NN(i,j,0) = FAmt_R;
+            if (amrex::Math::abs(FAmt_R - FA_0) <= 1.0e-12_rt*FA_0) {
+                vBT_NN(i,j,0) = 0.0_rt;
+            } else {
+                vBT_NN(i,j,0) = (1.5_rt * (dvR - dv0(i,j,0))) * ((FAmt_R - FA_avg) / (FAmt_R - FA_0));
+            }
+        } else {
+            FA_v_S0(i,j,0) = 0.0_rt; FA_v_SS(i,j,0) = 0.0_rt;
+            FA_v_N0(i,j,0) = 0.0_rt; FA_v_NN(i,j,0) = 0.0_rt;
+            vBT_SS(i,j,0) = 0.0_rt; vBT_NN(i,j,0) = 0.0_rt;
+        }
+    });
+}
 }

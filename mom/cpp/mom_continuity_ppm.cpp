@@ -420,4 +420,263 @@ void continuity_meridional_convergence(
         });
     }
 }
+
+//> Zonal volume/thickness flux: PPM-reconstructed edge thickness advected
+//  by the zonal velocity, scaled by viscosity remnant and open-face area.
+void zonal_flux_thickness(
+    const Box& bxC,                        //!< Continuity iteration box
+    Array4<const Real> const& u,           //!< Zonal velocity
+    Array4<const Real> const& h,           //!< Layer thickness used to calculate fluxes
+    Array4<const Real> const& h_W,         //!< West edge thickness in the reconstruction
+    Array4<const Real> const& h_E,         //!< East edge thickness in the reconstruction
+    Array4<Real> const& h_u,               //!< Effective thickness at zonal faces
+    Real dt,                               //!< Time increment
+    Array4<const Real> const& dy_Cu,       //!< Unblocked u-face length (2D, addressed at k=0)
+    Array4<const Real> const& IareaT,      //!< 1/areaT (2D, addressed at k=0)
+    Array4<const Real> const& IdxT,        //!< 1/dxT (2D, addressed at k=0)
+    bool vol_CFL,                          //!< If true, rescale face/cell area ratio for CFL
+    bool marginal,                         //!< If true, report marginal (not transport-averaged) thickness
+    OceanOBC* OBC,                         //!< Open boundary control structure
+    Array4<const Real> const& por_face_areaU, //!< Fractional open area of U-faces
+    Array4<const Real> const& visc_rem_u)  //!< Both the fraction of the momentum originally in a layer
+                                            //!< that remains after a time-step of viscosity, and the
+                                            //!< fraction of a time-step's worth of a barotropic
+                                            //!< acceleration that a layer experiences after viscosity is
+                                            //!< applied [nondim]. Between 0 (at the bottom) and 1 (far
+                                            //!< above the bottom).
+{
+    BL_PROFILE("zonal_flux_thickness");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (OBC != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_open_BC = false;
+    if (OBC != nullptr) local_open_BC = OBC->open_u_BCs_exist_globally;
+    */
+
+    const bool has_visc_rem_u = (visc_rem_u.p != nullptr);
+
+    // Increase the lower extent of the x-dimension (U-grid)
+    Box bxU = growLo(bxC, 0, 1);
+
+    ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+    {
+        Real CFL, curv_3, dh;
+        if (u(i,j,k) > 0.0_rt) {
+            if (vol_CFL) {
+                CFL = (u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i,j,0));
+            } else {
+                CFL = u(i,j,k) * dt * IdxT(i,j,0);
+            }
+            curv_3 = (h_W(i,j,k) + h_E(i,j,k)) - 2.0_rt*h(i,j,k);
+            dh = h_W(i,j,k) - h_E(i,j,k);
+            if (marginal) {
+                h_u(i,j,k) = h_E(i,j,k) + CFL * (dh + 3.0_rt*curv_3*(CFL - 1.0_rt));
+            } else {
+                h_u(i,j,k) = h_E(i,j,k) + CFL * (0.5_rt*dh + curv_3*(CFL - 1.5_rt));
+            }
+        } else if (u(i,j,k) < 0.0_rt) {
+            if (vol_CFL) {
+                CFL = (-u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i+1,j,0));
+            } else {
+                CFL = -u(i,j,k) * dt * IdxT(i+1,j,0);
+            }
+            curv_3 = (h_W(i+1,j,k) + h_E(i+1,j,k)) - 2.0_rt*h(i+1,j,k);
+            dh = h_E(i+1,j,k) - h_W(i+1,j,k);
+            if (marginal) {
+                h_u(i,j,k) = h_W(i+1,j,k) + CFL * (dh + 3.0_rt*curv_3*(CFL - 1.0_rt));
+            } else {
+                h_u(i,j,k) = h_W(i+1,j,k) + CFL * (0.5_rt*dh + curv_3*(CFL - 1.5_rt));
+            }
+        } else {
+            // The choice to use the arithmetic mean here is somewhat arbitrarily, but
+            // it should be noted that h_W(i+1,j,k) and h_E(i,j,k) are usually the same.
+            h_u(i,j,k) = 0.5_rt * (h_W(i+1,j,k) + h_E(i,j,k));
+            // real h_marg = (2.0 * h_W(i+1,j,k) * h_E(i,j,k)) /
+            //               (h_W(i+1,j,k) + h_E(i,j,k) + GV%H_subroundoff)
+        }
+
+        if (has_visc_rem_u) {
+            // Scale back the thickness to account for the effects of viscosity and the
+            // fractional open thickness to give an appropriate non-normalized weight for
+            // each layer in determining the barotropic acceleration.
+            h_u(i,j,k) = h_u(i,j,k) * (visc_rem_u(i,j,k) * por_face_areaU(i,j,k));
+        } else {
+            h_u(i,j,k) = h_u(i,j,k) * por_face_areaU(i,j,k);
+        }
+    });
+
+    /*
+    // untested
+    if (local_open_BC) {
+        for (int n = 0; n < OBC->number_of_segments; ++n) {
+            auto& segment = OBC->segment[n];
+            if (segment.open && segment.is_E_or_W) {
+                int i = segment.HI.IsdB;
+                Box bxSeg(IntVect(i, segment.HI.jsd, bxU.smallEnd(2)),
+                          IntVect(i, segment.HI.jed, bxU.bigEnd(2)));
+                if (segment.direction == OBC_DIRECTION_E) {
+                    if (has_visc_rem_u) {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int ii, int j, int k)
+                        {
+                            h_u(i,j,k) = h(i,j,k) * (visc_rem_u(i,j,k) * por_face_areaU(i,j,k));
+                        });
+                    } else {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int ii, int j, int k)
+                        {
+                            h_u(i,j,k) = h(i,j,k) * por_face_areaU(i,j,k);
+                        });
+                    }
+                } else {
+                    if (has_visc_rem_u) {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int ii, int j, int k)
+                        {
+                            h_u(i,j,k) = h(i+1,j,k) * (visc_rem_u(i,j,k) * por_face_areaU(i,j,k));
+                        });
+                    } else {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int ii, int j, int k)
+                        {
+                            h_u(i,j,k) = h(i+1,j,k) * por_face_areaU(i,j,k);
+                        });
+                    }
+                }
+            }
+        }
+    }
+    */
+}
+
+//> Meridional volume/thickness flux: PPM-reconstructed edge thickness
+//  advected by the meridional velocity, scaled by viscosity remnant and
+//  open-face area.
+void meridional_flux_thickness(
+    const Box& bxC,                        //!< Continuity iteration box
+    Array4<const Real> const& v,           //!< Meridional velocity
+    Array4<const Real> const& h,           //!< Layer thickness used to calculate fluxes
+    Array4<const Real> const& h_S,         //!< South edge thickness in the reconstruction
+    Array4<const Real> const& h_N,         //!< North edge thickness in the reconstruction
+    Array4<Real> const& h_v,               //!< Effective thickness at meridional faces [out]
+    Real dt,                               //!< Time increment
+    Array4<const Real> const& dx_Cv,       //!< Unblocked v-face length (2D, addressed at k=0)
+    Array4<const Real> const& IareaT,      //!< 1/areaT (2D, addressed at k=0)
+    Array4<const Real> const& IdyT,        //!< 1/dyT (2D, addressed at k=0)
+    bool vol_CFL,                          //!< If true, rescale face/cell area ratio for CFL
+    bool marginal,                         //!< If true, report marginal (not transport-averaged) thickness
+    OceanOBC* OBC,                         //!< Open boundary control structure
+    Array4<const Real> const& por_face_areaV, //!< Fractional open area of V-faces
+    Array4<const Real> const& visc_rem_v)  //!< Both the fraction of the momentum originally in a layer
+                                            //!< that remains after a time-step of viscosity, and the
+                                            //!< fraction of a time-step's worth of a barotropic
+                                            //!< acceleration that a layer experiences after viscosity is
+                                            //!< applied [nondim]. Between 0 (at the bottom) and 1 (far
+                                            //!< above the bottom).
+{
+    BL_PROFILE("meridional_flux_thickness");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (OBC != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_open_BC = false;
+    if (OBC != nullptr) local_open_BC = OBC->open_v_BCs_exist_globally;
+    */
+
+    const bool has_visc_rem_v = (visc_rem_v.p != nullptr);
+
+    // Increase the lower extent of the y-dimension (V-grid)
+    Box bxV = growLo(bxC, 1, 1);
+
+    ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+    {
+        Real CFL, curv_3, dh;
+        if (v(i,j,k) > 0.0_rt) {
+            if (vol_CFL) {
+                CFL = (v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j,0));
+            } else {
+                CFL = v(i,j,k) * dt * IdyT(i,j,0);
+            }
+            curv_3 = (h_S(i,j,k) + h_N(i,j,k)) - 2.0_rt*h(i,j,k);
+            dh = h_S(i,j,k) - h_N(i,j,k);
+            if (marginal) {
+                h_v(i,j,k) = h_N(i,j,k) + CFL * (dh + 3.0_rt*curv_3*(CFL - 1.0_rt));
+            } else {
+                h_v(i,j,k) = h_N(i,j,k) + CFL * (0.5_rt*dh + curv_3*(CFL - 1.5_rt));
+            }
+        } else if (v(i,j,k) < 0.0_rt) {
+            if (vol_CFL) {
+                CFL = (-v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j+1,0));
+            } else {
+                CFL = -v(i,j,k) * dt * IdyT(i,j+1,0);
+            }
+            curv_3 = (h_S(i,j+1,k) + h_N(i,j+1,k)) - 2.0_rt*h(i,j+1,k);
+            dh = h_N(i,j+1,k) - h_S(i,j+1,k);
+            if (marginal) {
+                h_v(i,j,k) = h_S(i,j+1,k) + CFL * (dh + 3.0_rt*curv_3*(CFL - 1.0_rt));
+            } else {
+                h_v(i,j,k) = h_S(i,j+1,k) + CFL * (0.5_rt*dh + curv_3*(CFL - 1.5_rt));
+            }
+        } else {
+            // The choice to use the arithmetic mean here is somewhat arbitrarily, but
+            // it should be noted that h_S(i+1,j,k) and h_N(i,j,k) are usually the same.
+            h_v(i,j,k) = 0.5_rt * (h_S(i,j+1,k) + h_N(i,j,k));
+            // real h_marg = (2.0 * h_S(i,j+1,k) * h_N(i,j,k)) /
+            //               (h_S(i,j+1,k) + h_N(i,j,k) + GV%H_subroundoff)
+        }
+
+        if (has_visc_rem_v) {
+            // Scale back the thickness to account for the effects of viscosity and the
+            // fractional open thickness to give an appropriate non-normalized weight for
+            // each layer in determining the barotropic acceleration.
+            h_v(i,j,k) = h_v(i,j,k) * (visc_rem_v(i,j,k) * por_face_areaV(i,j,k));
+        } else {
+            h_v(i,j,k) = h_v(i,j,k) * por_face_areaV(i,j,k);
+        }
+    });
+
+    /*
+    // untested - will need to be refactored to be performant on GPUs
+    if (local_open_BC) {
+        for (int n = 0; n < OBC->number_of_segments; ++n) {
+            auto& segment = OBC->segment[n];
+            if (segment.open && segment.is_N_or_S) {
+                int j = segment.HI.JsdB;
+                Box bxSeg(IntVect(segment.HI.isd, j, bxV.smallEnd(2)),
+                          IntVect(segment.HI.ied, j, bxV.bigEnd(2)));
+                if (segment.direction == OBC_DIRECTION_N) {
+                    if (has_visc_rem_v) {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int i, int jj, int k)
+                        {
+                            h_v(i,j,k) = h(i,j,k) * (visc_rem_v(i,j,k) * por_face_areaV(i,j,k));
+                        });
+                    } else {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int i, int jj, int k)
+                        {
+                            h_v(i,j,k) = h(i,j,k) * por_face_areaV(i,j,k);
+                        });
+                    }
+                } else {
+                    if (has_visc_rem_v) {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int i, int jj, int k)
+                        {
+                            h_v(i,j,k) = h(i,j+1,k) * (visc_rem_v(i,j,k) * por_face_areaV(i,j,k));
+                        });
+                    } else {
+                        ParallelFor(bxSeg, [=] AMREX_GPU_DEVICE (int i, int jj, int k)
+                        {
+                            h_v(i,j,k) = h(i,j+1,k) * por_face_areaV(i,j,k);
+                        });
+                    }
+                }
+            }
+        }
+    }
+    */
+}
 }

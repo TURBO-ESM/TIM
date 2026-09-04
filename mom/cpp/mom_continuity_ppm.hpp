@@ -130,4 +130,48 @@ void continuity_meridional_convergence(
     Array4<const Real> const&,
     Array4<const Real> const&,
     Real);
+
+/**
+ * @brief Zonal volume/thickness flux — PPM-reconstructed edge thickness
+ * advected by the zonal velocity, scaled by viscosity remnant and
+ * open-face area
+ */
+void zonal_flux_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    bool,
+    bool,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&);
+
+/**
+ * @brief Meridional volume/thickness flux — PPM-reconstructed edge thickness
+ * advected by the meridional velocity, scaled by viscosity remnant and
+ * open-face area
+ */
+void meridional_flux_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    bool,
+    bool,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&);
 }

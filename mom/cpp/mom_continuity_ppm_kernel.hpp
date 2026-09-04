@@ -147,6 +147,7 @@ Real continuity_convergence_point(Real const h_prev, Real const flux_out, Real c
     return amrex::max(h_prev - dt * IareaT * (flux_out - flux_in), h_min);
 }
 
+/**
  * @brief PPM-reconstructed volume/mass transport and its velocity derivative
  *        across one zonal or meridional face, for one candidate face velocity.
  *

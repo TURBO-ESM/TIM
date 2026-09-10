@@ -5,11 +5,10 @@
 
 #include "tim_coms_infra_C_API.h"
 #include "tim_coms_infra.hpp"
-#include "turbotmp_helper.hpp"
 
 int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val, bool global_chksum)
 {
-    amrex::Box bx({0,0,0},
+    amrex::Box bx({0, 0, 0},
                   {field_HOST->shape[0], field_HOST->shape[1], field_HOST->shape[2]});
 
     size_t num_points = bx.numPts();

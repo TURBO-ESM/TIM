@@ -156,9 +156,10 @@ void free_int_array4(IntA4Box& a4)
         The_Arena()->free(a4.data);
         a4.data = nullptr;
     }
-    if(a4.data_f) {
-	The_Arena()->free(a4.data_f);
-	a4.data_f = nullptr;
+    if (a4.data_f)
+    {
+        The_Arena()->free(a4.data_f);
+        a4.data_f = nullptr;
     }
 }
 

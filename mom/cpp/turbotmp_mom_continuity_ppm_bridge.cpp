@@ -488,7 +488,7 @@ void turbotmp_zonal_flux_thickness_bridge(const Box_C* bxC_HOST,
                                                     por_face_areaU_HOST->lb[2]);
 
     /// visc_rem_u_HOST may be absent (data == nullptr); only allocate/copy it when present.
-    const bool has_visc_rem_u = (visc_rem_u_HOST->data != nullptr);
+    const bool has_visc_rem_u = (visc_rem_u_HOST != nullptr && visc_rem_u_HOST->data != nullptr);
     turbotmp::A4Box visc_rem_u_DEV{};
     if (has_visc_rem_u) {
         visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1],
@@ -608,7 +608,7 @@ void turbotmp_meridional_flux_thickness_bridge(const Box_C* bxC_HOST,
                                                     por_face_areaV_HOST->lb[2]);
 
     /// visc_rem_v_HOST may be absent (data == nullptr); only allocate/copy it when present.
-    const bool has_visc_rem_v = (visc_rem_v_HOST->data != nullptr);
+    const bool has_visc_rem_v = (visc_rem_v_HOST != nullptr && visc_rem_v_HOST->data != nullptr);
     turbotmp::A4Box visc_rem_v_DEV{};
     if (has_visc_rem_v) {
         visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1],

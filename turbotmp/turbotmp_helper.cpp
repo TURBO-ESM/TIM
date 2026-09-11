@@ -7,7 +7,7 @@
 
 namespace turbotmp {
 
-A4Box make_array4(int nx, int ny, int nz, int ncomp)
+A4Box make_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
 {
     using namespace amrex;
 
@@ -18,7 +18,12 @@ A4Box make_array4(int nx, int ny, int nz, int ncomp)
     a4.nz = nz;
     a4.ncomp = ncomp;
 
-    a4.bx = Box(IntVect(0,0,0), IntVect(nx-1, ny-1, nz-1));
+    // lbx/lby/lbz are Fortran index-space lower bounds; position the box at the
+    // array's true absolute location (matching the bridge's own -1 conversion
+    // for Box_C), not just [0, shape-1] -- staggered-grid arrays legitimately
+    // have lb != 1.
+    a4.bx = Box(IntVect(lbx-1, lby-1, lbz-1),
+               IntVect(lbx-1 + nx-1, lby-1 + ny-1, lbz-1 + nz-1));
 
     const Long npts = ncomp*a4.bx.numPts();
 
@@ -70,7 +75,7 @@ void copy_FortranHost_to_array4(const double* f, A4Box& a4)
     Gpu::copy(Gpu::hostToDevice, f, f+n, d_f);
 
 
-    // Tranpose array from Fortran to C
+    // Transpose array from Fortran to C
     ParallelFor(bx, ncomp,  [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
     {
         int ii = i - lo.x;
@@ -113,6 +118,112 @@ void copy_array4_to_FortranHost(const A4Box& a4, double* f)
     Gpu::copy(Gpu::deviceToHost, d_f, d_f+n,f);
     Gpu::streamSynchronize();
 
+}
+
+IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
+{
+    using namespace amrex;
+
+    IntA4Box a4;
+
+    a4.nx = nx;
+    a4.ny = ny;
+    a4.nz = nz;
+    a4.ncomp = ncomp;
+
+    // See make_array4()'s lbx/lby/lbz comment -- identical convention.
+    a4.bx = Box(IntVect(lbx-1, lby-1, lbz-1),
+               IntVect(lbx-1 + nx-1, lby-1 + ny-1, lbz-1 + nz-1));
+
+    const Long npts = ncomp*a4.bx.numPts();
+
+    // Allocate in AMReX arena (GPU-aware)
+    a4.data   = (int*) The_Arena()->alloc(npts * sizeof(int));
+    a4.data_f = (int*) The_Arena()->alloc(npts * sizeof(int));
+
+    // setup AMReX views
+    a4.arr = Array4<int>(a4.data, lbound(a4.bx), ubound(a4.bx), ncomp);
+
+    return a4;
+}
+
+void free_int_array4(IntA4Box& a4)
+{
+    using namespace amrex;
+
+    if (a4.data)
+    {
+        The_Arena()->free(a4.data);
+        a4.data = nullptr;
+    }
+    if(a4.data_f) {
+	The_Arena()->free(a4.data_f);
+	a4.data_f = nullptr;
+    }
+}
+
+void copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4)
+{
+    using namespace amrex;
+
+    int nx = a4.nx;
+    int ny = a4.ny;
+    int nz = a4.nz;
+    int ncomp = a4.ncomp;
+
+    auto arr = a4.arr;
+    int* d_f = a4.data_f;
+    Box bx = a4.bx;
+
+    auto lo = lbound(bx);
+
+    // Total number of elements
+    Long n = static_cast<Long>(nx) * ny * nz * ncomp;
+
+    // Copy host -> device
+    Gpu::copy(Gpu::hostToDevice, f, f+n, d_f);
+
+    // Transpose array from Fortran to C
+    ParallelFor(bx, ncomp,  [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
+    {
+        int ii = i - lo.x;
+	int jj = j - lo.y;
+	int kk = k - lo.z;
+        int idx = ii + nx*(jj + ny*(kk + nz*nc));  // Fortran layout with component stride
+        arr(i,j,k,nc) = d_f[idx];
+    });
+    Gpu::streamSynchronize();
+}
+
+void copy_int_array4_to_FortranHost(const IntA4Box& a4, int* f)
+{
+    using namespace amrex;
+
+    int nx = a4.nx;
+    int ny = a4.ny;
+    int nz = a4.nz;
+    int ncomp = a4.ncomp;
+
+    auto arr = a4.arr;
+    int* d_f = a4.data_f;
+    Box bx = a4.bx;
+
+    auto lo = lbound(bx);
+
+    Long n = static_cast<Long>(nx) * ny * nz * ncomp;
+
+    ParallelFor(bx, ncomp, [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
+    {
+        int ii = i - lo.x;
+	int jj = j - lo.y;
+	int kk = k - lo.z;
+        int idx = ii + nx*(jj + ny*(kk + nz*nc));  // Fortran layout with component stride
+        d_f[idx] = arr(i,j,k,nc);
+    });
+
+    // Copy device -> Host
+    Gpu::copy(Gpu::deviceToHost, d_f, d_f+n, f);
+    Gpu::streamSynchronize();
 }
 
 }

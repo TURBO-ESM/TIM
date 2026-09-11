@@ -4,6 +4,7 @@
  * @brief Box-level AMReX kernel implementations for MOM6 PPM continuity.
  */
 /// @brief Abort with @p msg annotated by the source file and line number.
+// SKILLS: 0.3.1
 #define AMREX_ABORT_LOC(msg) \
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 #include <AMReX.H>
@@ -359,6 +360,64 @@ void meridional_edge_thickness(
         });
     } else {
         PPM_reconstruction_y(bxC, h_in, h_S, h_N, mask2dT, h_min, monotonic, simple_2nd, obc);
+    }
+}
+
+//> Zonal continuity update: advances layer thickness by the convergence
+//  of the zonal thickness flux.
+void continuity_zonal_convergence(
+    const Box& bxC,                   //!< Iteration box for continuity solver
+    Array4<Real> const& h,            //!< Final layer thickness
+    Array4<const Real> const& uh,     //!< Zonal thickness flux, u*h*dy
+    Real dt,                          //!< Time increment
+    Array4<const Real> const& IareaT, //!< 1/areaT (2D, addressed at k=0)
+    Array4<const Real> const& hin,    //!< Initial layer thickness; may be absent (.p == nullptr),
+                                       //!< in which case the final thickness is also the initial
+                                       //!< thickness
+    Real h_min)                       //!< The minimum layer thickness
+{
+    BL_PROFILE("continuity_zonal_convergence");
+
+    if (hin.p != nullptr) {
+        ParallelFor(bxC, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            h(i,j,k) = continuity_convergence_point(hin(i,j,k), uh(i,j,k), uh(i-1,j,k), dt, IareaT(i,j,0), h_min);
+        });
+    } else {
+        // untested
+        ParallelFor(bxC, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            h(i,j,k) = continuity_convergence_point(h(i,j,k), uh(i,j,k), uh(i-1,j,k), dt, IareaT(i,j,0), h_min);
+        });
+    }
+}
+
+//> Meridional continuity update: advances layer thickness by the
+//  convergence of the meridional thickness flux.
+void continuity_meridional_convergence(
+    const Box& bxC,                   //!< Iteration box for continuity solver
+    Array4<Real> const& h,            //!< Final layer thickness
+    Array4<const Real> const& vh,     //!< Meridional thickness flux, v*h*dx
+    Real dt,                          //!< Time increment
+    Array4<const Real> const& IareaT, //!< 1/areaT (2D, addressed at k=0)
+    Array4<const Real> const& hin,    //!< Initial layer thickness; may be absent (.p == nullptr),
+                                       //!< in which case the final thickness is also the initial
+                                       //!< thickness
+    Real h_min)                       //!< The minimum layer thickness
+{
+    BL_PROFILE("continuity_meridional_convergence");
+
+    if (hin.p != nullptr) {
+        // untested
+        ParallelFor(bxC, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            h(i,j,k) = continuity_convergence_point(hin(i,j,k), vh(i,j,k), vh(i,j-1,k), dt, IareaT(i,j,0), h_min);
+        });
+    } else {
+        ParallelFor(bxC, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            h(i,j,k) = continuity_convergence_point(h(i,j,k), vh(i,j,k), vh(i,j-1,k), dt, IareaT(i,j,0), h_min);
+        });
     }
 }
 }

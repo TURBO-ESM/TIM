@@ -50,13 +50,16 @@ void turbotmp_thickness_to_dz_3d_bridge(const Box_C* bx_HOST,
     /// Allocate one A4Box per array, sized by RealArray_C::shape[]
     auto h_DEV       = turbotmp::make_array4(h_HOST->shape[0],
                                              h_HOST->shape[1],
-                                             h_HOST->shape[2], 1);
+                                             h_HOST->shape[2], 1,
+                                             h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
     auto dz_DEV      = turbotmp::make_array4(dz_HOST->shape[0],
                                              dz_HOST->shape[1],
-                                             dz_HOST->shape[2], 1);
+                                             dz_HOST->shape[2], 1,
+                                             dz_HOST->lb[0], dz_HOST->lb[1], dz_HOST->lb[2]);
     auto spv_avg_DEV = turbotmp::make_array4(spv_avg_HOST->shape[0],
                                              spv_avg_HOST->shape[1],
-                                             spv_avg_HOST->shape[2], 1);
+                                             spv_avg_HOST->shape[2], 1,
+                                             spv_avg_HOST->lb[0], spv_avg_HOST->lb[1], spv_avg_HOST->lb[2]);
 
     /// Copy host -> device for every array, including the inout dz so its
     /// halo values are preserved across the call (lessons.md §7 #1).

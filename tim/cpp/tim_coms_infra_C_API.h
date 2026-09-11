@@ -16,9 +16,8 @@ extern "C" {
 /// @param field_HOST Per-rank field data (host, Fortran order).
 /// @param mask_val   Value marking masked elements (compared bitwise);
 ///                   pass NULL for an unmasked checksum.
-/// @param global_chksum Flag indicating to perform all rank reduction after local cheksum
 /// @return The global checksum (identical on every rank).
-int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val, bool global_chksum);
+int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val);
 
 #ifdef __cplusplus
 }

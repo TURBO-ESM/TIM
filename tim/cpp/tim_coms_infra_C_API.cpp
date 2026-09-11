@@ -6,7 +6,7 @@
 #include "tim_coms_infra_C_API.h"
 #include "tim_coms_infra.hpp"
 
-int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val, bool global_chksum)
+int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
 {
     amrex::Box bx({0, 0, 0},
                   {field_HOST->shape[0], field_HOST->shape[1], field_HOST->shape[2]});

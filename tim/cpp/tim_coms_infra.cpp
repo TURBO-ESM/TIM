@@ -52,23 +52,20 @@ namespace TIM {
 
 amrex::Long checksum(amrex::Box const& bx,
                      amrex::Array4<amrex::Real> const& arr,
-                     std::optional<amrex::Real> mask,
-                     bool global_chksum)
+                     std::optional<amrex::Real> mask)
 {
     amrex::Long checksum = local_checksum(bx, arr, mask);
-    if(global_chksum)
-        amrex::ParallelDescriptor::ReduceLongSum(checksum);
+    amrex::ParallelDescriptor::ReduceLongSum(checksum);
     return checksum;
 }
 
-amrex::Long checksum(amrex::MultiFab const& mf, std::optional<amrex::Real> mask, bool global_chksum)
+amrex::Long checksum(amrex::MultiFab const& mf, std::optional<amrex::Real> mask)
 {
     amrex::Long checksum = 0;
     for (amrex::MFIter mfi(mf, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi) {
         checksum += local_checksum(mfi.growntilebox(), mf.const_array(mfi), mask);
     }
-    if(global_chksum)
-        amrex::ParallelDescriptor::ReduceLongSum(checksum);
+    amrex::ParallelDescriptor::ReduceLongSum(checksum);
     return checksum;
 }
 

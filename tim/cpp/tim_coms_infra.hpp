@@ -18,20 +18,16 @@ namespace TIM {
     ///                  including ghost rows and neighboring data
     /// @param mask      If set, value marking masked elements (compared
     ///                  bitwise) to exclude from the checksum.
-    /// @param global_chksum Flag indicating to perform all rank checksum.
     /// @return The global checksum (identical on every rank).
     amrex::Long checksum(amrex::Box const& bx,
                          amrex::Array4<amrex::Real> const& arr,
-                         std::optional<amrex::Real> mask = std::nullopt,
-                         bool global_chksum = false);
+                         std::optional<amrex::Real> mask = std::nullopt);
     /// @brief Bitwise checksum of a distributed field.
     /// @param mf        Field to compute checksum of, including however many
     ///                  ghost cells it was allocated with.
     /// @param mask      If set, value marking masked elements (compared
     ///                  bitwise) to exclude from the checksum.
-    /// @param global_chksum Flag indicating to perform all rank checksum.
     /// @return The global checksum (identical on every rank).
     amrex::Long checksum(amrex::MultiFab const& mf,
-                         std::optional<amrex::Real> mask = std::nullopt,
-                         bool global_chksum = false);
+                         std::optional<amrex::Real> mask = std::nullopt);
 }  // namespace TIM

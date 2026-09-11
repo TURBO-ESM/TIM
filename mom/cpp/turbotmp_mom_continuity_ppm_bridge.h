@@ -8,6 +8,10 @@
 #include "turbotmp_bridge_c_types.h"
 
 struct OceanOBC;    // Undefined at the moment
+struct transport_adjust_CS_C;   // Defined in mom_continuity_ppm.hpp -- field-for-field
+                                 // mirror of the Fortran bind(C) type of the same name.
+                                 // A forward declaration suffices here: every prototype
+                                 // below only takes a pointer to it.
 
 #ifdef __cplusplus
 extern "C" {

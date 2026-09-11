@@ -48,9 +48,9 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
 	   IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1);
-    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2], 1);
-    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2], 1);
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0], h_L_HOST->shape[1], h_L_HOST->shape[2], 1, h_L_HOST->lb[0], h_L_HOST->lb[1], h_L_HOST->lb[2]);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0], h_R_HOST->shape[1], h_R_HOST->shape[2], 1, h_R_HOST->lb[0], h_R_HOST->lb[1], h_R_HOST->lb[2]);
 
     /// Copy from Fortran arrays to A4 container
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
@@ -104,9 +104,9 @@ void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST,
            IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1);
-    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2], 1);
-    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2], 1);
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0], h_L_HOST->shape[1], h_L_HOST->shape[2], 1, h_L_HOST->lb[0], h_L_HOST->lb[1], h_L_HOST->lb[2]);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0], h_R_HOST->shape[1], h_R_HOST->shape[2], 1, h_R_HOST->lb[0], h_R_HOST->lb[1], h_R_HOST->lb[2]);
 
     /// Copy from Fortran arrays to A4 container
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
@@ -167,10 +167,10 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2],    1);
-    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1],  h_S_HOST->shape[2],     1);
-    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1],  h_N_HOST->shape[2],     1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,               1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy from Fortran arrays to A4 container
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
@@ -237,10 +237,10 @@ void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0],    h_in_HOST->shape[1],    h_in_HOST->shape[2], 1);
-    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0],     h_W_HOST->shape[1],     h_W_HOST->shape[2],  1);
-    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0],     h_E_HOST->shape[1],     h_E_HOST->shape[2],  1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,                   1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy host → device (h_W and h_E are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
@@ -307,10 +307,10 @@ void turbotmp_zonal_edge_thickness_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0],    h_in_HOST->shape[1],    h_in_HOST->shape[2], 1);
-    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0],     h_W_HOST->shape[1],     h_W_HOST->shape[2],  1);
-    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0],     h_E_HOST->shape[1],     h_E_HOST->shape[2],  1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,                   1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy host → device (h_W and h_E are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
@@ -379,10 +379,10 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0],    h_in_HOST->shape[1],    h_in_HOST->shape[2], 1);
-    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0],     h_S_HOST->shape[1],     h_S_HOST->shape[2],  1);
-    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0],     h_N_HOST->shape[1],     h_N_HOST->shape[2],  1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,                   1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy host → device (h_S and h_N are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);

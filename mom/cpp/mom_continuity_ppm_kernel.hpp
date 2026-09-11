@@ -120,4 +120,125 @@ void edge_thickness_upwind_point(Real& h_L, Real& h_R, Real const h_in) noexcept
     h_L = h_in;
     h_R = h_in;
 }
+
+/**
+ * @brief Advances a layer thickness by the convergence of a thickness flux.
+ *
+ *  Shared by continuity_zonal_convergence (flux_out/flux_in = uh(i,j,k)/uh(i-1,j,k))
+ *  and continuity_meridional_convergence (flux_out/flux_in = vh(i,j,k)/vh(i,j-1,k)),
+ *  and by both branches of each (h_prev = hin(i,j,k) when present, else h(i,j,k)
+ *  itself) -- the stencil read happens at the call site, this primitive only
+ *  combines already-indexed scalars.
+ *
+ *  @param h_prev   Thickness before this update -- hin(i,j,k), or h(i,j,k) itself
+ *                  when hin is absent [H ~> m or kg m-2].
+ *  @param flux_out Thickness flux out of the cell's high-index face [H L2 T-1 ~> m3 s-1].
+ *  @param flux_in  Thickness flux out of the cell's low-index face [H L2 T-1 ~> m3 s-1].
+ *  @param dt       Time increment [T ~> s].
+ *  @param IareaT   1/areaT for this column [L-2 ~> m-2].
+ *  @param h_min    The minimum layer thickness [H ~> m or kg m-2].
+ *  @return         The updated layer thickness, floored at @p h_min [H ~> m or kg m-2].
+ */
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+Real continuity_convergence_point(Real const h_prev, Real const flux_out, Real const flux_in,
+                                  Real const dt, Real const IareaT, Real const h_min) noexcept
+{
+    return amrex::max(h_prev - dt * IareaT * (flux_out - flux_in), h_min);
+}
+
+/**
+ * @brief PPM-reconstructed volume/mass transport and its velocity derivative
+ *        across one zonal or meridional face, for one candidate face velocity.
+ *
+ *  @param u             Zonal or meridional velocity [L T-1 ~> m s-1].
+ *  @param h             Layer thickness [H ~> m or kg m-2].
+ *  @param h_p1          Layer thickness, offset by 1 [H ~> m or kg m-2].
+ *  @param h_L           West/South edge thickness [H ~> m or kg m-2].
+ *  @param h_L_p1        West/South edge thickness, offset by 1 [H ~> m or kg m-2].
+ *  @param h_R           East/North edge thickness [H ~> m or kg m-2].
+ *  @param h_R_p1        East/North edge thickness, offset by 1 [H ~> m or kg m-2].
+ *  @param uh            Zonal or meridional mass/volume transport [H L2 T-1 ~> m3 s-1 or kg s-1].
+ *  @param duhdu         Partial derivative of uh with u [H L ~> m2 or kg m-1].
+ *  @param visc_rem      Fraction of momentum/barotropic acceleration remaining after viscosity [nondim].
+ *  @param G_dy_Cu       Unblocked u/v-face length of the h-cell [L ~> m].
+ *  @param G_IareaT      1/areaT [L-2 ~> m-2].
+ *  @param G_IareaT_p1   1/areaT, offset by 1 [L-2 ~> m-2].
+ *  @param G_IdxT        1/dxT [L-1 ~> m-1].
+ *  @param G_IdxT_p1     1/dxT, offset by 1 [L-1 ~> m-1].
+ *  @param dt            Time increment [T ~> s].
+ *  @param vol_CFL       If true, rescale the ratio of face areas to cell areas when estimating CFL.
+ *  @param por_face_area Fractional open area of the U/V-face [nondim].
+ *
+ *  @note On return, @p uh and @p duhdu hold the computed transport and derivative.
+ */
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void flux_elem_point(Real const u,
+                     Real const h,
+                     Real const h_p1,
+                     Real const h_L,
+                     Real const h_L_p1,
+                     Real const h_R,
+                     Real const h_R_p1,
+                     Real& uh,
+                     Real& duhdu,
+                     Real const visc_rem,
+                     Real const G_dy_Cu,
+                     Real const G_IareaT,
+                     Real const G_IareaT_p1,
+                     Real const G_IdxT,
+                     Real const G_IdxT_p1,
+                     Real const dt,
+                     bool const vol_CFL,
+                     Real const por_face_area) noexcept
+{
+    Real const tmp = G_dy_Cu * por_face_area;
+    Real CFL, curv_3, h_marg, dh;
+
+    if (u > 0.0_rt) {
+        if (vol_CFL) {
+            CFL = (u * dt) * (G_dy_Cu * G_IareaT);
+        } else {
+            CFL = u * dt * G_IdxT;
+        }
+        curv_3 = (h_L + h_R) - 2.0_rt*h;
+        dh = h_L - h_R;
+        uh = tmp * u * (h_R + CFL * (0.5_rt*dh + curv_3*(CFL - 1.5_rt)));
+        h_marg = h_R + CFL * (dh + 3.0_rt*curv_3*(CFL - 1.0_rt));
+    } else if (u < 0.0_rt) {
+        if (vol_CFL) {
+            CFL = (-u * dt) * (G_dy_Cu * G_IareaT_p1);
+        } else {
+            CFL = -u * dt * G_IdxT_p1;
+        }
+        curv_3 = (h_L_p1 + h_R_p1) - 2.0_rt*h_p1;
+        dh = h_R_p1 - h_L_p1;
+        uh = tmp * u * (h_L_p1 + CFL * (0.5_rt*dh + curv_3*(CFL - 1.5_rt)));
+        h_marg = h_L_p1 + CFL * (dh + 3.0_rt*curv_3*(CFL - 1.0_rt));
+    } else {
+        uh = 0.0_rt;
+        h_marg = 0.5_rt * (h_L_p1 + h_R);
+    }
+    duhdu = tmp * h_marg * visc_rem;
+}
+
+/**
+ * @brief Maximum ratio of a/b or maxrat.
+ *
+ *  @param a      Numerator, in arbitrary units [A].
+ *  @param b      Denominator, in arbitrary units [B].
+ *  @param maxrat Maximum value of ratio [A B-1].
+ *  @return       a/b, capped at maxrat in magnitude [A B-1].
+ */
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+Real ratio_max_point(Real const a, Real const b, Real const maxrat) noexcept
+{
+    if (amrex::Math::abs(a) > amrex::Math::abs(maxrat * b)) {
+        return maxrat;
+    } else {
+        return a / b;
+    }
+}
 }

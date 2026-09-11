@@ -26,5 +26,8 @@ struct Box_C {
 /* C has no implicit `struct` elision, so a C translation unit cannot spell these
  * as bare `RealArray_C` / `Box_C` the way C++ can.  The typedefs make the plain
  * names usable from both languages; they are redundant-but-legal in C++. */
+
+/// @brief Alias letting C callers spell the array view without the `struct` keyword.
 typedef struct RealArray_C RealArray_C;
+/// @brief Alias letting C callers spell the index box without the `struct` keyword.
 typedef struct Box_C       Box_C;

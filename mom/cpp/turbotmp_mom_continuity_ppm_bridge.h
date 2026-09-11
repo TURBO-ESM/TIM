@@ -17,6 +17,7 @@
  * what lets a C caller spell the parameter `OceanOBC*` rather than
  * `struct OceanOBC*`. */
 struct OceanOBC;
+/// @brief Alias letting C callers spell the opaque OBC handle without the `struct` keyword.
 typedef struct OceanOBC OceanOBC;
 
 #ifdef __cplusplus

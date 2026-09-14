@@ -17,7 +17,7 @@ namespace {
 // overload, kept apart from the cross-rank reduction so callers that need to
 // sum several boxes (e.g. a MultiFab's local boxes) can do so with a single
 // ParallelDescriptor::ReduceLongSum instead of one per box.
-amrex::Long local_checksum(amrex::Box const& bx, amrex::Array4<amrex::Real> const& arr,
+amrex::Long local_checksum(amrex::Box const& bx, amrex::Array4<const amrex::Real> const& arr,
                            std::optional<amrex::Real> mask)
 {
     amrex::Reducer<amrex::ReduceOpSum, amrex::Long> reducer;

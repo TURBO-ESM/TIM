@@ -20,7 +20,7 @@ namespace TIM {
     ///                  bitwise) to exclude from the checksum.
     /// @return The global checksum (identical on every rank).
     amrex::Long checksum(amrex::Box const& bx,
-                         amrex::Array4<amrex::Real> const& arr,
+                         amrex::Array4<const amrex::Real> const& arr,
                          std::optional<amrex::Real> mask = std::nullopt);
     /// @brief Bitwise checksum of a distributed field.
     /// @param mf        Field to compute checksum of, including however many

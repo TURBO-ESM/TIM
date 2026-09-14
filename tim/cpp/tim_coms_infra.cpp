@@ -51,7 +51,7 @@ amrex::Long local_checksum(amrex::Box const& bx, amrex::Array4<amrex::Real> cons
 namespace TIM {
 
 amrex::Long checksum(amrex::Box const& bx,
-                     amrex::Array4<amrex::Real> const& arr,
+                     amrex::Array4<const amrex::Real> const& arr,
                      std::optional<amrex::Real> mask)
 {
     amrex::Long checksum = local_checksum(bx, arr, mask);

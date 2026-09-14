@@ -7,7 +7,18 @@
 
 #include "turbotmp_bridge_c_types.h"
 
-struct OceanOBC;    // Undefined at the moment
+/* The declarations below take `bool` by value.  C++ has it as a keyword; C needs
+ * this header (a no-op in C++, so it is guarded only to keep the intent obvious). */
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
+
+/* Opaque: the OBC structure is never dereferenced on this side.  The typedef is
+ * what lets a C caller spell the parameter `OceanOBC*` rather than
+ * `struct OceanOBC*`. */
+struct OceanOBC;
+/// @brief Alias letting C callers spell the opaque OBC handle without the `struct` keyword.
+typedef struct OceanOBC OceanOBC;
 
 #ifdef __cplusplus
 extern "C" {

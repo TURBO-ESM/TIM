@@ -171,4 +171,8 @@ amrex::Periodicity Domain::periodicity() const {
     return geometry_2d_.periodicity();
 }
 
+void Domain::pass_var(amrex::MultiFab& mf) const {
+    mf.FillBoundary(geometry_2d_.periodicity());
+}
+
 }  // namespace TIM

@@ -51,6 +51,7 @@ if(AMReX_GPU_BACKEND STREQUAL "CUDA")
     runtime/test_runtime_guest.cpp
     domain/test_tim_domain.cpp
     time/test_tim_time.cpp
+    coms_infra/test_tim_checksum.cpp
     PROPERTIES LANGUAGE CUDA)
 endif()
 
@@ -76,6 +77,18 @@ add_executable(test_tim_time
   time/test_tim_time.cpp
 )
 
+add_executable(test_tim_checksum
+  test_tim_main.cpp
+  coms_infra/test_tim_checksum.cpp
+)
+
+# tim_coms_infra_C_API.h (pulled in transitively through the tim library)
+# includes turbotmp_bridge_c_types.h, which lives in mom/cpp rather than
+# tim/cpp's own include path.
+target_include_directories(test_tim_checksum PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../mom/cpp
+)
+
 target_link_libraries(test_tim_smoke
   GTest::gtest
   tim
@@ -91,6 +104,11 @@ endforeach()
 
 target_link_libraries(test_tim_time
   GTest::gtest_main
+  tim
+)
+
+target_link_libraries(test_tim_checksum
+  GTest::gtest
   tim
 )
 
@@ -113,5 +131,9 @@ gtest_discover_tests(test_tim_domain
   PROPERTIES LABELS "unit")
 
 gtest_discover_tests(test_tim_time
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES LABELS "unit")
+
+gtest_discover_tests(test_tim_checksum
   DISCOVERY_MODE PRE_TEST
   PROPERTIES LABELS "unit")

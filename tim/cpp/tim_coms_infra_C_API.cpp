@@ -16,7 +16,7 @@ int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
 
     size_t num_points = bx.numPts();
 
-    amrex::Real* device_array = static_cast<amrex::Real*>(amrex::TheArena()->alloc(num_points * sizeof(amrex::Real)));
+    amrex::Real* device_array = static_cast<amrex::Real*>(amrex::The_Arena()->alloc(num_points * sizeof(amrex::Real)));
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, field_HOST->data, field_HOST->data+num_points, device_array);
 
     amrex::BaseFab<amrex::Real> non_owning_fab(bx, num_points, device_array);
@@ -28,7 +28,7 @@ int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
     int64_t chksum = mask_val ? TIM::checksum(bx, array_1d, *mask_val)
                               : TIM::checksum(bx, array_1d);
 
-    amrex::TheArena()->free(device_array);
+    amrex::The_Arena()->free(device_array);
 
     return chksum;
 }

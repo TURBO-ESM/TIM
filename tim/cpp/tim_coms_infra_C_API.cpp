@@ -28,7 +28,7 @@ int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
     int64_t chksum = mask_val ? TIM::checksum(bx, array_1d, *mask_val)
                               : TIM::checksum(bx, array_1d);
 
-    TheArena()->free(device_array);
+    amrex::TheArena()->free(device_array);
 
     return chksum;
 }

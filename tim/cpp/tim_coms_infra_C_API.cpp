@@ -7,6 +7,7 @@
 #include "tim_coms_infra.hpp"
 
 #include <AMReX_Arena.H>
+#include <AMReX_Gpu.H>
 
 int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
 {

@@ -6,6 +6,8 @@
 #include "tim_coms_infra_C_API.h"
 #include "tim_coms_infra.hpp"
 
+#include <AMReX_Arena.H>
+
 int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
 {
     amrex::Box bx({0, 0, 0},

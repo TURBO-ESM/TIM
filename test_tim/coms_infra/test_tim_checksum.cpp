@@ -112,7 +112,7 @@ TEST(Checksum, MultiFabNghostIncludesGhostCells) {
 
     const amrex::Long expected =
         bits_of(data_value) * (ni + 2 * halo) * (nj + 2 * halo);
-    EXPECT_EQ(TIM::checksum(field, domain.nghost()), expected);
+    EXPECT_EQ(TIM::checksum(field), expected);
 }
 
 TEST(Checksum, MultiFabMaskExcludesMatchingElements) {

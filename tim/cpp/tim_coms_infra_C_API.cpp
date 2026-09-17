@@ -17,7 +17,7 @@ int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
     size_t num_points = bx.numPts();
 
     amrex::Real* device_array = static_cast<amrex::Real*>(TheArena()->alloc(num_points * sizeof(amrex::Real)));
-    Gpu::copy(Gpu::hostToDevice, field_HOST->data, field_HOST.data+num_points, device_array);
+    Gpu::copy(Gpu::hostToDevice, field_HOST->data, field_HOST->data+num_points, device_array);
 
     amrex::BaseFab<amrex::Real> non_owning_fab(bx, num_points, device_array);
     auto array_1d = non_owning_fab.array();

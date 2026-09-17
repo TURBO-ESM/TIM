@@ -82,13 +82,6 @@ add_executable(test_tim_checksum
   coms_infra/test_tim_checksum.cpp
 )
 
-# tim_coms_infra_C_API.h (pulled in transitively through the tim library)
-# includes turbotmp_bridge_c_types.h, which lives in mom/cpp rather than
-# tim/cpp's own include path.
-target_include_directories(test_tim_checksum PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/../mom/cpp
-)
-
 target_link_libraries(test_tim_smoke
   GTest::gtest
   tim

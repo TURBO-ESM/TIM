@@ -123,12 +123,14 @@ TEST(Checksum, MultiFabMaskExcludesMatchingElements) {
     amrex::MultiFab field = make_single_box_field(4, 3);
     field.setVal(mask_value);
 
-    amrex::MFIter mfi(field);
-    ASSERT_TRUE(mfi.isValid());
-    amrex::Array4<amrex::Real> const arr = field.array(mfi);
-    amrex::ParallelFor(n_unmasked, [=] AMREX_GPU_DEVICE (int n) {
-        arr(n, 0, 0) = data_value;
-    });
+    {
+        amrex::MFIter mfi(field);
+        ASSERT_TRUE(mfi.isValid());
+        amrex::Array4<amrex::Real> const arr = field.array(mfi);
+        amrex::ParallelFor(n_unmasked, [=] AMREX_GPU_DEVICE (int n) {
+            arr(n, 0, 0) = data_value;
+        });
+    }
 
     const amrex::Long expected = bits_of(data_value) * n_unmasked;
     EXPECT_EQ(TIM::checksum(field, mask_value), expected);

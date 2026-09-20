@@ -4,6 +4,7 @@ use iso_fortran_env, only : int32, int64
 use iso_c_binding,   only : c_int64_t, c_double, c_size_t, c_ptr, c_null_ptr, c_loc
 use array_mod, only : RealArray_c
 use box_mod,   only : Box_c
+use mpp_mod,   only : mpp_error, WARNING
 implicit none
 private
 
@@ -36,6 +37,10 @@ function tim_chksum_real_0d(field, pelist, mask_val) result(chksum)
   type(c_ptr)                           :: mask_loc !< c pointers to field and mask
   integer(kind=int64)                   :: chksum              !< checksum of array
 
+  if(present(pelist)) then
+    call mpp_error(WARNING, 'tim_chksum_real_0d: pelist argument is not supported; the specific PE list is ignored')
+  end if
+
   call field_in%alloc(lb=[1], ub=[1], source=[field])
 
   if(present(mask_val)) then
@@ -56,6 +61,10 @@ function tim_chksum_real_1d(field, pelist, mask_val) result(chksum)
   type(RealArray_C)                      :: field_in
   type(c_ptr)                            :: mask_loc !< c pointers to field and mask
   integer(kind=int64)                    :: chksum              !< checksum of array
+
+  if(present(pelist)) then
+    call mpp_error(WARNING, 'tim_chksum_real_1d: pelist argument is not supported; the specific PE list is ignored')
+  end if
 
   call field_in%alloc(lb=LBOUND(field), ub=UBOUND(field), source=field)
 
@@ -78,6 +87,10 @@ function tim_chksum_real_2d(field, pelist, mask_val) result(chksum)
   type(c_ptr)                              :: mask_loc !< c pointers to field and mask
   type(c_bool)                             :: global_chksum
   integer(kind=int64)                      :: chksum              !< checksum of array
+
+  if(present(pelist)) then
+    call mpp_error(WARNING, 'tim_chksum_real_2d: pelist argument only triggers a global checksum; the specific PE list is ignored')
+  end if
 
   call field_in%alloc(lb=LBOUND(field), ub=UBOUND(field), source=field)
 
@@ -103,6 +116,10 @@ function tim_chksum_real_3d(field, pelist, mask_val) result(chksum)
   type(c_bool)                               :: global_chksum
   integer(kind=int64)                        :: chksum              !< checksum of array
 
+  if(present(pelist)) then
+    call mpp_error(WARNING, 'tim_chksum_real_3d: pelist argument only triggers a global checksum; the specific PE list is ignored')
+  end if
+
   call field_in%alloc(lb=LBOUND(field), ub=UBOUND(field), source=field)
 
   if(present(mask_val)) then
@@ -127,8 +144,12 @@ function tim_chksum_real_4d(field, pelist, mask_val) result(chksum)
   type(c_bool)                                 :: global_chksum
   integer(kind=int64)                          :: chksum              !< checksum of array
 
+  if(present(pelist)) then
+    call mpp_error(WARNING, 'tim_chksum_real_4d: pelist argument only triggers a global checksum; the specific PE list is ignored')
+  end if
+
   call field_in%alloc(lb=LBOUND(field), ub=UBOUND(field), source=field)
-  
+
   if(present(mask_val)) then
     mask_loc = c_loc(mask_val)
   else

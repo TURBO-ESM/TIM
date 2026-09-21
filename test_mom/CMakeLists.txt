@@ -17,13 +17,31 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(test_mom CXX)
+enable_language(C Fortran)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(AMReX_GPU_BACKEND STREQUAL "CUDA")
     enable_language(CUDA)
+endif()
+
+# --- MPI based tests ------------------------------------------------------
+option(MPI_UNIT_TESTS "Build and run MPI based unit tests." OFF)
+
+# --- GTest ----------------------------------------------------------------
+option(TEST_MOM_FETCH_GTEST
+       "Download GoogleTest via FetchContent if find_package fails" ON)
+
+# --- Captured-data directory (used by --data-dir CLI flag) ---------------
+set(TEST_MOM_DATA_DIR ""
+    CACHE PATH "Directory containing the captured Fortran I/O .bin/.meta files")
+if(NOT TEST_MOM_DATA_DIR)
+    message(FATAL_ERROR
+        "TEST_MOM_DATA_DIR is not set. Pass\n"
+        "  -DTEST_MOM_DATA_DIR=/path/to/captured/fixtures\n"
+        "on the cmake configure line.")
 endif()
 
 # --- AMReX ----------------------------------------------------------------
@@ -43,10 +61,6 @@ if(NOT AMReX_FOUND)
     add_subdirectory(${AMREX_SOURCE_DIR}
                      ${CMAKE_CURRENT_BINARY_DIR}/_amrex)
 endif()
-
-# --- GTest ----------------------------------------------------------------
-option(TEST_MOM_FETCH_GTEST
-       "Download GoogleTest via FetchContent if find_package fails" ON)
 
 find_package(GTest QUIET)
 if(NOT GTest_FOUND)
@@ -69,27 +83,9 @@ endif()
 enable_testing()
 include(GoogleTest)
 
-# --- Captured-data directory (used by --data-dir CLI flag) ---------------
-set(TEST_MOM_DATA_DIR ""
-    CACHE PATH "Directory containing the captured Fortran I/O .bin/.meta files")
-if(NOT TEST_MOM_DATA_DIR)
-    message(FATAL_ERROR
-        "TEST_MOM_DATA_DIR is not set. Pass\n"
-        "  -DTEST_MOM_DATA_DIR=/path/to/captured/fixtures\n"
-        "on the cmake configure line.")
-endif()
-
 # --- MOM C++ kernels library (target: mom_continuity) ---------------------
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../mom/cpp
                  ${CMAKE_CURRENT_BINARY_DIR}/mom_cpp)
-
-# --- mom_continuity_ppm test ----------------------------------------------
-add_executable(test_mom_continuity_ppm
-    test_mom_main.cpp
-    common/captured_io.cpp
-    common/amrex_assertions.cpp
-    mom_continuity_ppm/test_mom_continuity_ppm.cpp
-)
 
 # Every source in this target includes AMReX headers. With the CUDA backend
 # those headers use __host__/__device__ qualifiers and CUDA kernel-launch
@@ -101,23 +97,18 @@ if(AMReX_GPU_BACKEND STREQUAL "CUDA")
         common/captured_io.cpp
         common/amrex_assertions.cpp
         mom_continuity_ppm/test_mom_continuity_ppm.cpp
+        boundary/test_boundary_exchange.cpp
         PROPERTIES LANGUAGE CUDA)
 endif()
 
-target_include_directories(test_mom_continuity_ppm
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/common
-)
-target_link_libraries(test_mom_continuity_ppm
-    PRIVATE
-        mom_continuity
-        GTest::gtest
-)
-gtest_discover_tests(test_mom_continuity_ppm
-    EXTRA_ARGS --data-dir=${TEST_MOM_DATA_DIR}
-    # Discover at test-run time rather than build time. With the CUDA backend
-    # the binary calls amrex::Initialize() which aborts on hosts without a GPU
-    # (e.g. Derecho login nodes), so running it at POST_BUILD would break the
-    # build.
-    DISCOVERY_MODE PRE_TEST
-)
+include(cmake/add_mpi_test.cmake)
+add_subdirectory(common)
+
+add_library(data_driven_shared_main OBJECT test_mom_main.cpp)
+target_link_libraries(data_driven_shared_main PUBLIC common)
+
+if(MPI_UNIT_TESTS)
+  add_subdirectory(boundary)
+else()
+  add_subdirectory(mom_continuity_ppm)
+endif()

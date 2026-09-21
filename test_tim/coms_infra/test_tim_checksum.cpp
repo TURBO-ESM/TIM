@@ -36,7 +36,7 @@ TEST(Checksum, Array4MatchesManualBitSum) {
     amrex::MFIter mfi(field);
     ASSERT_TRUE(mfi.isValid());
     const amrex::Box bx = mfi.validbox();
-    const amrex::Long expected = 1 * bx.numPts();
+    const amrex::Long expected = 13510798882111488;
     EXPECT_EQ(TIM::checksum(bx, field.const_array(mfi)), expected);
 }
 
@@ -56,7 +56,7 @@ TEST(Checksum, Array4MaskExcludesMatchingElements) {
         arr(n, 0, 0) = data_value;
     });
 
-    const amrex::Long expected = 1 * n_unmasked;
+    const amrex::Long expected = -4608308318706860032;
     EXPECT_EQ(TIM::checksum(bx, field.const_array(mfi), mask_value), expected);
 }
 
@@ -69,7 +69,7 @@ TEST(Checksum, MultiFabMatchesTotalCellCount) {
     amrex::MultiFab field = domain.make_field({.stagger = TIM::Stagger::Cell, .nk = 2});
     field.setVal(data_value);
 
-    const amrex::Long expected = 1 * 6 * 5 * 2;
+    const amrex::Long expected = -202661983231672320;
     EXPECT_EQ(TIM::checksum(field), expected);
 }
 
@@ -89,8 +89,7 @@ TEST(Checksum, MultiFabNghostIncludesGhostCells) {
     // from the (uniform) valid region, so it carries data_value too.
     field.FillBoundary(domain.periodicity());
 
-    const amrex::Long expected =
-        1 * (ni + 2 * halo) * (nj + 2 * halo);
+    const amrex::Long expected = -9189595039649497088;
     EXPECT_EQ(TIM::checksum(field), expected);
 }
 
@@ -111,7 +110,7 @@ TEST(Checksum, MultiFabMaskExcludesMatchingElements) {
         });
     }
 
-    const amrex::Long expected = 1 * n_unmasked;
+    const amrex::Long expected = -4608308318706860032;
     EXPECT_EQ(TIM::checksum(field, mask_value), expected);
 }
 

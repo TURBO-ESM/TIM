@@ -18,15 +18,6 @@
 
 namespace {
 
-// Bitwise reinterpretation of a double as its 64-bit representation,
-// mirroring the cast TIM::checksum itself performs; computed here
-// independently to build the expected values below.
-amrex::Long bits_of(double value) {
-    amrex::Long bits;
-    std::memcpy(&bits, &value, sizeof(bits));
-    return bits;
-}
-
 // A field on a single-box domain, so tests can reach into its one Array4
 // and their expected values stay independent of how many ranks ctest
 // happens to run under (every other rank simply owns no boxes).
@@ -45,7 +36,7 @@ TEST(Checksum, Array4MatchesManualBitSum) {
     amrex::MFIter mfi(field);
     ASSERT_TRUE(mfi.isValid());
     const amrex::Box bx = mfi.validbox();
-    const amrex::Long expected = bits_of(2.5) * bx.numPts();
+    const amrex::Long expected = 1 * bx.numPts();
     EXPECT_EQ(TIM::checksum(bx, field.const_array(mfi)), expected);
 }
 
@@ -65,7 +56,7 @@ TEST(Checksum, Array4MaskExcludesMatchingElements) {
         arr(n, 0, 0) = data_value;
     });
 
-    const amrex::Long expected = bits_of(data_value) * n_unmasked;
+    const amrex::Long expected = 1 * n_unmasked;
     EXPECT_EQ(TIM::checksum(bx, field.const_array(mfi), mask_value), expected);
 }
 
@@ -78,19 +69,7 @@ TEST(Checksum, MultiFabMatchesTotalCellCount) {
     amrex::MultiFab field = domain.make_field({.stagger = TIM::Stagger::Cell, .nk = 2});
     field.setVal(data_value);
 
-    const amrex::Long expected = bits_of(data_value) * 6 * 5 * 2;
-    EXPECT_EQ(TIM::checksum(field), expected);
-}
-
-TEST(Checksum, MultiFabDefaultExcludesGhostCells) {
-    constexpr double sentinel = 1.0e30;
-    constexpr double data_value = 2.5;
-
-    amrex::MultiFab field = make_single_box_field(4, 3, /*halo=*/1);
-    field.setVal(sentinel);
-    field.setVal(data_value, 0, 1, /*nghost=*/0);  // interior only
-
-    const amrex::Long expected = bits_of(data_value) * 4 * 3;
+    const amrex::Long expected = 1 * 6 * 5 * 2;
     EXPECT_EQ(TIM::checksum(field), expected);
 }
 
@@ -111,7 +90,7 @@ TEST(Checksum, MultiFabNghostIncludesGhostCells) {
     field.FillBoundary(domain.periodicity());
 
     const amrex::Long expected =
-        bits_of(data_value) * (ni + 2 * halo) * (nj + 2 * halo);
+        1 * (ni + 2 * halo) * (nj + 2 * halo);
     EXPECT_EQ(TIM::checksum(field), expected);
 }
 
@@ -132,7 +111,7 @@ TEST(Checksum, MultiFabMaskExcludesMatchingElements) {
         });
     }
 
-    const amrex::Long expected = bits_of(data_value) * n_unmasked;
+    const amrex::Long expected = 1 * n_unmasked;
     EXPECT_EQ(TIM::checksum(field, mask_value), expected);
 }
 

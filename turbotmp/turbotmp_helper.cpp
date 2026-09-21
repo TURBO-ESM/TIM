@@ -32,7 +32,7 @@ A4Box make_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
     a4.data_f = (Real*) The_Arena()->alloc(npts * sizeof(Real));
 
     // setup AMReX views
-    a4.arr = Array4<Real>(a4.data, lbound(a4.bx), ubound(a4.bx),ncomp);
+    a4.arr = Array4<Real>(a4.data, begin(a4.bx), end(a4.bx),ncomp);
 
     return a4;
 }
@@ -142,7 +142,7 @@ IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, in
     a4.data_f = (int*) The_Arena()->alloc(npts * sizeof(int));
 
     // setup AMReX views
-    a4.arr = Array4<int>(a4.data, lbound(a4.bx), ubound(a4.bx), ncomp);
+    a4.arr = Array4<int>(a4.data, begin(a4.bx), end(a4.bx), ncomp);
 
     return a4;
 }

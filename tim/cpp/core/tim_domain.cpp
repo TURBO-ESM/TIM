@@ -15,6 +15,7 @@
 #include <AMReX_ParallelDescriptor.H>
 
 #include "tim_domain.hpp"
+#include "tim_abort.hpp"
 #include "tim_runtime.hpp"
 
 namespace TIM {
@@ -168,6 +169,10 @@ amrex::MultiFab Domain::make_field(const FieldSpec spec) const {
 
 amrex::Periodicity Domain::periodicity() const {
     return geometry_2d_.periodicity();
+}
+
+void Domain::pass_var(amrex::MultiFab& mf) const {
+    mf.FillBoundary(geometry_2d_.periodicity());
 }
 
 }  // namespace TIM

@@ -1,10 +1,9 @@
 // mom_continuity_ppm.hpp
+// SKILLS: 0.3.1
 #pragma once
-/**
- * @file mom_continuity_ppm.hpp
- * @brief Box-level AMReX kernel declarations for MOM6 PPM continuity
- *        (piecewise parabolic reconstruction and edge-thickness routines).
- */
+/// @file mom_continuity_ppm.hpp
+/// @brief Box-level AMReX kernel declarations for MOM6 PPM continuity
+///        (piecewise parabolic reconstruction and edge-thickness routines).
 
 #include "mom_continuity_ppm_kernel.hpp"
 
@@ -29,26 +28,20 @@ struct transport_adjust_CS_C {
 namespace MOM {
 using amrex::Box;
 using amrex::Array4;
-/**
- * @brief Piecewise parabolic limiter
- */
+///  @brief Piecewise parabolic limiter
 void ppm_limit_pos(const Box &,
                    Array4<const Real> const&,
                    Array4<Real> const&,
                    Array4<Real> const&,
                    const Real);
 
-/**
- * @brief Piecewise parabolic limiter of Colella and Woodward, 1984
- */
+/// @brief Piecewise parabolic limiter of Colella and Woodward, 1984
 void ppm_limit_cw84(const Box&,
                     Array4<const Real> const&,
                     Array4<Real> const&,
                     Array4<Real> const&);
 
-/**
- * @brief Piecewise reconstruction in the y dimension
- */
+/// @brief Piecewise reconstruction in the y dimension
 void PPM_reconstruction_y(
     const Box&,
     Array4<const Real> const&,
@@ -60,9 +53,7 @@ void PPM_reconstruction_y(
     bool,
     OceanOBC*);
 
-/**
- * @brief Piecewise reconstruction in the x dimension
- */
+/// @brief Piecewise reconstruction in the x dimension
 void PPM_reconstruction_x(
     const Box&,
     Array4<const Real> const&,
@@ -74,9 +65,7 @@ void PPM_reconstruction_x(
     bool,
     OceanOBC*);
 
-/**
- * @brief Zonal edge thickness — upwind copy or x-direction PPM reconstruction
- */
+/// @brief Zonal edge thickness — upwind copy or x-direction PPM reconstruction
 void zonal_edge_thickness(
     const Box&,
     Array4<const Real> const&,
@@ -89,9 +78,7 @@ void zonal_edge_thickness(
     bool,
     OceanOBC*);
 
-/**
- * @brief Meridional edge thickness — upwind copy or y-direction PPM reconstruction
- */
+/// @brief Meridional edge thickness — upwind copy or y-direction PPM reconstruction
 void meridional_edge_thickness(
     const Box&,
     Array4<const Real> const&,
@@ -103,4 +90,26 @@ void meridional_edge_thickness(
     bool,
     bool,
     OceanOBC*);
+
+/// @brief Zonal continuity update — advances layer thickness by the
+/// convergence of the zonal thickness flux
+void continuity_zonal_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
+
+/// @brief Meridional continuity update — advances layer thickness by the
+///  convergence of the meridional thickness flux
+void continuity_meridional_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
 }

@@ -1,3 +1,4 @@
+// SKILLS: 0.3.1
 #pragma once
 /**
  * @file turbotmp_mom_continuity_ppm_bridge.h
@@ -7,7 +8,18 @@
 
 #include "turbotmp_bridge_c_types.h"
 
-struct OceanOBC;    // Undefined at the moment
+/* The declarations below take `bool` by value.  C++ has it as a keyword; C needs
+ * this header (a no-op in C++, so it is guarded only to keep the intent obvious). */
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
+
+/* Opaque: the OBC structure is never dereferenced on this side.  The typedef is
+ * what lets a C caller spell the parameter `OceanOBC*` rather than
+ * `struct OceanOBC*`. */
+struct OceanOBC;
+/// @brief Alias letting C callers spell the opaque OBC handle without the `struct` keyword.
+typedef struct OceanOBC OceanOBC;
 struct transport_adjust_CS_C;   // Defined in mom_continuity_ppm.hpp -- field-for-field
                                  // mirror of the Fortran bind(C) type of the same name.
                                  // A forward declaration suffices here: every prototype
@@ -35,21 +47,24 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST, const RealA
                         RealArray_C* h_S_HOST, RealArray_C* h_N_HOST, const RealArray_C* mask2dT_HOST,
                         const double h_min, const bool upwind_1st, const bool monotonic,
                         const bool simple_2nd, OceanOBC* obc);
-
 void turbotmp_zonal_flux_thickness_bridge(const Box_C* bxC_HOST, const RealArray_C* u_HOST,
                         const RealArray_C* h_HOST, const RealArray_C* h_W_HOST, const RealArray_C* h_E_HOST,
                         RealArray_C* h_u_HOST, const double dt, const RealArray_C* dy_Cu_HOST,
                         const RealArray_C* IareaT_HOST, const RealArray_C* IdxT_HOST,
                         const bool vol_CFL, const bool marginal, OceanOBC* obc,
                         const RealArray_C* por_face_areaU_HOST, const RealArray_C* visc_rem_u_HOST);
-
 void turbotmp_meridional_flux_thickness_bridge(const Box_C* bxC_HOST, const RealArray_C* v_HOST,
                         const RealArray_C* h_HOST, const RealArray_C* h_S_HOST, const RealArray_C* h_N_HOST,
                         RealArray_C* h_v_HOST, const double dt, const RealArray_C* dx_Cv_HOST,
                         const RealArray_C* IareaT_HOST, const RealArray_C* IdyT_HOST,
                         const bool vol_CFL, const bool marginal, OceanOBC* obc,
                         const RealArray_C* por_face_areaV_HOST, const RealArray_C* visc_rem_v_HOST);
-
+void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST, RealArray_C* h_HOST,
+                        const RealArray_C* uh_HOST, const double dt, const RealArray_C* IareaT_HOST,
+                        const RealArray_C* hin_HOST, const double h_min);
+void turbotmp_continuity_meridional_convergence_bridge(const Box_C* bxC_HOST, RealArray_C* h_HOST,
+                        const RealArray_C* vh_HOST, const double dt, const RealArray_C* IareaT_HOST,
+                        const RealArray_C* hin_HOST, const double h_min);
 #ifdef __cplusplus
 }
 #endif

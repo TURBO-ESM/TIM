@@ -91,6 +91,46 @@ void meridional_edge_thickness(
     bool,
     OceanOBC*);
 
+/// @brief Zonal volume/thickness flux — PPM-reconstructed edge thickness
+/// advected by the zonal velocity, scaled by viscosity remnant and
+/// open-face area
+void zonal_flux_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    bool,
+    bool,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&);
+
+/// @brief Meridional volume/thickness flux — PPM-reconstructed edge thickness
+/// advected by the meridional velocity, scaled by viscosity remnant and
+/// open-face area
+void meridional_flux_thickness(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    bool,
+    bool,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&);
+
 /// @brief Zonal continuity update — advances layer thickness by the
 /// convergence of the zonal thickness flux
 void continuity_zonal_convergence(

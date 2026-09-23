@@ -1,7 +1,7 @@
 module tim_coms_infra_interface
 
-use iso_fortran_env,         only : int32, int64
-use iso_c_binding,           only : c_int64_t, c_double, c_size_t, c_ptr, c_null_ptr, c_loc
+use iso_fortran_env,         only : int64
+use iso_c_binding,           only : c_int64_t, c_size_t, c_ptr, c_null_ptr, c_loc
 use turbotmp_bridge_c_types, only : RealArray_c
 use mpp_mod,                 only : mpp_error, WARNING
 implicit none

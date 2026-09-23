@@ -11,9 +11,9 @@ public :: tim_chksum
 
 interface tim_chksum_c
   function tim_chksum_c(field, mask_ptr, global_chksum) bind(c, name="tim_chksum_c")
-    import c_ptr, c_int64_t, c_size_t
+    import c_ptr, c_int64_t, c_size_t, RealArray_C
     integer(c_int64_t)                        :: tim_chksum_c
-    type(RealArray_C),      value, intent(in) :: field
+    type(RealArray_C),             intent(in) :: field
     type(c_ptr),            value, intent(in) :: mask_ptr
   end function tim_chksum_c
 end interface tim_chksum_c

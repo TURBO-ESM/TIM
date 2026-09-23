@@ -617,7 +617,7 @@ void meridional_flux_thickness(
         }
     }
     */
-
+}
 //> Zonal continuity update: advances layer thickness by the convergence
 //  of the zonal thickness flux.
 void continuity_zonal_convergence(

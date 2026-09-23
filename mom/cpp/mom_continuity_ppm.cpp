@@ -2,11 +2,12 @@
 ///
 /// @file mom_continuity_ppm.cpp
 /// @brief Box-level AMReX kernel implementations for MOM6 PPM continuity.
-///
+
 /// @brief Abort with @p msg annotated by the source file and line number.
-// SKILLS: 0.3.1
+/// @param msg Message to report before aborting.
 #define AMREX_ABORT_LOC(msg) \
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
+// SKILLS: 0.3.1
 #include <AMReX.H>
 #include <AMReX_FArrayBox.H>
 

@@ -91,11 +91,9 @@ void meridional_edge_thickness(
     bool,
     OceanOBC*);
 
-/**
- * @brief Zonal volume/thickness flux — PPM-reconstructed edge thickness
- * advected by the zonal velocity, scaled by viscosity remnant and
- * open-face area
- */
+/// @brief Zonal volume/thickness flux — PPM-reconstructed edge thickness
+/// advected by the zonal velocity, scaled by viscosity remnant and
+/// open-face area
 void zonal_flux_thickness(
     const Box&,
     Array4<const Real> const&,

@@ -243,7 +243,7 @@ add_subdirectory(tim/cpp)
 # every consumer today except the turbo-stack dev/turbo-debug lane -- should not
 # pay for building them or carry them in their link line.
 if(TIM_ENABLE_MOM_BRIDGE)
-  add_subdirectory(mom/cpp)
+  add_subdirectory(mom)
 endif()
 
 foreach(kind ${kinds})

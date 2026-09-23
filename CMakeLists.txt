@@ -154,6 +154,7 @@ list(APPEND tim_fortran_src_files
   time_manager/get_cal_time.F90
   time_manager/time_manager.F90
   libFMS.F90
+  mom/fortran/turbotmp_bridge_c_types.F90
   tim/fortran/tim_coms_infra_interface.F90
 )
 

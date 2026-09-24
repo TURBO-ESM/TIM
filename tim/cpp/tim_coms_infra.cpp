@@ -22,24 +22,25 @@ amrex::Long local_checksum(amrex::Box const& bx, amrex::Array4<const amrex::Real
 {
     amrex::Reducer<amrex::ReduceOpSum, amrex::Long> reducer;
     using Result_t = typename decltype(reducer)::Result_t;
-
+    const int ncomp = arr.nComp();
+    
     if (mask) {
         amrex::Long mask_bytes;
         std::memcpy(&mask_bytes, &(*mask), sizeof(mask_bytes));
 
-        reducer.eval(bx,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k) -> Result_t
+        reducer.eval(bx, ncomp
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) -> Result_t
             {
                 amrex::Long bits;
-                std::memcpy(&bits, &arr(i,j,k), sizeof(bits));
+                std::memcpy(&bits, &arr(i,j,k, n), sizeof(bits));
                 return { (bits == mask_bytes) ? 0 : bits };
             });
     } else {
-        reducer.eval(bx,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k) -> Result_t
+        reducer.eval(bx, ncomp
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) -> Result_t
             {
                 amrex::Long bits;
-                std::memcpy(&bits, &arr(i,j,k), sizeof(bits));
+                std::memcpy(&bits, &arr(i,j,k,n), sizeof(bits));
                 return bits;
             });
     }

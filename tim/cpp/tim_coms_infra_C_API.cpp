@@ -19,7 +19,7 @@ int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
     // Default 4th dimmension to 1 element unless in 4D case
     int ncomp = 1;
     if (field_HOST->dim == 4)
-      ncomp = field_HOST->shape[4];
+      ncomp = field_HOST->shape[3];
 
     amrex::Box bx({0, 0, 0},
                   {dim_size[0]-1, dim_size[1]-1, dim_size[2]-1});
@@ -30,13 +30,13 @@ int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, field_HOST->data, field_HOST->data+num_points, device_array);
 
     amrex::BaseFab<amrex::Real> non_owning_fab(bx, ncomp, device_array);
-    auto array_1d = non_owning_fab.array();
+    auto array4 = non_owning_fab.array();
 
     ///-------------------------------------------------
     /// Execute checksum
     ///-------------------------------------------------
-    int64_t chksum = mask_val ? TIM::checksum(bx, array_1d, *mask_val)
-                              : TIM::checksum(bx, array_1d);
+    int64_t chksum = mask_val ? TIM::checksum(bx, array4, *mask_val)
+                              : TIM::checksum(bx, array4);
 
     amrex::The_Arena()->free(device_array);
 

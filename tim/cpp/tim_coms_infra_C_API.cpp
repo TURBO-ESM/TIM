@@ -11,8 +11,11 @@
 
 int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val)
 {
+    int dim_size[3] = {1, 1, 1};
+    for (int d = 0; d < field_HOST->dim && d < 3; ++d)
+      dim_size[d] = field_HOST->shape[d];
     amrex::Box bx({0, 0, 0},
-                  {field_HOST->shape[0]-1, field_HOST->shape[1]-1, field_HOST->shape[2]-1});
+                  {dim_size[0]-1, dim_size[1]-1, dim_size[2]-1});
 
     size_t num_points = bx.numPts();
 

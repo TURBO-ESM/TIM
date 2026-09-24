@@ -3,7 +3,7 @@
  * @brief Implementation of the TIM checksum service.
  */
 
-// #include <bit>
+#include <cstring>
 
 #include <AMReX_Gpu.H>
 #include <AMReX_ParallelDescriptor.H>

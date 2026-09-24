@@ -30,14 +30,14 @@ function tim_chksum_real_0d(field, mask_val) result(chksum)
   type(RealArray_C)                     :: field_in
   type(c_ptr)                           :: mask_loc !< c pointers to field and mask
   integer(kind=int64)                   :: chksum              !< checksum of array
-  integer(c_int), target :: shp(1), lb(1), ub(1)
+  integer(c_int), target :: shp(3), lb(3), ub(3)
 
   shp=1; lb=1; ub=1
   field_in%data  = c_loc(field)
   field_in%shape = c_loc(shp)
   field_in%lb    = c_loc(lb)
   field_in%ub    = c_loc(ub)
-  field_in%rank  = 1
+  field_in%rank  = 3
 
   mask_loc = c_null_ptr
   if(present(mask_val)) mask_loc = c_loc(mask_val)

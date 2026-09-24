@@ -36,7 +36,7 @@ function tim_chksum_real_0d(field, mask_val) result(chksum)
   field_in%data  = c_loc(field)
   field_in%shape = c_loc(shp)
   field_in%lb    = c_loc(lb)
-  field_in%up    = c_loc(ub)
+  field_in%ub    = c_loc(ub)
   field_in%rank  = 1
 
   mask_loc = c_null_ptr

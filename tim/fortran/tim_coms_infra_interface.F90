@@ -55,7 +55,7 @@ function tim_chksum_real_nd(field, mask_val) result(chksum)
   if(present(mask_val)) mask_loc = c_loc(mask_val)
 
   chksum = tim_chksum_c(field, mask_loc)
-end function tim_chksum_real_1d
+end function tim_chksum_real_nd
 
 end module tim_coms_infra_interface
 

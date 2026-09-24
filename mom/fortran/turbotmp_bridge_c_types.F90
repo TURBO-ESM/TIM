@@ -22,4 +22,13 @@ module turbotmp_bridge_c_types
      integer(c_int) :: rank            !< The number of dimensions
   end type RealArray_C
 
+  !< LogicalArray struct for C bridge. The data pointer is integer-encoded
+  type, bind(C) :: LogicalArray_C
+     type(c_ptr) :: data               !< Storage pointer for array container
+     type(c_ptr) :: shape              !< An array of dimension extents
+     type(c_ptr) :: lb                 !< Lower bounds
+     type(c_ptr) :: ub                 !< Upper bounds
+     integer(c_int) :: rank            !< The number of dimensions
+  end type LogicalArray_C
+
 end module turbotmp_bridge_c_types

@@ -2,7 +2,7 @@ module turbotmp_bridge_c_types
   use iso_c_binding, only : c_ptr, c_int
   implicit none
   private
-  public :: RealArray_C, IntArray_C
+  public :: RealArray_C, IntArray_C, LogicalArray_C
 
   !< Type IntArray_C struct for C++ bridge layer
   type, bind(C) :: IntArray_C

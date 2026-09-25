@@ -817,10 +817,6 @@ void turbotmp_continuity_meridional_convergence_bridge(const Box_C* bxC_HOST,
  * @param uBT_WW_HOST         Westerly correction to the barotropic velocity (host, Fortran order)
  * @param uBT_EE_HOST         Easterly correction to the barotropic velocity (host, Fortran order)
  * @param du0_HOST            Barotropic velocity increment giving 0 transport (host, Fortran order)
- * @param uh_tot_0_HOST       Summed transport with 0 adjustment (host, Fortran order)
- * @param duhdu_tot_0_HOST    Partial derivative of du_err with du at 0 adjustment (host, Fortran order)
- * @param du_max_CFL_HOST     Maximum acceptable value of du (host, Fortran order)
- * @param du_min_CFL_HOST     Minimum acceptable value of du (host, Fortran order)
  * @param dt                  Time increment
  * @param dxCu_HOST           The grid cell's u-point x-extent (host, Fortran order)
  * @param dy_Cu_HOST          Unblocked u-face length, 2D (host, Fortran order)
@@ -848,10 +844,6 @@ void turbotmp_set_zonal_bt_cont_bridge(const Box_C* bxC_HOST,
                                        RealArray_C* uBT_WW_HOST,
                                        RealArray_C* uBT_EE_HOST,
                                        const RealArray_C* du0_HOST,
-                                       const RealArray_C* uh_tot_0_HOST,
-                                       const RealArray_C* duhdu_tot_0_HOST,
-                                       const RealArray_C* du_max_CFL_HOST,
-                                       const RealArray_C* du_min_CFL_HOST,
                                        const double dt,
                                        const RealArray_C* dxCu_HOST,
                                        const RealArray_C* dy_Cu_HOST,
@@ -879,10 +871,6 @@ void turbotmp_set_zonal_bt_cont_bridge(const Box_C* bxC_HOST,
     auto uBT_WW_DEV          = turbotmp::make_array4(uBT_WW_HOST->shape[0], uBT_WW_HOST->shape[1], 1, 1, uBT_WW_HOST->lb[0], uBT_WW_HOST->lb[1], 1);
     auto uBT_EE_DEV          = turbotmp::make_array4(uBT_EE_HOST->shape[0], uBT_EE_HOST->shape[1], 1, 1, uBT_EE_HOST->lb[0], uBT_EE_HOST->lb[1], 1);
     auto du0_DEV             = turbotmp::make_array4(du0_HOST->shape[0], du0_HOST->shape[1], 1, 1, du0_HOST->lb[0], du0_HOST->lb[1], 1);
-    auto uh_tot_0_DEV        = turbotmp::make_array4(uh_tot_0_HOST->shape[0], uh_tot_0_HOST->shape[1], 1, 1, uh_tot_0_HOST->lb[0], uh_tot_0_HOST->lb[1], 1);
-    auto duhdu_tot_0_DEV     = turbotmp::make_array4(duhdu_tot_0_HOST->shape[0], duhdu_tot_0_HOST->shape[1], 1, 1, duhdu_tot_0_HOST->lb[0], duhdu_tot_0_HOST->lb[1], 1);
-    auto du_max_CFL_DEV      = turbotmp::make_array4(du_max_CFL_HOST->shape[0], du_max_CFL_HOST->shape[1], 1, 1, du_max_CFL_HOST->lb[0], du_max_CFL_HOST->lb[1], 1);
-    auto du_min_CFL_DEV      = turbotmp::make_array4(du_min_CFL_HOST->shape[0], du_min_CFL_HOST->shape[1], 1, 1, du_min_CFL_HOST->lb[0], du_min_CFL_HOST->lb[1], 1);
     auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0], dxCu_HOST->shape[1], 1, 1, dxCu_HOST->lb[0], dxCu_HOST->lb[1], 1);
     auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
     auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
@@ -904,10 +892,6 @@ void turbotmp_set_zonal_bt_cont_bridge(const Box_C* bxC_HOST,
     turbotmp::copy_FortranHost_to_array4(uBT_WW_HOST->data,          uBT_WW_DEV);
     turbotmp::copy_FortranHost_to_array4(uBT_EE_HOST->data,          uBT_EE_DEV);
     turbotmp::copy_FortranHost_to_array4(du0_HOST->data,             du0_DEV);
-    turbotmp::copy_FortranHost_to_array4(uh_tot_0_HOST->data,        uh_tot_0_DEV);
-    turbotmp::copy_FortranHost_to_array4(duhdu_tot_0_HOST->data,     duhdu_tot_0_DEV);
-    turbotmp::copy_FortranHost_to_array4(du_max_CFL_HOST->data,      du_max_CFL_DEV);
-    turbotmp::copy_FortranHost_to_array4(du_min_CFL_HOST->data,      du_min_CFL_DEV);
     turbotmp::copy_FortranHost_to_array4(dxCu_HOST->data,            dxCu_DEV);
     turbotmp::copy_FortranHost_to_array4(dy_Cu_HOST->data,           dy_Cu_DEV);
     turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
@@ -932,10 +916,6 @@ void turbotmp_set_zonal_bt_cont_bridge(const Box_C* bxC_HOST,
                            uBT_WW_DEV.arr,
                            uBT_EE_DEV.arr,
                            du0_DEV.arr,
-                           uh_tot_0_DEV.arr,
-                           duhdu_tot_0_DEV.arr,
-                           du_max_CFL_DEV.arr,
-                           du_min_CFL_DEV.arr,
                            dt,
                            dxCu_DEV.arr,
                            dy_Cu_DEV.arr,
@@ -970,10 +950,6 @@ void turbotmp_set_zonal_bt_cont_bridge(const Box_C* bxC_HOST,
     turbotmp::free_array4(uBT_WW_DEV);
     turbotmp::free_array4(uBT_EE_DEV);
     turbotmp::free_array4(du0_DEV);
-    turbotmp::free_array4(uh_tot_0_DEV);
-    turbotmp::free_array4(duhdu_tot_0_DEV);
-    turbotmp::free_array4(du_max_CFL_DEV);
-    turbotmp::free_array4(du_min_CFL_DEV);
     turbotmp::free_array4(dxCu_DEV);
     turbotmp::free_array4(dy_Cu_DEV);
     turbotmp::free_array4(IareaT_DEV);
@@ -999,10 +975,6 @@ void turbotmp_set_zonal_bt_cont_bridge(const Box_C* bxC_HOST,
  * @param vBT_SS_HOST         Southerly correction to the barotropic velocity (host, Fortran order)
  * @param vBT_NN_HOST         Northerly correction to the barotropic velocity (host, Fortran order)
  * @param dv0_HOST            Barotropic velocity increment giving 0 transport (host, Fortran order)
- * @param vh_tot_0_HOST       Summed transport with 0 adjustment (host, Fortran order)
- * @param dvhdv_tot_0_HOST    Partial derivative of du_err with dv at 0 adjustment (host, Fortran order)
- * @param dv_max_CFL_HOST     Maximum acceptable value of dv (host, Fortran order)
- * @param dv_min_CFL_HOST     Minimum acceptable value of dv (host, Fortran order)
  * @param dt                  Time increment
  * @param dyCv_HOST           The grid cell's v-point y-extent (host, Fortran order)
  * @param dx_Cv_HOST          Unblocked v-face length, 2D (host, Fortran order)
@@ -1030,10 +1002,6 @@ void turbotmp_set_merid_bt_cont_bridge(const Box_C* bxC_HOST,
                                        RealArray_C* vBT_SS_HOST,
                                        RealArray_C* vBT_NN_HOST,
                                        const RealArray_C* dv0_HOST,
-                                       const RealArray_C* vh_tot_0_HOST,
-                                       const RealArray_C* dvhdv_tot_0_HOST,
-                                       const RealArray_C* dv_max_CFL_HOST,
-                                       const RealArray_C* dv_min_CFL_HOST,
                                        const double dt,
                                        const RealArray_C* dyCv_HOST,
                                        const RealArray_C* dx_Cv_HOST,
@@ -1061,10 +1029,6 @@ void turbotmp_set_merid_bt_cont_bridge(const Box_C* bxC_HOST,
     auto vBT_SS_DEV          = turbotmp::make_array4(vBT_SS_HOST->shape[0], vBT_SS_HOST->shape[1], 1, 1, vBT_SS_HOST->lb[0], vBT_SS_HOST->lb[1], 1);
     auto vBT_NN_DEV          = turbotmp::make_array4(vBT_NN_HOST->shape[0], vBT_NN_HOST->shape[1], 1, 1, vBT_NN_HOST->lb[0], vBT_NN_HOST->lb[1], 1);
     auto dv0_DEV             = turbotmp::make_array4(dv0_HOST->shape[0], dv0_HOST->shape[1], 1, 1, dv0_HOST->lb[0], dv0_HOST->lb[1], 1);
-    auto vh_tot_0_DEV        = turbotmp::make_array4(vh_tot_0_HOST->shape[0], vh_tot_0_HOST->shape[1], 1, 1, vh_tot_0_HOST->lb[0], vh_tot_0_HOST->lb[1], 1);
-    auto dvhdv_tot_0_DEV     = turbotmp::make_array4(dvhdv_tot_0_HOST->shape[0], dvhdv_tot_0_HOST->shape[1], 1, 1, dvhdv_tot_0_HOST->lb[0], dvhdv_tot_0_HOST->lb[1], 1);
-    auto dv_max_CFL_DEV      = turbotmp::make_array4(dv_max_CFL_HOST->shape[0], dv_max_CFL_HOST->shape[1], 1, 1, dv_max_CFL_HOST->lb[0], dv_max_CFL_HOST->lb[1], 1);
-    auto dv_min_CFL_DEV      = turbotmp::make_array4(dv_min_CFL_HOST->shape[0], dv_min_CFL_HOST->shape[1], 1, 1, dv_min_CFL_HOST->lb[0], dv_min_CFL_HOST->lb[1], 1);
     auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0], dyCv_HOST->shape[1], 1, 1, dyCv_HOST->lb[0], dyCv_HOST->lb[1], 1);
     auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
     auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
@@ -1086,10 +1050,6 @@ void turbotmp_set_merid_bt_cont_bridge(const Box_C* bxC_HOST,
     turbotmp::copy_FortranHost_to_array4(vBT_SS_HOST->data,          vBT_SS_DEV);
     turbotmp::copy_FortranHost_to_array4(vBT_NN_HOST->data,          vBT_NN_DEV);
     turbotmp::copy_FortranHost_to_array4(dv0_HOST->data,             dv0_DEV);
-    turbotmp::copy_FortranHost_to_array4(vh_tot_0_HOST->data,        vh_tot_0_DEV);
-    turbotmp::copy_FortranHost_to_array4(dvhdv_tot_0_HOST->data,     dvhdv_tot_0_DEV);
-    turbotmp::copy_FortranHost_to_array4(dv_max_CFL_HOST->data,      dv_max_CFL_DEV);
-    turbotmp::copy_FortranHost_to_array4(dv_min_CFL_HOST->data,      dv_min_CFL_DEV);
     turbotmp::copy_FortranHost_to_array4(dyCv_HOST->data,            dyCv_DEV);
     turbotmp::copy_FortranHost_to_array4(dx_Cv_HOST->data,           dx_Cv_DEV);
     turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
@@ -1115,10 +1075,6 @@ void turbotmp_set_merid_bt_cont_bridge(const Box_C* bxC_HOST,
                            vBT_SS_DEV.arr,
                            vBT_NN_DEV.arr,
                            dv0_DEV.arr,
-                           vh_tot_0_DEV.arr,
-                           dvhdv_tot_0_DEV.arr,
-                           dv_max_CFL_DEV.arr,
-                           dv_min_CFL_DEV.arr,
                            dt,
                            dyCv_DEV.arr,
                            dx_Cv_DEV.arr,
@@ -1153,10 +1109,6 @@ void turbotmp_set_merid_bt_cont_bridge(const Box_C* bxC_HOST,
     turbotmp::free_array4(vBT_SS_DEV);
     turbotmp::free_array4(vBT_NN_DEV);
     turbotmp::free_array4(dv0_DEV);
-    turbotmp::free_array4(vh_tot_0_DEV);
-    turbotmp::free_array4(dvhdv_tot_0_DEV);
-    turbotmp::free_array4(dv_max_CFL_DEV);
-    turbotmp::free_array4(dv_min_CFL_DEV);
     turbotmp::free_array4(dyCv_DEV);
     turbotmp::free_array4(dx_Cv_DEV);
     turbotmp::free_array4(IareaT_DEV);

@@ -377,12 +377,6 @@ void set_zonal_BT_cont(
     Array4<Real> const& uBT_WW,              //!< Westerly correction to the barotropic velocity
     Array4<Real> const& uBT_EE,              //!< Easterly correction to the barotropic velocity
     Array4<const Real> const& du0,           //!< Barotropic velocity increment that gives 0 transport
-    //  The following are unused 
-    Array4<const Real> const& uh_tot_0,      //!< Summed transport with 0 adjustment
-    Array4<const Real> const& duhdu_tot_0,   //!< Partial derivative of du_err with du at 0 adjustment
-    Array4<const Real> const& du_max_CFL,    //!< Maximum acceptable value of du
-    Array4<const Real> const& du_min_CFL,    //!< Minimum acceptable value of du
-    // 
     Real dt,                                 //!< Time increment
     Array4<const Real> const& dxCu,          //!< The grid cell's u-point x-extent
     Array4<const Real> const& dy_Cu,         //!< Unblocked u-face length (2D, addressed at k=0)
@@ -517,12 +511,6 @@ void set_merid_BT_cont(
     Array4<Real> const& vBT_SS,              //!< Southerly correction to the barotropic velocity
     Array4<Real> const& vBT_NN,              //!< Northerly correction to the barotropic velocity
     Array4<const Real> const& dv0,           //!< Barotropic velocity increment that gives 0 transport
-    // The following are unused
-    Array4<const Real> const& vh_tot_0,      //!< Summed transport with 0 adjustment
-    Array4<const Real> const& dvhdv_tot_0,   //!< Partial derivative of du_err with dv at 0 adjustment
-    Array4<const Real> const& dv_max_CFL,    //!< Maximum acceptable value of dv
-    Array4<const Real> const& dv_min_CFL,    //!< Minimum acceptable value of dv
-    //
     Real dt,                                 //!< Time increment
     Array4<const Real> const& dyCv,          //!< The grid cell's v-point y-extent
     Array4<const Real> const& dx_Cv,         //!< Unblocked v-face length (2D, addressed at k=0)

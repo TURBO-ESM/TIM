@@ -5,19 +5,19 @@
  */
 
 #include <stdint.h>
-#include <stddef.h>
+
+#include "turbotmp_bridge_c_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /// @brief C entry point for TIM::checksum (FMS mpp_chksum replacement).
-/// @param field      Per-rank field data.
-/// @param field_size Number of elements in @p field on this rank.
+/// @param field_HOST Per-rank field data (host, Fortran order).
 /// @param mask_val   Value marking masked elements (compared bitwise);
 ///                   pass NULL for an unmasked checksum.
 /// @return The global checksum (identical on every rank).
-int64_t tim_chksum_c(double* field, size_t field_size, double* mask_val);
+int64_t tim_chksum_c(const RealArray_C* field_HOST, double* mask_val);
 
 #ifdef __cplusplus
 }

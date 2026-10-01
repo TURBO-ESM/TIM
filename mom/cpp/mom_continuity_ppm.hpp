@@ -154,6 +154,82 @@ void continuity_meridional_convergence(
     Real);
 
 /**
+ * @brief Calculates the mass or volume fluxes through the zonal faces, and
+ * other related quantities -- including, optionally, the barotropic
+ * mass-flux correction (u_cor/du_cor) and the barotropic-consistency
+ * face-area/velocity-correction diagnostics (FA_u_W0/E0/WW/EE, uBT_WW/EE)
+ */
+void zonal_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&);
+
+/**
+ * @brief Calculates the mass or volume fluxes through the meridional faces,
+ * and other related quantities -- including, optionally, the barotropic
+ * mass-flux correction (v_cor/dv_cor) and the barotropic-consistency
+ * face-area/velocity-correction diagnostics (FA_v_S0/N0/SS/NN, vBT_SS/NN)
+ */
+void meridional_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    int,
+    int,
+    Real,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&);
+
+/**
  * @brief Accumulates the vertically-summed zonal barotropic mass/volume
  * transport across the water column, for use as the barotropic solver's
  * target transport in the transport-adjustment iteration

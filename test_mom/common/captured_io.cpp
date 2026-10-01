@@ -194,12 +194,6 @@ amrex::IArrayBox CapturedFile::int_fab_host(const std::string& name) const {
     for (int i = 0; i < ndim; ++i) {
         int lb = read_be_i32(bin_, off);
         int ub = read_be_i32(bin_, off);
-        if (lb != 1) {
-            throw std::runtime_error(
-                "captured_io: int_fab assumes Fortran lb==1 (got " +
-                std::to_string(lb) + " on dim " + std::to_string(i) +
-                ") for '" + name + "'");
-        }
         if (ub - lb + 1 != shape[i]) {
             throw std::runtime_error(
                 "captured_io: int_fab bounds inconsistent with shape on dim " +

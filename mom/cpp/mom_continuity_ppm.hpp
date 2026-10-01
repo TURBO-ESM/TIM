@@ -1,11 +1,9 @@
 // mom_continuity_ppm.hpp
 // SKILLS: 0.3.1
 #pragma once
-/**
- * @file mom_continuity_ppm.hpp
- * @brief Box-level AMReX kernel declarations for MOM6 PPM continuity
- *        (piecewise parabolic reconstruction and edge-thickness routines).
- */
+/// @file mom_continuity_ppm.hpp
+/// @brief Box-level AMReX kernel declarations for MOM6 PPM continuity
+///        (piecewise parabolic reconstruction and edge-thickness routines).
 
 #include "mom_continuity_ppm_kernel.hpp"
 
@@ -30,26 +28,20 @@ struct transport_adjust_CS_C {
 namespace MOM {
 using amrex::Box;
 using amrex::Array4;
-/**
- * @brief Piecewise parabolic limiter
- */
+///  @brief Piecewise parabolic limiter
 void ppm_limit_pos(const Box &,
                    Array4<const Real> const&,
                    Array4<Real> const&,
                    Array4<Real> const&,
                    const Real);
 
-/**
- * @brief Piecewise parabolic limiter of Colella and Woodward, 1984
- */
+/// @brief Piecewise parabolic limiter of Colella and Woodward, 1984
 void ppm_limit_cw84(const Box&,
                     Array4<const Real> const&,
                     Array4<Real> const&,
                     Array4<Real> const&);
 
-/**
- * @brief Piecewise reconstruction in the y dimension
- */
+/// @brief Piecewise reconstruction in the y dimension
 void PPM_reconstruction_y(
     const Box&,
     Array4<const Real> const&,
@@ -61,9 +53,7 @@ void PPM_reconstruction_y(
     bool,
     OceanOBC*);
 
-/**
- * @brief Piecewise reconstruction in the x dimension
- */
+/// @brief Piecewise reconstruction in the x dimension
 void PPM_reconstruction_x(
     const Box&,
     Array4<const Real> const&,
@@ -75,9 +65,7 @@ void PPM_reconstruction_x(
     bool,
     OceanOBC*);
 
-/**
- * @brief Zonal edge thickness — upwind copy or x-direction PPM reconstruction
- */
+/// @brief Zonal edge thickness — upwind copy or x-direction PPM reconstruction
 void zonal_edge_thickness(
     const Box&,
     Array4<const Real> const&,
@@ -90,9 +78,7 @@ void zonal_edge_thickness(
     bool,
     OceanOBC*);
 
-/**
- * @brief Meridional edge thickness — upwind copy or y-direction PPM reconstruction
- */
+/// @brief Meridional edge thickness — upwind copy or y-direction PPM reconstruction
 void meridional_edge_thickness(
     const Box&,
     Array4<const Real> const&,
@@ -104,37 +90,10 @@ void meridional_edge_thickness(
     bool,
     bool,
     OceanOBC*);
-/**
- * @brief Zonal continuity update — advances layer thickness by the
- * convergence of the zonal thickness flux
- */
-void continuity_zonal_convergence(
-    const Box&,
-    Array4<Real> const&,
-    Array4<const Real> const&,
-    Real,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Real);
 
-/**
- * @brief Meridional continuity update — advances layer thickness by the
- * convergence of the meridional thickness flux
- */
-void continuity_meridional_convergence(
-    const Box&,
-    Array4<Real> const&,
-    Array4<const Real> const&,
-    Real,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Real);
-
-/**
- * @brief Zonal volume/thickness flux — PPM-reconstructed edge thickness
- * advected by the zonal velocity, scaled by viscosity remnant and
- * open-face area
- */
+/// @brief Zonal volume/thickness flux — PPM-reconstructed edge thickness
+/// advected by the zonal velocity, scaled by viscosity remnant and
+/// open-face area
 void zonal_flux_thickness(
     const Box&,
     Array4<const Real> const&,
@@ -152,11 +111,9 @@ void zonal_flux_thickness(
     Array4<const Real> const&,
     Array4<const Real> const&);
 
-/**
- * @brief Meridional volume/thickness flux — PPM-reconstructed edge thickness
- * advected by the meridional velocity, scaled by viscosity remnant and
- * open-face area
- */
+/// @brief Meridional volume/thickness flux — PPM-reconstructed edge thickness
+/// advected by the meridional velocity, scaled by viscosity remnant and
+/// open-face area
 void meridional_flux_thickness(
     const Box&,
     Array4<const Real> const&,
@@ -174,72 +131,142 @@ void meridional_flux_thickness(
     Array4<const Real> const&,
     Array4<const Real> const&);
 
+/// @brief Zonal continuity update — advances layer thickness by the
+/// convergence of the zonal thickness flux
+void continuity_zonal_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
+
+/// @brief Meridional continuity update — advances layer thickness by the
+///  convergence of the meridional thickness flux
+void continuity_meridional_convergence(
+    const Box&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real);
+
 /**
- * @brief Sets the effective open face areas and barotropic velocity
- * corrections at zonal faces that reproduce the summed layer
- * transports for three test barotropic velocities, for use in the
- * barotropic-consistency iteration
+ * @brief Calculates the mass or volume fluxes through the zonal faces, and
+ * other related quantities -- including, optionally, the barotropic
+ * mass-flux correction (u_cor/du_cor) and the barotropic-consistency
+ * face-area/velocity-correction diagnostics (FA_u_W0/E0/WW/EE, uBT_WW/EE)
  */
-void set_zonal_BT_cont(
+void zonal_mass_flux(
     const Box&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Real,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
     Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&);
+
+/**
+ * @brief Calculates the mass or volume fluxes through the meridional faces,
+ * and other related quantities -- including, optionally, the barotropic
+ * mass-flux correction (v_cor/dv_cor) and the barotropic-consistency
+ * face-area/velocity-correction diagnostics (FA_v_S0/N0/SS/NN, vBT_SS/NN)
+ */
+void meridional_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    int,
+    int,
+    Real,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&);
+
+/**
+ * @brief Accumulates the vertically-summed zonal barotropic mass/volume
+ * transport across the water column, for use as the barotropic solver's
+ * target transport in the transport-adjustment iteration
+ */
+void zonal_BT_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     const transport_adjust_CS_C&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const int> const&,
+    OceanOBC*,
     Array4<const Real> const&);
 
 /**
- * @brief Sets the effective open face areas and barotropic velocity
- * corrections at meridional faces that reproduce the summed layer
- * transports for three test barotropic velocities, for use in the
- * barotropic-consistency iteration
+ * @brief Accumulates the vertically-summed meridional barotropic mass/volume
+ * transport across the water column, for use as the barotropic solver's
+ * target transport in the transport-adjustment iteration
  */
-void set_merid_BT_cont(
+void meridional_BT_mass_flux(
     const Box&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
     Real,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
-    Array4<const Real> const&,
     const transport_adjust_CS_C&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const int> const&,
+    OceanOBC*,
     Array4<const Real> const&);
 
 /**
@@ -301,116 +328,63 @@ void meridional_flux_adjust(
     OceanOBC*);
 
 /**
- * @brief Accumulates the vertically-summed zonal barotropic mass/volume
- * transport across the water column, for use as the barotropic solver's
- * target transport in the transport-adjustment iteration
+ * @brief Sets the effective open face areas and barotropic velocity
+ * corrections at zonal faces that reproduce the summed layer
+ * transports for three test barotropic velocities, for use in the
+ * barotropic-consistency iteration
  */
-void zonal_BT_mass_flux(
+void set_zonal_BT_cont(
     const Box&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
     Real,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
+    Array4<const Real> const&,
     const transport_adjust_CS_C&,
-    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
     Array4<const Real> const&);
 
 /**
- * @brief Accumulates the vertically-summed meridional barotropic mass/volume
- * transport across the water column, for use as the barotropic solver's
- * target transport in the transport-adjustment iteration
+ * @brief Sets the effective open face areas and barotropic velocity
+ * corrections at meridional faces that reproduce the summed layer
+ * transports for three test barotropic velocities, for use in the
+ * barotropic-consistency iteration
  */
-void meridional_BT_mass_flux(
+void set_merid_BT_cont(
     const Box&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
     Real,
     Array4<const Real> const&,
     Array4<const Real> const&,
     Array4<const Real> const&,
+    Array4<const Real> const&,
     const transport_adjust_CS_C&,
-    OceanOBC*,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
     Array4<const Real> const&);
 
-/**
- * @brief Calculates the mass or volume fluxes through the zonal faces, and
- * other related quantities -- including, optionally, the barotropic
- * mass-flux correction (u_cor/du_cor) and the barotropic-consistency
- * face-area/velocity-correction diagnostics (FA_u_W0/E0/WW/EE, uBT_WW/EE)
- */
-void zonal_mass_flux(
-    const Box&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<Real> const&,
-    Real,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Real,
-    const transport_adjust_CS_C&,
-    OceanOBC*,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&);
-
-/**
- * @brief Calculates the mass or volume fluxes through the meridional faces,
- * and other related quantities -- including, optionally, the barotropic
- * mass-flux correction (v_cor/dv_cor) and the barotropic-consistency
- * face-area/velocity-correction diagnostics (FA_v_S0/N0/SS/NN, vBT_SS/NN)
- */
-void meridional_mass_flux(
-    const Box&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<Real> const&,
-    Real,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    int,
-    int,
-    Real,
-    const transport_adjust_CS_C&,
-    OceanOBC*,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<const Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&,
-    Array4<Real> const&);
 }

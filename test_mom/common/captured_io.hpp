@@ -8,7 +8,7 @@
 //       <name>  <type>  <offset>
 //
 //   where <offset> is a 1-based byte offset into <basename>.bin. <type> is
-//   one of: Box_t, RealArray_t, LogicalArray_t, real64, logical.
+//   one of: Box_t, RealArray_t, LogicalArray_t, real64, logical, integer.
 //
 //   The .bin payload is big-endian and uses these layouts:
 //

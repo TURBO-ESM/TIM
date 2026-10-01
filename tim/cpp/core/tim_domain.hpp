@@ -183,6 +183,24 @@ public:
     ///         non-periodic one.
     amrex::Periodicity periodicity() const;
 
+    /// @brief Fill a field's ghost cells from valid neighboring data, wrapping
+    /// across periodic boundaries per this domain's periodicity. (Analogue of
+    /// FMS mpp_update_domains for a single field.)
+    /// @param mf The field to update in place; must live on this domain's
+    ///        decomposition.
+    void pass_var(amrex::MultiFab& mf) const;
+
+    /// @brief Apply halo exchange to several scalar fields at once, so that
+    /// their exchanges overlap rather than run one after another.
+    /// @param fields The fields whose halos are to be filled. They are exchanged
+    ///        in no particular order, so none of them may depend on another.
+    template <typename... MultiFabs>
+    void pass_vars(MultiFabs&... fields) const {
+        const amrex::Periodicity period = periodicity();
+        (fields.FillBoundary_nowait(period), ...);
+        (fields.FillBoundary_finish(), ...);
+    }
+
     /// @brief Number of boxes in the horizontal decomposition.
     /// @return The box count.
     int n_boxes() const { return static_cast<int>(box_array_2d_.size()); }

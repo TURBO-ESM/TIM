@@ -154,6 +154,46 @@ void continuity_meridional_convergence(
     Real);
 
 /**
+ * @brief Accumulates the vertically-summed zonal barotropic mass/volume
+ * transport across the water column, for use as the barotropic solver's
+ * target transport in the transport-adjustment iteration
+ */
+void zonal_BT_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&);
+
+/**
+ * @brief Accumulates the vertically-summed meridional barotropic mass/volume
+ * transport across the water column, for use as the barotropic solver's
+ * target transport in the transport-adjustment iteration
+ */
+void meridional_BT_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&);
+
+/**
  * @brief Newton-iterates a barotropic velocity correction per zonal face so
  * that the vertically-summed zonal mass/volume transport matches the target
  * barotropic transport, to within the transport-adjustment iteration's

@@ -42,8 +42,8 @@ can be unit-tested or replaced independently.
 
 | File | Role |
 |---|---|
-| `turbotmp/turbotmp_helper.{hpp,cpp}` | generic `A4Box` container + GPU arena alloc/free + Fortran↔C transpose. Reusable across all bridges. |
-| `mom/cpp/turbotmp_<module>_bridge.h` | `extern "C"` prototypes of the bridge entry points; mirror C structs for `RealArray_C`, `Box_C`. |
+| `turbotmp/turbotmp_helper.{hpp,cpp}` | generic `A4Box`/`IntA4Box` containers + GPU arena alloc/free + Fortran↔C transpose. Reusable across all bridges. |
+| `mom/cpp/turbotmp_<module>_bridge.h` | `extern "C"` prototypes of the bridge entry points; mirror C structs for `RealArray_C`, `LogicalArray_C`, `Box_C`. |
 | `mom/cpp/turbotmp_<module>_bridge.cpp` | bridge implementations: marshalling only, no math. |
 | `mom/cpp/<module>.hpp` | public AMReX kernel API in namespace `MOM`. |
 | `mom/cpp/<module>.cpp` | box-level AMReX kernels (`ParallelFor` lambdas). |
@@ -78,7 +78,8 @@ struct A4Box {
     int nx, ny, nz, ncomp;
 };
 
-A4Box make_array4(int nx, int ny, int nz, int ncomp);
+A4Box make_array4(int nx, int ny, int nz, int ncomp,
+                  int lbx, int lby, int lbz);
 void  free_array4(A4Box& a4);
 void  copy_FortranHost_to_array4(const double* f, A4Box& a4);
 void  copy_array4_to_FortranHost(const A4Box& a4, double* f);
@@ -86,9 +87,86 @@ void  copy_array4_to_FortranHost(const A4Box& a4, double* f);
 
 Memory comes from `amrex::The_Arena()` so the same code runs on CPU and
 GPU. The Fortran↔C transpose happens in a `ParallelFor` lambda *on the
-device* — there is no host-side reordering. The `lbound(bx)` of the AMReX
-view defines the index origin; the staging buffer `data_f` keeps the input
-layout intact while the kernel-facing `data` is reordered.
+device* — there is no host-side reordering. `lbx`/`lby`/`lbz` are the
+array's Fortran 1-based lower bounds (`RealArray_C::lb[]`/
+`LogicalArray_C::lb[]`, pass `1` for a faked-out 2D dimension, matching
+how `nz=1` is passed for 2D arrays) — `make_array4` positions `a4.bx`,
+and therefore `a4.arr`'s valid index range, at the array's **true
+absolute location** (`lb-1 .. lb-1+n-1`), not at `[0, n-1]`. This
+matters because the kernel is launched over the bridge's *iteration*
+box (§3 step 1, built from `Box_C::idxS/idxE`, itself the array's real
+absolute position) and indexes every `Array4` argument with those same
+absolute coordinates — if two arrays sharing one call have different
+`lb` (e.g. an h-point array vs. a staggered u/v-point array in the same
+kernel), each one's `Array4` must be positioned at its own real offset
+for that shared indexing to land on the correct element in both. Get
+this wrong and every array with `lb == 1` is silently fine while every
+staggered array reads/writes the wrong element (or out of bounds) —
+see §7 #12. The staging buffer `data_f` keeps the input layout intact
+while the kernel-facing `data` is reordered.
+
+### 2.1 The `turbotmp::IntA4Box` helper (for `LogicalArray_C` / `IntArray_C`)
+
+Byte-for-byte the same shape as `A4Box`, with `int` in place of `Real`
+throughout (`amrex::Array4<int> arr`, `int* data`/`data_f`):
+
+```cpp
+IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp,
+                         int lbx, int lby, int lbz);
+void      free_int_array4(IntA4Box& a4);
+void      copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4);
+void      copy_int_array4_to_FortranHost(const IntA4Box& a4, int* f);
+```
+
+Named generically (`Int`, not `Logical`) because it serves **two**
+Fortran-side types that share an identical C-side layout:
+
+- **`LogicalArray_C`** (from a Fortran `LogicalArray_t`) — the Fortran
+  `logical` data is not itself C-interoperable, so `LogicalArray_t` keeps
+  a separate integer-encoded (0/1) shadow buffer (`%data_c`); `%to_c()`
+  fills it and returns a `LogicalArray_C` pointing at it, `%from_c()`
+  reads it back into genuine `logical`s after a C/AMReX call mutates it.
+  The bridge only ever sees the `int*` shadow — `LogicalArray_C.data` is
+  never a pointer to real Fortran logicals.
+- **`IntArray_C`** (from a Fortran `IntArray_t`) — not yet used by any
+  ported kernel, but already defined Fortran-side with the same
+  `data`/`shape`/`lb`/`ub`/`rank` layout, so `IntA4Box` covers it too
+  without any new helper being needed when the first `IntArray_C`
+  bridge parameter shows up.
+
+At the kernel layer, a parameter fed by either type is
+`Array4<const int> const&` (read-only) or `Array4<int> const&`
+(writable) — 0 means false (or the integer value 0), any nonzero value
+means true (or that integer value). There is no `Array4<bool>`; C++
+`bool` never appears at this boundary.
+
+### 2.2 Plain `bind(C)` value structs (no helper needed)
+
+Some Fortran `bind(C)` types are a flat aggregate of scalars — no
+`c_ptr`/shape/rank fields, nothing array-shaped — e.g.
+`transport_adjust_CS_C` (3 `real(c_double)` + 5 `logical(c_bool)`,
+passed `intent(in)` without `value`, so it crosses as a pointer:
+`const transport_adjust_CS_C*`). These need **no** `A4Box`/`IntA4Box`-
+style helper at all: there is nothing to allocate on the device and
+nothing to transpose, since a `bind(C)` struct of plain scalars already
+has the same memory layout the C++ side needs. The bridge just
+dereferences the host pointer once and passes the resulting struct
+straight through.
+
+Because there is no bridge-vs-kernel translation step (unlike
+`Box_C`→`Box` or `RealArray_C`→`Array4`), the **same struct type**
+serves both layers — there is no separate "_C" bridge type and
+"native" kernel type. Placement follows the existing `OceanOBC`
+pattern for a module-specific type: forward-declared in the module's
+`turbotmp_<module>_bridge.h` (a pointer parameter only needs a forward
+declaration), with the **full** definition living in the module's
+kernel header (`mom/cpp/<module>.hpp`), where kernels read its fields
+directly (e.g. `CS.vol_CFL`) — never in the shared
+`turbotmp_bridge_c_types.h`, which is for universal, reusable-across-
+every-module types (`RealArray_C`, `Box_C`, `LogicalArray_C`), not a
+single Fortran module's own config type. At the kernel layer this is
+`const transport_adjust_CS_C&` (an ordinary aggregate parameter, no
+different from taking `const Box&`).
 
 ---
 
@@ -107,10 +185,19 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
     Box bx(IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
            IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
-    // 2. Allocate one A4Box per array, sized by RealArray_C::shape[]
-    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1);
-    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2],  1);
-    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2],  1);
+    // 2. Allocate one A4Box per array, sized by RealArray_C::shape[] and
+    //    positioned by RealArray_C::lb[] (pass 1 for a faked-out 2D
+    //    dimension, matching how nz=1 is passed for 2D arrays -- see §2).
+    //    Positioning matters even for a single-array-type kernel like this
+    //    one: get it wrong and it stays invisible here (h_in/h_L/h_R all
+    //    share the same lb) but silently corrupts any kernel that mixes
+    //    differently-staggered arrays over one iteration box (§7 #12).
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1,
+                                          h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2],  1,
+                                          h_L_HOST->lb[0], h_L_HOST->lb[1], h_L_HOST->lb[2]);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2],  1,
+                                          h_R_HOST->lb[0], h_R_HOST->lb[1], h_R_HOST->lb[2]);
 
     // 3. Copy host -> device for every array (including inout, kernels may read first)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
@@ -188,13 +275,19 @@ end interface` block, every dummy maps mechanically:
 | `type(RealArray_C), intent(inout)` / `out`      | `RealArray_C*`               |
 | `type(IntArray_C),  intent(in)`                 | `const IntArray_C*`          |
 | `type(IntArray_C),  intent(inout)` / `out`      | `IntArray_C*`                |
+| `type(LogicalArray_C), intent(in)`              | `const LogicalArray_C*`      |
+| `type(LogicalArray_C), intent(inout)` / `out`   | `LogicalArray_C*`            |
+| `type(<Config>_C),  intent(in)` (flat scalar struct, no `value`) | `const <Config>_C*` |
 | `real(c_double),    intent(in), value`          | `const double`               |
 | `integer(c_int),    intent(in), value`          | `const int`                  |
 | `logical(c_bool),   intent(in), value`          | `const bool`                 |
 | `type(c_ptr),       intent(in), value`          | forward-declared `<Type>*`   |
 
 Argument order is preserved one-for-one. Names may differ; layout and
-const-qualification cannot. If a `RealArray_C` arrives without a clear
+const-qualification cannot. Both `IntArray_C` and `LogicalArray_C`
+marshal through the same `turbotmp::IntA4Box` helper — see §2.1. A flat
+scalar-only config struct needs no helper at all and is forward-declared/
+defined per the pattern in §2.2. If a `RealArray_C` arrives without a clear
 intent (a writable pointer used for both input and output), it must be
 copied host→device on entry — see §7 #1.
 
@@ -208,8 +301,15 @@ The kernel layer is the seam between AMReX and the model. Conventions:
   module — `MOM::ppm_limit_pos`, `MOM::PPM_reconstruction_y`).
 - Iteration domain is `const Box&`.
 - Read-only arrays are `Array4<const Real> const&`; writable arrays are
-  `Array4<Real> const&`.
+  `Array4<Real> const&`. A logical-mask or integer array
+  (`LogicalArray_C`/`IntArray_C` on the bridge side) is
+  `Array4<const int> const&` / `Array4<int> const&` — never
+  `Array4<bool>` (see §2.1).
 - Scalars are `const Real h_min`, `bool monotonic`, etc. — by value.
+- A flat scalar-only config struct (e.g. `transport_adjust_CS_C`) is
+  `const <Config>_C&` — an ordinary aggregate parameter, fields read
+  directly (`CS.vol_CFL`) — never split into individual bool/double
+  parameters (see §2.2).
 - Opaque types (`OceanOBC*`) are forward-declared in the same header
   (`struct OceanOBC;`) and never dereferenced unless implemented. Until
   then, abort with `AMREX_ABORT_LOC("...not yet implemented")` if a
@@ -302,6 +402,18 @@ places.
   AMReX `IntVect` is 0-based. Subtract 1 from every index when
   constructing the `Box` in the bridge. Do this in the bridge, never in
   the kernel.
+- **The array, not just the iteration box, needs positioning.** The
+  bridge's iteration `Box` is built at the array's true absolute
+  location (`idxS-1`..`idxE-1`), but `RealArray_C`/`LogicalArray_C`
+  arguments have their **own** `lb`/`ub`, independent of the iteration
+  box and of each other — a staggered u/v-point array legitimately has
+  a different `lb` than the h-point arrays it's called alongside. Pass
+  every array's own `lb[]` into `make_array4`/`make_int_array4` (§2) so
+  its `Array4` is positioned at that array's real offset; a kernel
+  indexing several such arrays with the same shared iteration
+  coordinate only lands on the correct element in each when every one
+  is positioned correctly. Never rebase an array to `[0, shape-1]`
+  regardless of its real `lb` — see §7 #12.
 - **Const-correctness.** Bridge inputs are `const RealArray_C*` (and the
   underlying data is `const double*` once dereferenced); kernel inputs
   are `Array4<const Real> const&`. The `const`-qualification is part of
@@ -365,6 +477,63 @@ PR #8's ~30 commits surface the friction worth flagging:
    mode — and select between two separate `ParallelFor` calls with a
    single `if/else` at the box level before the loop. This eliminates
    the divergent branch from every GPU thread. (Lesson from PR #11.)
+10. **Comments document physics, never the porting process.** Every doc
+    comment on a ported function or parameter states what the quantity
+    *physically is* — meaning, units, sign convention — normally lifted
+    straight from the Fortran `!<`/`!!` doc comments or the `bind(C)`
+    interface's own comments. Never add a comment that narrates *how or
+    why the C++ port was done*: no explaining the 1-based→0-based index
+    remapping inline (§6 already covers the mechanics; the code doing it
+    doesn't also need a comment defending it), no notes on a Fortran
+    naming quirk (e.g. a loop variable written as `J` in one place and
+    `j` in another purely as MOM6 house style — pick one C++ name and
+    move on, silently), no essay on whether a Fortran dummy is `optional`
+    vs. merely guarded by `%associated()` on a mandatory argument. A
+    parameter whose Fortran container may be unassociated should be
+    documented as what the C++ code does about it now (e.g. "may be
+    absent; pass a default-constructed `Array4` to represent absence"),
+    not as a discussion of Fortran's optional-argument semantics or the
+    porting decision behind the guard. If a disabled/deferred block
+    needs a comment, reuse the file's existing convention for that (see
+    the `NOTE: OBC support temporarily disabled` comment already used by
+    `PPM_reconstruction_x`/`_y`) rather than inventing a new explanatory
+    note about why this particular instance is deferred. Anything about
+    *why a choice was made during this port* belongs in the commit
+    message, not in the shipped source.
+11. **Disabled/deferred blocks get real code, one level of disabling.**
+    When Fortran logic beyond an `AMREX_ABORT_LOC` guard (typically an
+    OBC segment loop) is deferred rather than ported live, wrap it in a
+    single `/* ... */` block containing **genuine, faithfully-ported
+    C++** — a real `ParallelFor` over a real derived `Box`, real
+    assignment statements — exactly like `PPM_reconstruction_y`'s
+    existing disabled OBC block (the one overriding `h_S`/`h_N` near
+    the end of `mom_continuity_ppm.cpp`). Do not additionally prefix
+    the inner statements with `//`: the enclosing `/* */` already
+    disables compilation, so a second layer of line-commenting is
+    redundant, and it silently degrades a real port into an inert
+    stub that reads as unfinished even after the real translation was
+    done. (A `for`/`if` skeleton with commented-out assignments inside
+    it was exactly this mistake, caught during PR review of the
+    `meridional_flux_thickness`/`zonal_flux_thickness` ports — both
+    had to be fixed to match `PPM_reconstruction_y`'s one-level
+    pattern.) One level of disabling only, real code inside it.
+12. **`make_array4`/`make_int_array4` must be positioned by the array's
+    own `lb`, not just sized by `shape[]`.** Discovered when 8 kernels
+    in the `continuity_PPM` chain — all ones combining h-point and
+    staggered u/v-point arrays in one call — crashed or produced
+    non-bit-for-bit results in real MOM6 integration while their
+    GoogleTest unit tests all passed. The unit tests call `MOM::kernel`
+    directly with correctly-positioned `Array4`s (built from
+    `CapturedFile`, which does honor real `lb`), so they never exercise
+    the bridge's marshalling at all — this bug is structurally
+    invisible to a kernel-level unit test and only shows up once the
+    real Fortran caller drives the actual `turbotmp_*_bridge` entry
+    point. If a kernel-level test suite is fully green but real
+    integration crashes or drifts non-bit-for-bit on a kernel that
+    takes both h-point and staggered (u/v-point) arrays, suspect this
+    exact class of bug first: check whether `make_array4`/
+    `make_int_array4` are being called with the array's real `lb[]`
+    (§2, §6), not just `shape[]`.
 
 ---
 
@@ -385,3 +554,23 @@ Bit-identity is the goal for the limiter kernels (no FP reordering);
 for `PPM_reconstruction_y` the OBC branches are currently disabled, so
 any comparison run must exclude OBC-active configurations until the
 forward-declared `OceanOBC` type is implemented in C++.
+
+## 9. Backlog
+
+**Orchestrator kernels calling other already-ported kernels on
+internal scratch (e.g. `zonal_mass_flux`/`meridional_mass_flux` calling
+`zonal_flux_adjust`/`set_zonal_BT_cont`/`zonal_flux_thickness`):**
+currently ported as separate kernel launches over locally-allocated
+scratch `FArrayBox`/`IArrayBox` buffers (mirroring the Fortran
+orchestrator's own `allocView`/`free` calls) — the direct, low-risk
+translation of "allocate local arrays, call other subroutines." A
+faster but more invasive alternative, deferred for now: extract the
+Newton-iteration body of `zonal_flux_adjust`/`meridional_flux_adjust`
+into a shared per-thread device function (like `flux_elem_point`) that
+the orchestrator's own per-thread body calls directly, keeping
+everything as per-thread scalars and avoiding scratch allocation and
+the extra kernel launches entirely. Revisit once the option-1 ports are
+working and there's a reason to care about the extra launches (e.g. a
+profiling result), since option 2 means refactoring
+`zonal_flux_adjust`/`meridional_flux_adjust`'s already-approved kernel
+bodies rather than just adding new code.

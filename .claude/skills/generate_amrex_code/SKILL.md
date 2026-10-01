@@ -1,8 +1,9 @@
 ---
 name: generate_amrex_code
+version: "0.3.1"
 description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
 user-invocable: true
-argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit]
+argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
 ---
 
 # Generate C++/AMReX implementation for a MOM6 Fortran subroutine
@@ -25,7 +26,7 @@ equals `-h`, do NOT run any steps. Print the following help message
 verbatim and stop:
 
 ```
-Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit]
+Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
 
 Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine
 inside a TURBO-ESM/TIM checkout. Writes (or extends) three layers:
@@ -57,9 +58,19 @@ Arguments:
   --enable_src_validate  (optional) Run Step 1: verify the work directory is a
                          TURBO-ESM/TIM checkout on the main branch and that the
                          tree layout is valid. Off by default.
-  --enable_git_commit    (optional) Run Step 12: create branch
-                         claude_<function-name>_bridge, commit all changes, and
-                         push to origin. Off by default.
+  --enable_git_commit    (optional) Force Step 12 to run this invocation
+                         only, overriding the global git_commit_and_push
+                         preference in ~/.claude/preferences.json.
+                         Mutually exclusive with --disable_git_commit.
+  --disable_git_commit   (optional) Force Step 12 to be skipped this
+                         invocation only, overriding the global
+                         preference. Mutually exclusive with
+                         --enable_git_commit.
+
+When neither --enable_git_commit nor --disable_git_commit is passed, Step 12
+follows ~/.claude/preferences.json's "git_commit_and_push" key ("auto" or
+"manual"; treated as "manual" when the file is missing, the key is absent,
+or the JSON fails to parse).
 
 Example:
   /generate_amrex_code /glade/derecho/scratch/sunjian/TIM PPM_limit_pos \
@@ -86,14 +97,18 @@ do not create anything.
    `Error: MOM6 directory "<value>" does not exist.` If `$2` was
    omitted, record `mom6_mode=paste` and Step 3 will ask the user
    for the Fortran source body inline.
-4. **Parse optional flags.** Scan remaining arguments for `--enable_src_validate`
-   and `--enable_git_commit`. Store as boolean flags (default: off). Any
-   unrecognised argument that starts with `--` → stop:
+4. **Parse optional flags.** Scan remaining arguments for `--enable_src_validate`,
+   `--enable_git_commit`, and `--disable_git_commit`. Store as boolean flags
+   (default: off). If both `--enable_git_commit` and `--disable_git_commit`
+   are passed → stop: `Error: --enable_git_commit and --disable_git_commit
+   are mutually exclusive.` Any unrecognised argument that starts with `--`
+   → stop:
    `Error: unknown option "<value>". Run "/generate_amrex_code --help" for usage.`
 
-Step 1 runs only when `--enable_src_validate` is set; Step 12 runs only when
-`--enable_git_commit` is set. Layout / lessons.md / plan-confirmation checks
-run in Step 1.
+Step 1 runs only when `--enable_src_validate` is set. Layout / lessons.md /
+plan-confirmation checks run in Step 1. Step 12's behavior is decided by
+`--enable_git_commit`/`--disable_git_commit` if passed, or otherwise by the
+global preference described in Step 12.
 
 ## Settle these decisions (ask if not obvious from the tree)
 
@@ -226,6 +241,17 @@ holds the template or rationale.
    the type is implemented. If the module file exists, append the
    new declaration in the header and the new definition in the .cpp.
 
+   A flat scalar-only Fortran `bind(C)` config struct (e.g.
+   `transport_adjust_CS_C`) gets its **full** definition here too,
+   alongside the opaque-type forward declarations — never in the
+   shared `turbotmp_bridge_c_types.h`. See lessons.md §2.2.
+
+   If the Fortran source has logic gated on that same opaque type
+   (e.g. an OBC segment loop) beyond the guard, port it into a single
+   `/* ... */`-disabled block containing **real, uncompiled-but-real
+   C++** — not a second layer of `//`-commented placeholder
+   statements inside real control flow. See lessons.md §7 #11.
+
    **Mode dispatch:** When two `_point` primitives exist for distinct
    modes (Step 5), select between them with a single `if/else`
    **before** the `ParallelFor`, never inside the lambda. Each lambda
@@ -234,7 +260,10 @@ holds the template or rationale.
 ### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
    First-time creation: start with `#include "turbotmp_bridge_c_types.h"`
    (do **not** re-define `RealArray_C` / `Box_C` — they live in that shared
-   file). Forward-declare any opaque types, wrap prototypes in
+   file). Forward-declare any opaque types — and any flat scalar-only
+   config struct (its full definition lives in the kernel header from
+   Step 6; a forward declaration is enough for a pointer parameter here,
+   lessons.md §2.2) — wrap prototypes in
    `#ifdef __cplusplus extern "C" { … } #endif` — per lessons.md §3.
    Append the new prototype derived in Step 2. Do not re-declare the
    structs or guards if the file already exists.
@@ -245,15 +274,19 @@ holds the template or rationale.
 ### 8. Bridge implementation in `mom/cpp/turbotmp_<module>_bridge.cpp`
    Implement the new prototype following the **7-step marshalling
    pattern** in lessons.md §3 (build `Box` with index −1, `make_array4`
-   each array, copy host→device for inputs **and** inouts, call the
-   `MOM::` kernel, `Gpu::synchronize`, copy device→host for
-   outputs/inouts only, free everything). No math, no value-dependent
-   branches.
+   each array sized by `shape[]` **and positioned by `lb[]`** — never
+   omit `lb`, even when every array in this call happens to share the
+   same one; see lessons.md §6 and §7 #12 — copy host→device for inputs
+   **and** inouts, call the `MOM::` kernel, `Gpu::synchronize`, copy
+   device→host for outputs/inouts only, free everything). No math, no
+   value-dependent branches.
 
 ### 9. Extend `turbotmp/turbotmp_helper.{hpp,cpp}` only if needed
-   Reuse existing helpers (lessons.md §2). Only add a new helper if
-   the new bridge needs a layout/type that does not yet exist (e.g.
-   2-D, `IntArray_C`).
+   Reuse existing helpers (lessons.md §2, §2.1). `A4Box`/`make_array4`
+   handles `RealArray_C`; `IntA4Box`/`make_int_array4` handles both
+   `LogicalArray_C` and `IntArray_C` (identical C-side layout — see
+   §2.1). Only add a new helper if the new bridge needs a layout/type
+   neither of those covers.
 
 ### 10. Wire into the build
    Add the new sources alongside the existing `mom_continuity_ppm.cpp`
@@ -274,9 +307,22 @@ holds the template or rationale.
 
    If no capture file: skip and note "replay deferred" for Step 12.
 
-### 12. Commit and push *(runs only when `--enable_git_commit` is passed; skip otherwise)*
-   If `--enable_git_commit` was not supplied, skip this entire step and report the
-   files that were modified so the user can commit manually.
+### 12. Commit and push *(gated by the global git-commit preference, overridable per run — see below)*
+   **Decide whether to run this step:**
+   1. If `--disable_git_commit` was passed, skip this entire step and
+      report the files that were modified so the user can commit
+      manually — this run's explicit override wins.
+   2. Else if `--enable_git_commit` was passed, run this step — this
+      run's explicit override wins.
+   3. Else, read the global preference: run
+      `cat ~/.claude/preferences.json 2>/dev/null` and inspect the
+      `git_commit_and_push` key.
+      - If it is `"auto"`, run this step.
+      - If it is `"manual"`, or the file does not exist, or the key is
+        absent, or the JSON fails to parse — skip this entire step and
+        report the files that were modified so the user can commit
+        manually. Absent or unreadable configuration means "manual";
+        never push on an unconfigured machine.
 
    Branch: `claude_<lowercased_$1>_bridge` based on `main`. Stage all
    newly created and modified files. Commit message names the bridge
@@ -305,8 +351,26 @@ holds the template or rationale.
    with unrelated history, stop and surface to the user; do not
    force-push.
 
+## Versioning marker
+
+Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.1`
+marker line — the shared version number for this whole skill family
+(the same 0.3.1 used by the Fortran-side `generate_cpp_bridge`'s
+`!!SKILLS: 0.3.1`, so `grep -rn "SKILLS:"` finds both sides of a port
+across the MOM6 and TIM trees). Applies to every file Steps 5–9 create
+or extend: `<module>_kernel.hpp`, `<module>.hpp`, `<module>.cpp`,
+`turbotmp_<module>_bridge.h`, `turbotmp_<module>_bridge.cpp`, and
+`turbotmp_helper.{hpp,cpp}` if Step 9 extends it. Place it as its own
+line immediately after any pre-existing top-of-file header comment,
+before `#pragma once`/the first `#include`; if the file has no header
+comment, it is the first line. If a file already has the marker,
+update the version number in place rather than adding a second line.
+Deliberately grep-able and meant to be stripped later.
+
 ## Hard rules
 
+- Never skip the `// SKILLS: 0.3.1` marker on a file this skill
+  touches, and never add a second marker line if one already exists.
 - Bridge functions contain marshalling only — no math, no
   value-dependent branches (lessons.md §3).
 - Convert Fortran 1-based indices to AMReX 0-based **in the bridge**
@@ -323,11 +387,20 @@ holds the template or rationale.
 - Forward-declared opaque pointer types stay forward-declared until
   the model implements them; guard non-null arrivals with
   `AMREX_ABORT_LOC` (lessons.md §7 #7).
+- A deferred block behind that guard gets **one** level of disabling
+  (a single `/* ... */`) around real, faithfully-ported C++ — never a
+  second layer of `//`-commented statements inside real control flow
+  (lessons.md §7 #11).
 - Do not modify any Fortran source, the existing
   `turbotmp_helper.{hpp,cpp}` core API, or the mirror C struct
   layout (`RealArray_C`, `Box_C`).
 - Do not invent kernel math. The AMReX body must come from the
   Fortran source captured in Step 3, ported verbatim.
+- Doc comments state physical meaning only (what a quantity is, its
+  units), taken from the Fortran source's own comments. Never narrate
+  the conversion itself — index-base remapping rationale, Fortran
+  naming quirks, why a Fortran-side guard exists — in the shipped
+  comment (lessons.md §7 #10).
 
 If something not covered here comes up, consult lessons.md §7
 (C++-side pitfalls) before improvising.

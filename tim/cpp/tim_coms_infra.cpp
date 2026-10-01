@@ -11,30 +11,60 @@
 
 #include "tim_coms_infra.hpp"
 
-namespace TIM {
+namespace {
 
-int64_t checksum(double* field, size_t field_size, double* mask_val)
+// Per-rank checksum of a single box: the piece shared by every public
+// overload, kept apart from the cross-rank reduction so callers that need to
+// sum several boxes (e.g. a MultiFab's local boxes) can do so with a single
+// ParallelDescriptor::ReduceLongSum instead of one per box.
+amrex::Long local_checksum(amrex::Box const& bx, amrex::Array4<const amrex::Real> const& arr,
+                           std::optional<amrex::Real> mask)
 {
-    // Cast needed due to lack of C++20 support in icpc needed to do:
-    //   auto checksum = std::bit_cast<int64_t>(var);
-    // See https://en.wikipedia.org/wiki/Fast_inverse_square_root#Overview_of_the_code
-    // for logic behind casting.
-    // Also need C++20 to use std::view::filter for mask.
-    amrex::Long checksum = 0;
-    if(mask_val)
-    {
-        amrex::Long mask_bytes = * ( amrex::Long * ) mask_val;
-        checksum = amrex::Reduce::Sum<amrex::Long>(field_size,
-            [=] AMREX_GPU_DEVICE (size_t i) -> amrex::Long {
-                amrex::Long field_checksum = * ( amrex::Long * ) &field[i];
-                return (field_checksum == mask_bytes) ? 0 : field_checksum;
+    amrex::Reducer<amrex::ReduceOpSum, amrex::Long> reducer;
+    using Result_t = typename decltype(reducer)::Result_t;
+
+    if (mask) {
+        amrex::Long mask_bytes;
+        std::memcpy(&mask_bytes, &(*mask), sizeof(mask_bytes));
+
+        reducer.eval(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) -> Result_t
+            {
+                amrex::Long bits;
+                std::memcpy(&bits, &arr(i,j,k), sizeof(bits));
+                return { (bits == mask_bytes) ? 0 : bits };
+            });
+    } else {
+        reducer.eval(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) -> Result_t
+            {
+                amrex::Long bits;
+                std::memcpy(&bits, &arr(i,j,k), sizeof(bits));
+                return bits;
             });
     }
-    else
-        checksum = amrex::Reduce::Sum<amrex::Long>(field_size,
-            [=] AMREX_GPU_DEVICE (size_t i) -> amrex::Long {
-                return * ( amrex::Long * ) &field[i];
-            });
+    return amrex::get<0>(reducer.getResult());
+}
+
+} // namespace
+
+namespace TIM {
+
+amrex::Long checksum(amrex::Box const& bx,
+                     amrex::Array4<const amrex::Real> const& arr,
+                     std::optional<amrex::Real> mask)
+{
+    amrex::Long checksum = local_checksum(bx, arr, mask);
+    amrex::ParallelDescriptor::ReduceLongSum(checksum);
+    return checksum;
+}
+
+amrex::Long checksum(amrex::MultiFab const& mf, std::optional<amrex::Real> mask)
+{
+    amrex::Long checksum = 0;
+    for (amrex::MFIter mfi(mf, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+        checksum += local_checksum(mfi.growntilebox(), mf.const_array(mfi), mask);
+    }
     amrex::ParallelDescriptor::ReduceLongSum(checksum);
     return checksum;
 }

@@ -32,7 +32,7 @@ A4Box make_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
     a4.data_f = (Real*) The_Arena()->alloc(npts * sizeof(Real));
 
     // setup AMReX views
-    a4.arr = Array4<Real>(a4.data, lbound(a4.bx), ubound(a4.bx),ncomp);
+    a4.arr = Array4<Real>(a4.data, begin(a4.bx), end(a4.bx),ncomp);
 
     return a4;
 }
@@ -75,7 +75,7 @@ void copy_FortranHost_to_array4(const double* f, A4Box& a4)
     Gpu::copy(Gpu::hostToDevice, f, f+n, d_f);
 
 
-    // Tranpose array from Fortran to C
+    // Transpose array from Fortran to C
     ParallelFor(bx, ncomp,  [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
     {
         int ii = i - lo.x;
@@ -142,7 +142,7 @@ IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, in
     a4.data_f = (int*) The_Arena()->alloc(npts * sizeof(int));
 
     // setup AMReX views
-    a4.arr = Array4<int>(a4.data, lbound(a4.bx), ubound(a4.bx), ncomp);
+    a4.arr = Array4<int>(a4.data, begin(a4.bx), end(a4.bx), ncomp);
 
     return a4;
 }
@@ -156,9 +156,10 @@ void free_int_array4(IntA4Box& a4)
         The_Arena()->free(a4.data);
         a4.data = nullptr;
     }
-    if(a4.data_f) {
-	The_Arena()->free(a4.data_f);
-	a4.data_f = nullptr;
+    if (a4.data_f)
+    {
+        The_Arena()->free(a4.data_f);
+        a4.data_f = nullptr;
     }
 }
 
@@ -183,7 +184,7 @@ void copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4)
     // Copy host -> device
     Gpu::copy(Gpu::hostToDevice, f, f+n, d_f);
 
-    // Tranpose array from Fortran to C
+    // Transpose array from Fortran to C
     ParallelFor(bx, ncomp,  [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
     {
         int ii = i - lo.x;

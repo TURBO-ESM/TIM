@@ -194,12 +194,6 @@ amrex::IArrayBox CapturedFile::int_fab_host(const std::string& name) const {
     for (int i = 0; i < ndim; ++i) {
         int lb = read_be_i32(bin_, off);
         int ub = read_be_i32(bin_, off);
-        if (lb != 1) {
-            throw std::runtime_error(
-                "captured_io: int_fab assumes Fortran lb==1 (got " +
-                std::to_string(lb) + " on dim " + std::to_string(i) +
-                ") for '" + name + "'");
-        }
         if (ub - lb + 1 != shape[i]) {
             throw std::runtime_error(
                 "captured_io: int_fab bounds inconsistent with shape on dim " +
@@ -256,6 +250,19 @@ int CapturedFile::integer(const std::string& name) const {
     const auto& e = lookup(name, "integer");
     std::size_t off = e.offset - 1;
     return read_be_i32(bin_, off);
+}
+
+bool CapturedFile::is_associated(const std::string& name) const {
+    auto it = entries_.find(name);
+    if (it == entries_.end()) {
+        throw std::runtime_error("captured_io: missing entry '" + name +
+                                 "' in " + base_.string());
+    }
+    // Peek at the leading ndim marker only -- shared by both RealArray_t
+    // and LogicalArray_t, whichever this entry actually is.
+    std::size_t off = it->second.offset - 1;
+    int ndim = read_be_i32(bin_, off);
+    return ndim != -1;
 }
 
 } // namespace test_mom

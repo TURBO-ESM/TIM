@@ -4,18 +4,30 @@
  * @brief Checksum service of the TIM communication infrastructure.
  */
 
-#include <cstdint>
-#include <cstddef>
+#include <optional>
+
+#include <AMReX_Array4.H>
+#include <AMReX_Box.H>
+#include <AMReX_MultiFab.H>
 
 /// @brief TURBO Infrastructure for MOM (TIM) — the C++ infrastructure layer.
 namespace TIM {
-
-/// @brief Bitwise checksum of a distributed field.
-/// @param field      Per-rank field data (host or device memory).
-/// @param field_size Number of elements in @p field on this rank.
-/// @param mask_val   Value marking masked elements (compared bitwise);
-///                   pass nullptr for an unmasked checksum.
-/// @return The global checksum (identical on every rank).
-int64_t checksum(double* field, size_t field_size, double* mask_val);
-
+    /// @brief Bitwise checksum of a distributed field.
+    /// @param bx        Region to compute checksum of.
+    /// @param arr       Values to compute checksum of possibly
+    ///                  including ghost rows and neighboring data
+    /// @param mask      If set, value marking masked elements (compared
+    ///                  bitwise) to exclude from the checksum.
+    /// @return The global checksum (identical on every rank).
+    amrex::Long checksum(amrex::Box const& bx,
+                         amrex::Array4<const amrex::Real> const& arr,
+                         std::optional<amrex::Real> mask = std::nullopt);
+    /// @brief Bitwise checksum of a distributed field.
+    /// @param mf        Field to compute checksum of, including however many
+    ///                  ghost cells it was allocated with.
+    /// @param mask      If set, value marking masked elements (compared
+    ///                  bitwise) to exclude from the checksum.
+    /// @return The global checksum (identical on every rank).
+    amrex::Long checksum(amrex::MultiFab const& mf,
+                         std::optional<amrex::Real> mask = std::nullopt);
 }  // namespace TIM

@@ -98,7 +98,7 @@ public:
     // (ndim == -1, i.e. the Fortran container was unassociated at capture
     // time). Check this before calling fab_host()/fab_device()/
     // int_fab_host()/int_fab_device() on a field the Fortran shim captures
-    // unconditionally.
+    // unconditionally. Throws if the entry is not a RealArray_t/LogicalArray_t.
     bool             is_associated(const std::string& name) const;
 
 private:

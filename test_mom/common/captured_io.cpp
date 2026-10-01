@@ -269,6 +269,11 @@ bool CapturedFile::is_associated(const std::string& name) const {
     }
     // Peek at the leading ndim marker only -- shared by both RealArray_t
     // and LogicalArray_t, whichever this entry actually is.
+    if (it->second.type != "RealArray_t" && it->second.type != "LogicalArray_t") {
+        throw std::runtime_error("captured_io: is_associated() on entry '" + name +
+                                 "' of type '" + it->second.type +
+                                 "', expected 'RealArray_t' or 'LogicalArray_t'");
+    }
     std::size_t off = it->second.offset - 1;
     int ndim = read_be_i32(bin_, off);
     return ndim != -1;

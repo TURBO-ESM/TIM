@@ -251,9 +251,10 @@ void continuity_PPM(
     Array4<Real> const& du_cor,                       //!< Zonal velocity increment from u that gives uhbt as the
                                                       //!< depth-integrated transport [L T-1 ~> m s-1];
                                                       //!< may be absent (.p == nullptr)
-    Array4<Real> const& dv_cor);                      //!< Meridional velocity increment from v that gives vhbt as the
+    Array4<Real> const& dv_cor                        //!< Meridional velocity increment from v that gives vhbt as the
                                                       //!< depth-integrated transport [L T-1 ~> m s-1];
                                                       //!< may be absent (.p == nullptr)
+    );
 
 /**
  * @brief Find the vertical sum of the thickness fluxes from the continuity solver without actually
@@ -285,7 +286,8 @@ void continuity_PPM_2d_fluxes(
                                                       //!< barotropic-consistency iteration
     OceanOBC* obc,                                    //!< Open boundary control structure
     Array4<const Real> const& por_face_areaU,         //!< Fractional open area of U-faces [nondim]
-    Array4<const Real> const& por_face_areaV);        //!< Fractional open area of V-faces [nondim]
+    Array4<const Real> const& por_face_areaV          //!< Fractional open area of V-faces [nondim]
+    );
 
 /**
  * @brief Calculates the mass or volume fluxes through the zonal faces, and

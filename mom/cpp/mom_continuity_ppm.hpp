@@ -24,6 +24,15 @@ struct transport_adjust_CS_C {
     bool   marginal_faces;     ///< If true, use marginal face areas as barotropic weights.
 };
 
+/// @brief Options controlling the edge-value reconstruction scheme used by the
+/// continuity solver. Field-for-field mirror of the Fortran `bind(C)` type
+/// `reconstruction_CS_C` -- order and types must not change.
+struct reconstruction_CS_C {
+    bool upwind_1st;  ///< If true, use a first-order upwind scheme.
+    bool monotonic;   ///< If true, use the Colella & Woodward monotonic limiter.
+    bool simple_2nd;  ///< If true, use a simple second order interpolation.
+};
+
 /// @brief AMReX ports of MOM6 numerical kernels.
 namespace MOM {
 using amrex::Box;
@@ -152,6 +161,122 @@ void continuity_meridional_convergence(
     Array4<const Real> const&,
     Array4<const Real> const&,
     Real);
+
+/**
+ * @brief Time steps the layer thicknesses, using a monotonically limit, directionally split PPM scheme,
+ * based on Lin (1994).
+ */
+void continuity_PPM(
+    Array4<const Real> const&,    //!< Zonal velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Meridional velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Initial layer thickness [H ~> m or kg m-2]
+    Array4<Real> const&,          //!< Final layer thickness [H ~> m or kg m-2]
+    Array4<Real> const&,          //!< Zonal volume flux, u*h*dy [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Array4<Real> const&,          //!< Meridional volume flux, v*h*dx [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Real,                         //!< Time increment [T ~> s]
+    const Box&,                   //!< The core (unstencilled) iteration box
+    int,                          //!< The continuity solver stencil width
+    bool,                         //!< If true, advect zonally before meridionally
+    Array4<const Real> const&,    //!< Cell land/ocean mask [nondim]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the u-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,    //!< The grid cell's 1/dxT [L-1 ~> m-1]
+    Array4<const Real> const&,    //!< The area of the h-cell [L2 ~> m2]
+    Array4<const Real> const&,    //!< The x-extent of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< 0 for land points, 1 for ocean points at u-locations [nondim]
+    Array4<const Real> const&,    //!< The grid cell's u-point x-extent [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the v-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/dyT [L-1 ~> m-1]
+    Array4<const Real> const&,    //!< The y-extent of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< 0 for land points, 1 for ocean points at v-locations [nondim]
+    Array4<const Real> const&,    //!< The grid cell's v-point y-extent [L ~> m]
+    int,                          //!< Start i-index of the data domain (0-based)
+    int,                          //!< End i-index of the data domain (0-based)
+    Real,                         //!< A one-Angstrom thickness [H ~> m or kg m-2]
+    Real,                         //!< A negligibly small thickness used to avoid division
+                                   //!< by zero [H ~> m or kg m-2]
+    const reconstruction_CS_C&,   //!< Options controlling the edge-value reconstruction scheme
+    const transport_adjust_CS_C&, //!< Options controlling the transport adjustment and
+                                   //!< barotropic-consistency iteration
+    OceanOBC*,                    //!< Open boundary control structure
+    Array4<const Real> const&,    //!< Fractional open area of U-faces [nondim]
+    Array4<const Real> const&,    //!< Fractional open area of V-faces [nondim]
+    Array4<const Real> const&,    //!< Summed volume flux through zonal faces [H L2 T-1 ~> m3 s-1 or kg s-1];
+                                   //!< may be absent (.p == nullptr)
+    Array4<const Real> const&,    //!< Summed volume flux through meridional faces [H L2 T-1 ~> m3 s-1 or kg s-1];
+                                   //!< may be absent (.p == nullptr)
+    Array4<const Real> const&,    //!< Fraction of momentum/barotropic acceleration remaining
+                                   //!< after viscosity, zonal [nondim]; may be absent (.p == nullptr)
+    Array4<const Real> const&,    //!< Fraction of momentum/barotropic acceleration remaining
+                                   //!< after viscosity, meridional [nondim]; may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Zonal velocity with barotropic correction [L T-1 ~> m s-1];
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Meridional velocity with barotropic correction [L T-1 ~> m s-1];
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, west, 0 transport;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, east, 0 transport;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, westerly test velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, easterly test velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Westerly correction to the barotropic velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Easterly correction to the barotropic velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, south, 0 transport;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, north, 0 transport;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, southerly test velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective open face area, northerly test velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Southerly correction to the barotropic velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Northerly correction to the barotropic velocity;
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective thickness at zonal faces [H ~> m or kg m-2];
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective thickness at meridional faces [H ~> m or kg m-2];
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Zonal velocity increment from u that gives uhbt as the
+                                   //!< depth-integrated transport [L T-1 ~> m s-1];
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&);         //!< Meridional velocity increment from v that gives vhbt as the
+                                   //!< depth-integrated transport [L T-1 ~> m s-1];
+                                   //!< may be absent (.p == nullptr)
+
+/**
+ * @brief Find the vertical sum of the thickness fluxes from the continuity solver without actually
+ * updating the layer thicknesses.  Because the fluxes in the two directions are calculated
+ * based on the input thicknesses, which are not updated between the directions, the fluxes
+ * returned here are not the same as those that would be returned by a call to continuity.
+ */
+void continuity_PPM_2d_fluxes(
+    Array4<const Real> const&,    //!< Zonal velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Meridional velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Layer thickness [H ~> m or kg m-2]
+    Array4<Real> const&,          //!< Vertically summed thickness flux through zonal
+                                   //!< faces [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Array4<Real> const&,          //!< Vertically summed thickness flux through meridional
+                                   //!< faces [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Real,                         //!< Time increment [T ~> s]
+    const Box&,                   //!< Iteration box for continuity solver
+    Array4<const Real> const&,    //!< Cell land/ocean mask [nondim]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the u-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,    //!< The grid cell's 1/dxT [L-1 ~> m-1]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the v-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/dyT [L-1 ~> m-1]
+    Real,                         //!< A one-Angstrom thickness [H ~> m or kg m-2]
+    const reconstruction_CS_C&,   //!< Options controlling the edge-value reconstruction scheme
+    const transport_adjust_CS_C&, //!< Options controlling the transport adjustment and
+                                   //!< barotropic-consistency iteration
+    OceanOBC*,                    //!< Open boundary control structure
+    Array4<const Real> const&,    //!< Fractional open area of U-faces [nondim]
+    Array4<const Real> const&);   //!< Fractional open area of V-faces [nondim]
 
 /**
  * @brief Calculates the mass or volume fluxes through the zonal faces, and

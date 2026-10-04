@@ -360,6 +360,201 @@ void meridional_edge_thickness(
     }
 }
 
+//> Time steps the layer thicknesses, using a monotonically limit, directionally split PPM scheme,
+// based on Lin (1994).
+void continuity_PPM(
+    Array4<const Real> const& u,
+    Array4<const Real> const& v,
+    Array4<const Real> const& hin,
+    Array4<Real> const& h,
+    Array4<Real> const& uh,
+    Array4<Real> const& vh,
+    Real dt,
+    const Box& bx0,
+    int stencil,
+    bool x_first,
+    Array4<const Real> const& mask2dT,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    Array4<const Real> const& areaT,
+    Array4<const Real> const& dxT,
+    Array4<const Real> const& mask2dCu,
+    Array4<const Real> const& dxCu,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IdyT,
+    Array4<const Real> const& dyT,
+    Array4<const Real> const& mask2dCv,
+    Array4<const Real> const& dyCv,
+    int isd,
+    int ied,
+    Real Angstrom_H,
+    Real H_subroundoff,
+    const reconstruction_CS_C& reconstruction_CS,
+    const transport_adjust_CS_C& transport_adjust_CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaU,
+    Array4<const Real> const& por_face_areaV,
+    Array4<const Real> const& uhbt,
+    Array4<const Real> const& vhbt,
+    Array4<const Real> const& visc_rem_u,
+    Array4<const Real> const& visc_rem_v,
+    Array4<Real> const& u_cor,
+    Array4<Real> const& v_cor,
+    Array4<Real> const& FA_u_W0,
+    Array4<Real> const& FA_u_E0,
+    Array4<Real> const& FA_u_WW,
+    Array4<Real> const& FA_u_EE,
+    Array4<Real> const& uBT_WW,
+    Array4<Real> const& uBT_EE,
+    Array4<Real> const& FA_v_S0,
+    Array4<Real> const& FA_v_N0,
+    Array4<Real> const& FA_v_SS,
+    Array4<Real> const& FA_v_NN,
+    Array4<Real> const& vBT_SS,
+    Array4<Real> const& vBT_NN,
+    Array4<Real> const& h_u,
+    Array4<Real> const& h_v,
+    Array4<Real> const& du_cor,
+    Array4<Real> const& dv_cor)
+{
+    BL_PROFILE("continuity_PPM");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+
+    if ((visc_rem_u.p != nullptr) != (visc_rem_v.p != nullptr)) {
+        AMREX_ABORT_LOC("continuity_PPM: Either both visc_rem_u and visc_rem_v or neither "
+                        "one must be present.");
+    }
+
+    const Real h_min = Angstrom_H;
+    const Real edge_h_min = 2.0_rt * Angstrom_H;
+
+    Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
+              IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
+
+    if (x_first) {
+        // First advect zonally, with loop bounds that accommodate the
+        // subsequent meridional advection.
+        Box bxC = amrex::grow(bx0, 1, stencil);
+        FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
+        MOM::zonal_edge_thickness(bxC, hin, h_W_fab.array(), h_E_fab.array(), mask2dT,
+                                  edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                  reconstruction_CS.simple_2nd, obc);
+        MOM::zonal_mass_flux(bxC, u, hin, h_W_fab.const_array(), h_E_fab.const_array(), uh, dt,
+                             dy_Cu, IareaT, IdxT, areaT, dxT, mask2dCu, dxCu,
+                             H_subroundoff, transport_adjust_CS, obc, por_face_areaU,
+                             uhbt, visc_rem_u, u_cor, FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE,
+                             uBT_WW, uBT_EE, h_u, du_cor);
+        MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, hin, 0.0_rt);
+
+        // Now advect meridionally, using the updated thicknesses to determine the fluxes.
+        bxC = bx0;
+        FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
+        MOM::meridional_edge_thickness(bxC, h, h_S_fab.array(), h_N_fab.array(), mask2dT,
+                                       edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                       reconstruction_CS.simple_2nd, obc);
+        MOM::meridional_mass_flux(bxC, v, h, h_S_fab.const_array(), h_N_fab.const_array(), vh, dt,
+                                  dx_Cv, IareaT, IdyT, areaT, dyT, mask2dCv, dyCv, isd, ied,
+                                  H_subroundoff, transport_adjust_CS, obc, por_face_areaV,
+                                  vhbt, visc_rem_v, v_cor, FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN,
+                                  vBT_SS, vBT_NN, h_v, dv_cor);
+        MOM::continuity_meridional_convergence(bxC, h, vh, dt, IareaT, Array4<const Real>{}, h_min);
+    } else {
+        // First advect meridionally, with loop bounds that accommodate the
+        // subsequent zonal advection.
+        Box bxC = amrex::grow(bx0, 0, stencil);
+        FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
+        MOM::meridional_edge_thickness(bxC, hin, h_S_fab.array(), h_N_fab.array(), mask2dT,
+                                       edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                       reconstruction_CS.simple_2nd, obc);
+        MOM::meridional_mass_flux(bxC, v, hin, h_S_fab.const_array(), h_N_fab.const_array(), vh, dt,
+                                  dx_Cv, IareaT, IdyT, areaT, dyT, mask2dCv, dyCv, isd, ied,
+                                  H_subroundoff, transport_adjust_CS, obc, por_face_areaV,
+                                  vhbt, visc_rem_v, v_cor, FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN,
+                                  vBT_SS, vBT_NN, h_v, dv_cor);
+        MOM::continuity_meridional_convergence(bxC, h, vh, dt, IareaT, hin, 0.0_rt);
+
+        // Now advect zonally, using the updated thicknesses to determine the fluxes.
+        bxC = bx0;
+        FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
+        MOM::zonal_edge_thickness(bxC, h, h_W_fab.array(), h_E_fab.array(), mask2dT,
+                                  edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                  reconstruction_CS.simple_2nd, obc);
+        MOM::zonal_mass_flux(bxC, u, h, h_W_fab.const_array(), h_E_fab.const_array(), uh, dt,
+                             dy_Cu, IareaT, IdxT, areaT, dxT, mask2dCu, dxCu,
+                             H_subroundoff, transport_adjust_CS, obc, por_face_areaU,
+                             uhbt, visc_rem_u, u_cor, FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE,
+                             uBT_WW, uBT_EE, h_u, du_cor);
+        MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, Array4<const Real>{}, h_min);
+    }
+}
+
+
+//> Find the vertical sum of the thickness fluxes from the continuity solver without actually
+// updating the layer thicknesses.  Because the fluxes in the two directions are calculated
+// based on the input thicknesses, which are not updated between the directions, the fluxes
+// returned here are not the same as those that would be returned by a call to continuity.
+void continuity_PPM_2d_fluxes(
+    Array4<const Real> const& u,
+    Array4<const Real> const& v,
+    Array4<const Real> const& h,
+    Array4<Real> const& uhbt,
+    Array4<Real> const& vhbt,
+    Real dt,
+    const Box& bxC,
+    Array4<const Real> const& mask2dT,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IdyT,
+    Real Angstrom_H,
+    const reconstruction_CS_C& reconstruction_CS,
+    const transport_adjust_CS_C& transport_adjust_CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaU,
+    Array4<const Real> const& por_face_areaV)
+{
+    BL_PROFILE("continuity_PPM_2d_fluxes");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+
+    Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
+              IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
+
+    const Real edge_h_min = 2.0_rt * Angstrom_H;
+
+    FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
+    FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
+    MOM::zonal_edge_thickness(bxC, h, h_W_fab.array(), h_E_fab.array(), mask2dT,
+                              edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                              reconstruction_CS.simple_2nd, obc);
+    MOM::zonal_BT_mass_flux(bxC, u, h, h_W_fab.const_array(), h_E_fab.const_array(), uhbt, dt,
+                            dy_Cu, IareaT, IdxT, transport_adjust_CS, obc, por_face_areaU);
+
+    FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
+    FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
+    MOM::meridional_edge_thickness(bxC, h, h_S_fab.array(), h_N_fab.array(), mask2dT,
+                                   edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                   reconstruction_CS.simple_2nd, obc);
+    MOM::meridional_BT_mass_flux(bxC, v, h, h_S_fab.const_array(), h_N_fab.const_array(), vhbt, dt,
+                                 dx_Cv, IareaT, IdyT, transport_adjust_CS, obc, por_face_areaV);
+}
+
+
 //> Calculates the mass or volume fluxes through the zonal faces, and other
 //  related quantities -- including, optionally, the barotropic mass-flux
 //  correction (u_cor/du_cor) and the barotropic-consistency

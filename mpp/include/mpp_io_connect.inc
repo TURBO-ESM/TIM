@@ -861,7 +861,7 @@
       filename = trim(fname)
       INQUIRE( FILE=filename, EXIST=THERE )
       if (THERE) then
-#ifdef flang
+#if defined(flang) || defined(__flang__)
         inquire( file=filename, SIZE=size, IOSTAT=ierr )
 #else
         ierr = stat(filename, fstat)

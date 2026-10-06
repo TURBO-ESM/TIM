@@ -51,9 +51,15 @@ target_include_directories(tim PUBLIC
 # line -- otherwise GNU ld with --as-needed (default on some Linux
 # distros, incl. NCAR Derecho) drops libstdc++ before amrex's undefined
 # refs are seen.
+#
+# Which runtime depends on the platform as well as the compiler: clang (Apple's
+# or upstream) defaults to libc++ on macOS only. On Linux it uses libstdc++,
+# like GNU and IntelLLVM.
+set(_tim_libcxx    "$<AND:$<CXX_COMPILER_ID:Clang,AppleClang>,$<PLATFORM_ID:Darwin>>")
+set(_tim_libstdcxx "$<AND:$<CXX_COMPILER_ID:GNU,IntelLLVM,Clang>,$<NOT:${_tim_libcxx}>>")
 target_link_libraries(tim PUBLIC AMReX::amrex MPI::MPI_CXX
-                                 $<$<CXX_COMPILER_ID:GNU,IntelLLVM>:stdc++>
-                                 $<$<CXX_COMPILER_ID:Clang,AppleClang>:c++>)
+                                 $<${_tim_libstdcxx}:stdc++>
+                                 $<${_tim_libcxx}:c++>)
 # PUBLIC so consumers including tim_profile.hpp / tim_coms_infra_C_API.h
 # (installed below) get the C++20 requirement propagated.
 target_compile_features(tim PUBLIC cxx_std_20)

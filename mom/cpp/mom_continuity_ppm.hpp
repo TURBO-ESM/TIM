@@ -152,4 +152,163 @@ void continuity_meridional_convergence(
     Array4<const Real> const&,
     Array4<const Real> const&,
     Real);
+
+/**
+ * @brief Accumulates the vertically-summed zonal barotropic mass/volume
+ * transport across the water column, for use as the barotropic solver's
+ * target transport in the transport-adjustment iteration
+ */
+void zonal_BT_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&);
+
+/**
+ * @brief Accumulates the vertically-summed meridional barotropic mass/volume
+ * transport across the water column, for use as the barotropic solver's
+ * target transport in the transport-adjustment iteration
+ */
+void meridional_BT_mass_flux(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    OceanOBC*,
+    Array4<const Real> const&);
+
+/**
+ * @brief Newton-iterates a barotropic velocity correction per zonal face so
+ * that the vertically-summed zonal mass/volume transport matches the target
+ * barotropic transport, to within the transport-adjustment iteration's
+ * tolerance
+ */
+void zonal_flux_adjust(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    OceanOBC*);
+
+/**
+ * @brief Newton-iterates a barotropic velocity correction per meridional
+ * face so that the vertically-summed meridional mass/volume transport
+ * matches the target barotropic transport, to within the
+ * transport-adjustment iteration's tolerance
+ */
+void meridional_flux_adjust(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    OceanOBC*);
+
+/**
+ * @brief Sets the effective open face areas and barotropic velocity
+ * corrections at zonal faces that reproduce the summed layer
+ * transports for three test barotropic velocities, for use in the
+ * barotropic-consistency iteration
+ */
+void set_zonal_BT_cont(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
+    Array4<const Real> const&);
+
+/**
+ * @brief Sets the effective open face areas and barotropic velocity
+ * corrections at meridional faces that reproduce the summed layer
+ * transports for three test barotropic velocities, for use in the
+ * barotropic-consistency iteration
+ */
+void set_merid_BT_cont(
+    const Box&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    const transport_adjust_CS_C&,
+    Array4<const Real> const&,
+    Array4<const Real> const&,
+    Array4<const int> const&,
+    Array4<const Real> const&);
+
 }

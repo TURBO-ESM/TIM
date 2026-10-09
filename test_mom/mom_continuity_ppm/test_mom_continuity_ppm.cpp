@@ -24,7 +24,10 @@ namespace {
 // Binds a "<field>_before" / "<field>_after" in/out array pair for an
 // optional container. The Fortran shim always records "<field>_before",
 // null-encoded (ndim == -1) when the container was unassociated at capture
-// time; CapturedFile::is_associated() tells the two apart. When absent,
+// time; CapturedFile::is_associated() tells the two apart. Members of an
+// optionally-associated derived type (e.g. BT_cont%FA_u_W0) are instead
+// omitted from the capture entirely when the parent is unassociated, so
+// has_entry() is checked first. When absent,
 // `arr` is left
 // default-constructed (Array4<Real>{}, a null pointer), matching the
 // kernel's own "may be absent (.p == nullptr)" parameter convention;
@@ -39,9 +42,10 @@ struct OptionalInOutArray {
 OptionalInOutArray bind_optional_inout(const test_mom::CapturedFile& captured,
                                        const std::string& field) {
     OptionalInOutArray o;
-    o.present = captured.is_associated("_" + field + "_before");
+    const std::string before = "_" + field + "_before";
+    o.present = captured.has_entry(before) && captured.is_associated(before);
     if (o.present) {
-        o.before_fab = captured.fab_device("_" + field + "_before");
+        o.before_fab = captured.fab_device(before);
         o.arr = o.before_fab.array();
         o.after_fab = captured.fab_host("_" + field + "_after");
     }
@@ -144,6 +148,182 @@ TEST(PpmReconstructionY, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 TEST(PpmLimitCw84, MatchesFortranCapture) {
     GTEST_SKIP() << "no captured ppm_limit_cw84.{bin,meta} fixture yet";
+}
+
+// -------------------------------------------------------------------------
+// continuity_PPM
+// -------------------------------------------------------------------------
+// OBC is never captured -- pass nullptr, matching the existing
+// PPM_reconstruction_x/_y tests (OBC-inactive configs only).
+TEST(ContinuityPPM, MatchesFortranCapture) {
+    test_mom::CapturedFile captured(test_mom::data_dir / "continuity_ppm");
+
+    const auto   u                 = captured.fab_device("_u");
+    const auto   v                 = captured.fab_device("_v");
+    const auto   hin               = captured.fab_device("_hin");
+    auto         h                  = captured.fab_device("_h_before");
+    const auto   h_after            = captured.fab_host("_h_after");
+    auto         uh                 = captured.fab_device("_uh_before");
+    const auto   uh_after           = captured.fab_host("_uh_after");
+    auto         vh                 = captured.fab_device("_vh_before");
+    const auto   vh_after           = captured.fab_host("_vh_after");
+    const double dt                = captured.real64("_dt");
+    const auto   bx0                = captured.box("_bx0");
+    const int    stencil           = captured.integer("_stencil");
+    const bool   x_first           = captured.logical("_x_first");
+    const auto   mask2dT           = captured.fab_device("_mask2dT");
+    const auto   dy_Cu             = captured.fab_device("_dy_Cu");
+    const auto   IareaT            = captured.fab_device("_IareaT");
+    const auto   IdxT              = captured.fab_device("_IdxT");
+    const auto   areaT             = captured.fab_device("_areaT");
+    const auto   dxT               = captured.fab_device("_dxT");
+    const auto   mask2dCu          = captured.fab_device("_mask2dCu");
+    const auto   dxCu              = captured.fab_device("_dxCu");
+    const auto   dx_Cv             = captured.fab_device("_dx_Cv");
+    const auto   IdyT              = captured.fab_device("_IdyT");
+    const auto   dyT               = captured.fab_device("_dyT");
+    const auto   mask2dCv          = captured.fab_device("_mask2dCv");
+    const auto   dyCv              = captured.fab_device("_dyCv");
+    const int    isd               = captured.integer("_isd") - 1;
+    const int    ied               = captured.integer("_ied") - 1;
+    const double Angstrom_H        = captured.real64("_Angstrom_H");
+    const double H_subroundoff     = captured.real64("_H_subroundoff");
+    reconstruction_CS_C reconstruction_CS{};
+    reconstruction_CS.upwind_1st   = captured.logical("_upwind_1st");
+    reconstruction_CS.monotonic    = captured.logical("_monotonic");
+    reconstruction_CS.simple_2nd   = captured.logical("_simple_2nd");
+    transport_adjust_CS_C transport_adjust_CS{};
+    transport_adjust_CS.tol_eta          = captured.real64("_tol_eta");
+    transport_adjust_CS.tol_vel          = captured.real64("_tol_vel");
+    transport_adjust_CS.CFL_limit_adjust = captured.real64("_CFL_limit_adjust");
+    transport_adjust_CS.aggress_adjust   = captured.logical("_aggress_adjust");
+    transport_adjust_CS.vol_CFL          = captured.logical("_vol_CFL");
+    transport_adjust_CS.better_iter      = captured.logical("_better_iter");
+    transport_adjust_CS.use_visc_rem_max = captured.logical("_use_visc_rem_max");
+    transport_adjust_CS.marginal_faces   = captured.logical("_marginal_faces");
+    const auto   por_face_areaU    = captured.fab_device("_por_face_areaU");
+    const auto   por_face_areaV    = captured.fab_device("_por_face_areaV");
+    amrex::FArrayBox uhbt_fab, vhbt_fab, visc_rem_u_fab, visc_rem_v_fab;
+    amrex::Array4<const amrex::Real> uhbt{}, vhbt{}, visc_rem_u{}, visc_rem_v{};
+    if (captured.is_associated("_uhbt")) {
+        uhbt_fab = captured.fab_device("_uhbt");
+        uhbt = uhbt_fab.const_array();
+    }
+    if (captured.is_associated("_vhbt")) {
+        vhbt_fab = captured.fab_device("_vhbt");
+        vhbt = vhbt_fab.const_array();
+    }
+    if (captured.is_associated("_visc_rem_u")) {
+        visc_rem_u_fab = captured.fab_device("_visc_rem_u");
+        visc_rem_u = visc_rem_u_fab.const_array();
+    }
+    if (captured.is_associated("_visc_rem_v")) {
+        visc_rem_v_fab = captured.fab_device("_visc_rem_v");
+        visc_rem_v = visc_rem_v_fab.const_array();
+    }
+    auto u_cor  = bind_optional_inout(captured, "u_cor");
+    auto v_cor  = bind_optional_inout(captured, "v_cor");
+    auto FA_u_W0 = bind_optional_inout(captured, "FA_u_W0");
+    auto FA_u_E0 = bind_optional_inout(captured, "FA_u_E0");
+    auto FA_u_WW = bind_optional_inout(captured, "FA_u_WW");
+    auto FA_u_EE = bind_optional_inout(captured, "FA_u_EE");
+    auto uBT_WW  = bind_optional_inout(captured, "uBT_WW");
+    auto uBT_EE  = bind_optional_inout(captured, "uBT_EE");
+    auto FA_v_S0 = bind_optional_inout(captured, "FA_v_S0");
+    auto FA_v_N0 = bind_optional_inout(captured, "FA_v_N0");
+    auto FA_v_SS = bind_optional_inout(captured, "FA_v_SS");
+    auto FA_v_NN = bind_optional_inout(captured, "FA_v_NN");
+    auto vBT_SS  = bind_optional_inout(captured, "vBT_SS");
+    auto vBT_NN  = bind_optional_inout(captured, "vBT_NN");
+    auto h_u     = bind_optional_inout(captured, "h_u");
+    auto h_v     = bind_optional_inout(captured, "h_v");
+    auto du_cor  = bind_optional_inout(captured, "du_cor");
+    auto dv_cor  = bind_optional_inout(captured, "dv_cor");
+
+    MOM::continuity_PPM(u.const_array(),
+                        v.const_array(),
+                        hin.const_array(),
+                        h.array(),
+                        uh.array(),
+                        vh.array(),
+                        dt,
+                        bx0,
+                        stencil,
+                        x_first,
+                        mask2dT.const_array(),
+                        dy_Cu.const_array(),
+                        IareaT.const_array(),
+                        IdxT.const_array(),
+                        areaT.const_array(),
+                        dxT.const_array(),
+                        mask2dCu.const_array(),
+                        dxCu.const_array(),
+                        dx_Cv.const_array(),
+                        IdyT.const_array(),
+                        dyT.const_array(),
+                        mask2dCv.const_array(),
+                        dyCv.const_array(),
+                        isd,
+                        ied,
+                        Angstrom_H,
+                        H_subroundoff,
+                        reconstruction_CS,
+                        transport_adjust_CS,
+                        /*obc=*/nullptr,
+                        por_face_areaU.const_array(),
+                        por_face_areaV.const_array(),
+                        uhbt,
+                        vhbt,
+                        visc_rem_u,
+                        visc_rem_v,
+                        u_cor.arr,
+                        v_cor.arr,
+                        FA_u_W0.arr,
+                        FA_u_E0.arr,
+                        FA_u_WW.arr,
+                        FA_u_EE.arr,
+                        uBT_WW.arr,
+                        uBT_EE.arr,
+                        FA_v_S0.arr,
+                        FA_v_N0.arr,
+                        FA_v_SS.arr,
+                        FA_v_NN.arr,
+                        vBT_SS.arr,
+                        vBT_NN.arr,
+                        h_u.arr,
+                        h_v.arr,
+                        du_cor.arr,
+                        dv_cor.arr);
+    amrex::Gpu::synchronize();
+
+    expect_arrays_equal(h_after,  to_host_fab(h),  "h");
+    expect_arrays_equal(uh_after, to_host_fab(uh), "uh");
+    expect_arrays_equal(vh_after, to_host_fab(vh), "vh");
+    if (u_cor.present)  expect_arrays_equal(u_cor.after_fab,  to_host_fab(u_cor.before_fab),  "u_cor");
+    if (v_cor.present)  expect_arrays_equal(v_cor.after_fab,  to_host_fab(v_cor.before_fab),  "v_cor");
+    if (FA_u_W0.present) expect_arrays_equal(FA_u_W0.after_fab, to_host_fab(FA_u_W0.before_fab), "FA_u_W0");
+    if (FA_u_E0.present) expect_arrays_equal(FA_u_E0.after_fab, to_host_fab(FA_u_E0.before_fab), "FA_u_E0");
+    if (FA_u_WW.present) expect_arrays_equal(FA_u_WW.after_fab, to_host_fab(FA_u_WW.before_fab), "FA_u_WW");
+    if (FA_u_EE.present) expect_arrays_equal(FA_u_EE.after_fab, to_host_fab(FA_u_EE.before_fab), "FA_u_EE");
+    if (uBT_WW.present)  expect_arrays_equal(uBT_WW.after_fab,  to_host_fab(uBT_WW.before_fab),  "uBT_WW");
+    if (uBT_EE.present)  expect_arrays_equal(uBT_EE.after_fab,  to_host_fab(uBT_EE.before_fab),  "uBT_EE");
+    if (FA_v_S0.present) expect_arrays_equal(FA_v_S0.after_fab, to_host_fab(FA_v_S0.before_fab), "FA_v_S0");
+    if (FA_v_N0.present) expect_arrays_equal(FA_v_N0.after_fab, to_host_fab(FA_v_N0.before_fab), "FA_v_N0");
+    if (FA_v_SS.present) expect_arrays_equal(FA_v_SS.after_fab, to_host_fab(FA_v_SS.before_fab), "FA_v_SS");
+    if (FA_v_NN.present) expect_arrays_equal(FA_v_NN.after_fab, to_host_fab(FA_v_NN.before_fab), "FA_v_NN");
+    if (vBT_SS.present)  expect_arrays_equal(vBT_SS.after_fab,  to_host_fab(vBT_SS.before_fab),  "vBT_SS");
+    if (vBT_NN.present)  expect_arrays_equal(vBT_NN.after_fab,  to_host_fab(vBT_NN.before_fab),  "vBT_NN");
+    if (h_u.present)     expect_arrays_equal(h_u.after_fab,     to_host_fab(h_u.before_fab),     "h_u");
+    if (h_v.present)     expect_arrays_equal(h_v.after_fab,     to_host_fab(h_v.before_fab),     "h_v");
+    if (du_cor.present) expect_arrays_equal(du_cor.after_fab, to_host_fab(du_cor.before_fab), "du_cor");
+    if (dv_cor.present) expect_arrays_equal(dv_cor.after_fab, to_host_fab(dv_cor.before_fab), "dv_cor");
+}
+
+// -------------------------------------------------------------------------
+// continuity_PPM_2d_fluxes -- no capture available yet
+// -------------------------------------------------------------------------
+TEST(ContinuityPpm2dFluxes, MatchesFortranCapture) {
+    GTEST_SKIP() << "no captured continuity_ppm_2d_fluxes.{bin,meta} fixture yet";
 }
 
 // -------------------------------------------------------------------------

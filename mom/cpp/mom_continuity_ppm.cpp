@@ -16,6 +16,7 @@
 
 namespace MOM {
 using amrex::FArrayBox;
+using amrex::IntVect;
 using namespace amrex::literals;
 /// @brief Piecewise parabolic limiter (positive-definite) over a Box.
 ///

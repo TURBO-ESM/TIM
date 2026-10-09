@@ -40,8 +40,9 @@
 //   itself a member of an optionally-associated derived type (e.g.
 //   BT_cont%FA_u_W0), the whole capture block for it is skipped when the
 //   parent container is unassociated, since rec%add() can't dereference an
-//   unassociated parent. is_associated() treats a missing entry the same
-//   as a null-encoded one: both mean "not associated," not a stale fixture.
+//   unassociated parent. is_associated() throws on a missing entry (so a
+//   misspelled name or stale fixture fails loudly); check has_entry() first
+//   for fields that may legitimately be omitted this way.
 //
 //     real64      : float64
 //     logical     : int32 (0 = false, non-zero = true)
@@ -98,8 +99,11 @@ public:
     // (ndim == -1, i.e. the Fortran container was unassociated at capture
     // time). Check this before calling fab_host()/fab_device()/
     // int_fab_host()/int_fab_device() on a field the Fortran shim captures
-    // unconditionally. Throws if the entry is not a RealArray_t/LogicalArray_t.
+    // unconditionally. Throws if the entry is missing or is not a
+    // RealArray_t/LogicalArray_t.
     bool             is_associated(const std::string& name) const;
+    // True if the capture contains an entry with this name, of any type.
+    bool             has_entry    (const std::string& name) const;
 
 private:
     struct Entry {

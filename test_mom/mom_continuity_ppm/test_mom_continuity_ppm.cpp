@@ -24,7 +24,10 @@ namespace {
 // Binds a "<field>_before" / "<field>_after" in/out array pair for an
 // optional container. The Fortran shim always records "<field>_before",
 // null-encoded (ndim == -1) when the container was unassociated at capture
-// time; CapturedFile::is_associated() tells the two apart. When absent,
+// time; CapturedFile::is_associated() tells the two apart. Members of an
+// optionally-associated derived type (e.g. BT_cont%FA_u_W0) are instead
+// omitted from the capture entirely when the parent is unassociated, so
+// has_entry() is checked first. When absent,
 // `arr` is left
 // default-constructed (Array4<Real>{}, a null pointer), matching the
 // kernel's own "may be absent (.p == nullptr)" parameter convention;
@@ -39,9 +42,10 @@ struct OptionalInOutArray {
 OptionalInOutArray bind_optional_inout(const test_mom::CapturedFile& captured,
                                        const std::string& field) {
     OptionalInOutArray o;
-    o.present = captured.is_associated("_" + field + "_before");
+    const std::string before = "_" + field + "_before";
+    o.present = captured.has_entry(before) && captured.is_associated(before);
     if (o.present) {
-        o.before_fab = captured.fab_device("_" + field + "_before");
+        o.before_fab = captured.fab_device(before);
         o.arr = o.before_fab.array();
         o.after_fab = captured.fab_host("_" + field + "_after");
     }
@@ -313,6 +317,13 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
     if (h_v.present)     expect_arrays_equal(h_v.after_fab,     to_host_fab(h_v.before_fab),     "h_v");
     if (du_cor.present) expect_arrays_equal(du_cor.after_fab, to_host_fab(du_cor.before_fab), "du_cor");
     if (dv_cor.present) expect_arrays_equal(dv_cor.after_fab, to_host_fab(dv_cor.before_fab), "dv_cor");
+}
+
+// -------------------------------------------------------------------------
+// continuity_PPM_2d_fluxes -- no capture available yet
+// -------------------------------------------------------------------------
+TEST(ContinuityPpm2dFluxes, MatchesFortranCapture) {
+    GTEST_SKIP() << "no captured continuity_ppm_2d_fluxes.{bin,meta} fixture yet";
 }
 
 // -------------------------------------------------------------------------

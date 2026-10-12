@@ -10,6 +10,7 @@
 // SKILLS: 0.3.1
 #include <AMReX.H>
 #include <AMReX_FArrayBox.H>
+#include <AMReX_IArrayBox.H>
 
 #include "mom_continuity_ppm.hpp"
 
@@ -17,6 +18,7 @@
 namespace MOM {
 using amrex::FArrayBox;
 using amrex::IntVect;
+using amrex::IArrayBox;
 using namespace amrex::literals;
 /// @brief Piecewise parabolic limiter (positive-definite) over a Box.
 ///
@@ -435,8 +437,7 @@ void continuity_PPM(
     const Real h_min = Angstrom_H;
     const Real edge_h_min = 2.0_rt * Angstrom_H;
 
-    Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
-              IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
+    Box h_box(h);
 
     if (x_first) {
         // First advect zonally, with loop bounds that accommodate the
@@ -533,8 +534,7 @@ void continuity_PPM_2d_fluxes(
        AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }
 
-    Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
-              IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
+    Box h_box(h);
 
     const Real edge_h_min = 2.0_rt * Angstrom_H;
 

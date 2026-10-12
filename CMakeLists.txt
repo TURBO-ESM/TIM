@@ -154,6 +154,7 @@ list(APPEND tim_fortran_src_files
   time_manager/get_cal_time.F90
   time_manager/time_manager.F90
   libFMS.F90
+  mom/fortran/turbotmp_bridge_c_types.F90
   tim/fortran/tim_coms_infra_interface.F90
 )
 
@@ -243,7 +244,7 @@ add_subdirectory(tim/cpp)
 # every consumer today except the turbo-stack dev/turbo-debug lane -- should not
 # pay for building them or carry them in their link line.
 if(TIM_ENABLE_MOM_BRIDGE)
-  add_subdirectory(mom/cpp)
+  add_subdirectory(mom)
 endif()
 
 foreach(kind ${kinds})

@@ -7,9 +7,29 @@
 
 namespace turbotmp {
 
-A4Box make_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
+namespace {
+// Extents and lower bounds of a 2D or 3D descriptor, padded to 3D with 1.
+void descriptor_dims(int dim, const int* shape, const int* lb, int n[3], int l[3])
+{
+    if (dim != 2 && dim != 3) {
+        amrex::Abort("turbotmp: array descriptor must be 2D or 3D");
+    }
+    for (int d = 0; d < 3; ++d) {
+        n[d] = (d < dim) ? shape[d] : 1;
+        l[d] = (d < dim) ? lb[d]    : 1;
+    }
+}
+}
+
+A4Box make_array4(const RealArray_C* a)
 {
     using namespace amrex;
+
+    int n[3], l[3];
+    descriptor_dims(a->dim, a->shape, a->lb, n, l);
+    const int nx = n[0], ny = n[1], nz = n[2];
+    const int lbx = l[0], lby = l[1], lbz = l[2];
+    const int ncomp = 1;
 
     A4Box a4;
 
@@ -120,9 +140,15 @@ void copy_array4_to_FortranHost(const A4Box& a4, double* f)
 
 }
 
-IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz)
+IntA4Box make_int_array4(const LogicalArray_C* a)
 {
     using namespace amrex;
+
+    int n[3], l[3];
+    descriptor_dims(a->dim, a->shape, a->lb, n, l);
+    const int nx = n[0], ny = n[1], nz = n[2];
+    const int lbx = l[0], lby = l[1], lbz = l[2];
+    const int ncomp = 1;
 
     IntA4Box a4;
 
@@ -225,6 +251,12 @@ void copy_int_array4_to_FortranHost(const IntA4Box& a4, int* f)
     // Copy device -> Host
     Gpu::copy(Gpu::deviceToHost, d_f, d_f+n, f);
     Gpu::streamSynchronize();
+}
+
+amrex::Box to_box(const Box_C* b)
+{
+    return amrex::Box(amrex::IntVect(b->idxS[0]-1, b->idxS[1]-1, b->idxS[2]-1),
+                      amrex::IntVect(b->idxE[0]-1, b->idxE[1]-1, b->idxE[2]-1));
 }
 
 }

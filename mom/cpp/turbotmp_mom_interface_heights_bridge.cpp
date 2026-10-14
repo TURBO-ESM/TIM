@@ -44,22 +44,12 @@ void turbotmp_thickness_to_dz_3d_bridge(const Box_C* bx_HOST,
                                         const bool has_spv)
 {
     /// Reconstruct the iteration Box (Fortran 1-based -> AMReX 0-based)
-    Box bx(IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
-           IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
+    Box bx = turbotmp::to_box(bx_HOST);
 
     /// Allocate one A4Box per array, sized by RealArray_C::shape[]
-    auto h_DEV       = turbotmp::make_array4(h_HOST->shape[0],
-                                             h_HOST->shape[1],
-                                             h_HOST->shape[2], 1,
-                                             h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
-    auto dz_DEV      = turbotmp::make_array4(dz_HOST->shape[0],
-                                             dz_HOST->shape[1],
-                                             dz_HOST->shape[2], 1,
-                                             dz_HOST->lb[0], dz_HOST->lb[1], dz_HOST->lb[2]);
-    auto spv_avg_DEV = turbotmp::make_array4(spv_avg_HOST->shape[0],
-                                             spv_avg_HOST->shape[1],
-                                             spv_avg_HOST->shape[2], 1,
-                                             spv_avg_HOST->lb[0], spv_avg_HOST->lb[1], spv_avg_HOST->lb[2]);
+    auto h_DEV       = turbotmp::make_array4(h_HOST);
+    auto dz_DEV      = turbotmp::make_array4(dz_HOST);
+    auto spv_avg_DEV = turbotmp::make_array4(spv_avg_HOST);
 
     /// Copy host -> device for every array, including the inout dz so its
     /// halo values are preserved across the call (lessons.md §7 #1).

@@ -70,29 +70,29 @@ using amrex::Array4;
 
 /// @name Enumeration values for Coriolis_Scheme
 /// @{
-constexpr int SADOURNY75_ENERGY   = 1;
-constexpr int ARAKAWA_HSU90       = 2;
-constexpr int ROBUST_ENSTRO       = 3;
-constexpr int SADOURNY75_ENSTRO   = 4;
-constexpr int ARAKAWA_LAMB81      = 5;
-constexpr int AL_BLEND            = 6;
-constexpr int wenovi7th_PV_ENSTRO = 7;
-constexpr int wenovi5th_PV_ENSTRO = 8;
-constexpr int wenovi3rd_PV_ENSTRO = 9;
+constexpr int SADOURNY75_ENERGY   = 1; ///< Sadourny (1975) energy-conserving scheme ("SADOURNY75_ENERGY")
+constexpr int ARAKAWA_HSU90       = 2; ///< Arakawa and Hsu (1990) energy-enstrophy scheme ("ARAKAWA_HSU90")
+constexpr int ROBUST_ENSTRO       = 3; ///< Enstrophy-conserving scheme robust to vanishing layers ("ROBUST_ENSTRO")
+constexpr int SADOURNY75_ENSTRO   = 4; ///< Sadourny (1975) enstrophy-conserving scheme ("SADOURNY75_ENSTRO")
+constexpr int ARAKAWA_LAMB81      = 5; ///< Arakawa and Lamb (1981) energy-enstrophy scheme ("ARAKAWA_LAMB81")
+constexpr int AL_BLEND            = 6; ///< Blend of Arakawa-Lamb (1981) and Arakawa-Hsu (1990) ("ARAKAWA_LAMB_BLEND")
+constexpr int wenovi7th_PV_ENSTRO = 7; ///< 7th-order WENO PV-enstrophy scheme ("WENOVI7TH_PV_ENSTRO")
+constexpr int wenovi5th_PV_ENSTRO = 8; ///< 5th-order WENO PV-enstrophy scheme ("WENOVI5TH_PV_ENSTRO")
+constexpr int wenovi3rd_PV_ENSTRO = 9; ///< 3rd-order WENO PV-enstrophy scheme ("WENOVI3RD_PV_ENSTRO")
 /// @}
 
 /// @name Enumeration values for PV_Adv_Scheme
 /// @{
-constexpr int PV_ADV_CENTERED = 21;
-constexpr int PV_ADV_UPWIND1  = 22;
+constexpr int PV_ADV_CENTERED = 21; ///< Centered PV advection ("PV_ADV_CENTERED")
+constexpr int PV_ADV_UPWIND1  = 22; ///< First-order upwind PV advection ("PV_ADV_UPWIND1")
 /// @}
 
 /// @name Enumeration values for KE_Scheme
 /// @{
-constexpr int KE_ARAKAWA        = 10;
-constexpr int KE_SIMPLE_GUDONOV = 11;
-constexpr int KE_GUDONOV        = 12;
-constexpr int KE_UP3            = 13;
+constexpr int KE_ARAKAWA        = 10; ///< Arakawa and Lamb (1977) kinetic energy discretization ("KE_ARAKAWA")
+constexpr int KE_SIMPLE_GUDONOV = 11; ///< Simple Godunov kinetic energy discretization ("KE_SIMPLE_GUDONOV")
+constexpr int KE_GUDONOV        = 12; ///< Godunov kinetic energy discretization ("KE_GUDONOV")
+constexpr int KE_UP3            = 13; ///< Third-order upwind kinetic energy discretization ("KE_UP3")
 /// @}
 
 ///

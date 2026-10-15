@@ -121,3 +121,42 @@ gtest_discover_tests(test_mom_continuity_ppm
     # build.
     DISCOVERY_MODE PRE_TEST
 )
+
+# --- mom_coriolisadv test -------------------------------------------------
+add_executable(test_mom_coriolisadv
+    test_mom_main.cpp
+    common/captured_io.cpp
+    common/amrex_assertions.cpp
+    mom_coriolisadv/test_mom_coriolisadv.cpp
+)
+
+# Every source in this target includes AMReX headers. With the CUDA backend
+# those headers use __host__/__device__ qualifiers and CUDA kernel-launch
+# syntax, so nvcc must compile them. CMake won't infer this from .cpp, so we
+# set the language explicitly.
+if(AMReX_GPU_BACKEND STREQUAL "CUDA")
+    set_source_files_properties(
+        test_mom_main.cpp
+        common/captured_io.cpp
+        common/amrex_assertions.cpp
+        mom_coriolisadv/test_mom_coriolisadv.cpp
+        PROPERTIES LANGUAGE CUDA)
+endif()
+
+target_include_directories(test_mom_coriolisadv
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+)
+target_link_libraries(test_mom_coriolisadv
+    PRIVATE
+        mom_continuity
+        GTest::gtest
+)
+gtest_discover_tests(test_mom_coriolisadv
+    EXTRA_ARGS --data-dir=${TEST_MOM_DATA_DIR}
+    # Discover at test-run time rather than build time. With the CUDA backend
+    # the binary calls amrex::Initialize() which aborts on hosts without a GPU
+    # (e.g. Derecho login nodes), so running it at POST_BUILD would break the
+    # build.
+    DISCOVERY_MODE PRE_TEST
+)

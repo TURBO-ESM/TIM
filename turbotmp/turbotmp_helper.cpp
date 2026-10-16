@@ -157,7 +157,7 @@ IntA4Box make_int_array4(const LogicalArray_C* a)
     a4.nz = nz;
     a4.ncomp = ncomp;
 
-    // See make_array4()'s lbx/lby/lbz comment -- identical convention.
+    //  See make_array() comment -- identical convention
     a4.bx = Box(IntVect(lbx-1, lby-1, lbz-1),
                IntVect(lbx-1 + nx-1, lby-1 + ny-1, lbz-1 + nz-1));
 

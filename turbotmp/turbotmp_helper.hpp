@@ -45,7 +45,7 @@ struct IntA4Box
     int nx, ny, nz, ncomp;
 };
 
-   // See make_array4()'s lbx/lby/lbz comment -- identical convention.
+   //  See make_array() comment -- identical convention
    IntA4Box make_int_array4(const LogicalArray_C* a);
    void free_int_array4(IntA4Box& a4);
    void copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4);

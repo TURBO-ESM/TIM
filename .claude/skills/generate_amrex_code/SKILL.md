@@ -1,6 +1,6 @@
 ---
 name: generate_amrex_code
-version: "0.3.1"
+version: "0.3.2"
 description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
 user-invocable: true
 argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
@@ -273,10 +273,9 @@ holds the template or rationale.
 
 ### 8. Bridge implementation in `mom/cpp/turbotmp_<module>_bridge.cpp`
    Implement the new prototype following the **7-step marshalling
-   pattern** in lessons.md §3 (build `Box` with index −1, `make_array4`
-   each array sized by `shape[]` **and positioned by `lb[]`** — never
-   omit `lb`, even when every array in this call happens to share the
-   same one; see lessons.md §6 and §7 #12 — copy host→device for inputs
+   pattern** in lessons.md §3 (build `Box` with `turbotmp::to_box`,
+   `make_array4(X_HOST)` each array, which sizes it by `shape[]` **and
+   positions it by `lb[]`**; see lessons.md §6 and §7 #12 — copy host→device for inputs
    **and** inouts, call the `MOM::` kernel, `Gpu::synchronize`, copy
    device→host for outputs/inouts only, free everything). No math, no
    value-dependent branches.

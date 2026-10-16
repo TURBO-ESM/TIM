@@ -2,6 +2,8 @@
 #include <AMReX_Array4.H>
 #include <AMReX_MultiFab.H>
 
+#include "turbotmp_bridge_c_types.h"
+
 namespace turbotmp {
 
 struct A4Box
@@ -23,7 +25,9 @@ struct A4Box
    // not just [0, n-1]. Staggered-grid arrays (u/v-point fields) legitimately
    // have lb != 1, and shared iteration boxes require each array4 to be
    // positioned at its own real offset so indexing hits the correct element.
-   A4Box make_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz);
+   // Sizes and positions the array from the descriptor's shape/lb. A 2D
+   // descriptor (dim == 2) gets nz = 1 and lbz = 1. ncomp is always 1.
+   A4Box make_array4(const RealArray_C* a);
    void free_array4(A4Box& a4);
    void copy_FortranHost_to_array4(const double* f, A4Box& a4);
    void copy_array4_to_FortranHost(const A4Box& a4, double* f);
@@ -41,9 +45,12 @@ struct IntA4Box
     int nx, ny, nz, ncomp;
 };
 
-   // See make_array4()'s lbx/lby/lbz comment -- identical convention.
-   IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp, int lbx, int lby, int lbz);
+   //  See make_array() comment -- identical convention
+   IntA4Box make_int_array4(const LogicalArray_C* a);
    void free_int_array4(IntA4Box& a4);
    void copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4);
    void copy_int_array4_to_FortranHost(const IntA4Box& a4, int* f);
+
+   // Converts a Fortran (1-based) Box_C to an AMReX (0-based) Box.
+   amrex::Box to_box(const Box_C* b);
 }

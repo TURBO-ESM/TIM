@@ -1,21 +1,26 @@
 # Lessons from TIM PR #8: AMReX/C++ implementation of the PPM bridges
 
 Source: [TURBO-ESM/TIM PR #8](https://github.com/TURBO-ESM/TIM/pull/8) — merged commit `2374014`.
+(Historical: the kernels and bridges from that PR have since moved out
+of TIM into TURBO-ESM/protoMOMxx under `src/mom_kernels/`; all paths
+below are protoMOMxx paths.)
 
 **Pre-condition:** The `generate_amrex_code` skill operates on a
-pre-existing TURBO-ESM/TIM checkout. The work directory must already
-contain the source tree (i.e. have `mom/cpp/` and `turbotmp/`) and must
-be on (or rebased onto) the `main` branch. Cloning is not performed —
-use `git clone -b main git@github.com:TURBO-ESM/TIM.git <dir>` once to
+pre-existing TURBO-ESM/protoMOMxx checkout. The work directory must already
+contain the source tree (i.e. have `src/mom_kernels/` and
+`src/mom_kernels/turbotmp/`) and must be on (or rebased onto) the
+`main` branch. Cloning is not performed — use
+`git clone -b main git@github.com:TURBO-ESM/protoMOMxx.git <dir>` once to
 set up the directory, then pass it as `<work-directory>` on every
 subsequent skill invocation.
 
-This document distills the design, logic, and patterns used on the **C++/TIM
+This document distills the design, logic, and patterns used on the **C++
 side** of the PPM bridge work. PR #8 adds 7 files that implement the AMReX
 versions of three Fortran subroutines whose Fortran-side wrapper lives in
 the MOM6 tree (`PPM_limit_pos`, `PPM_limit_cw84`, `PPM_reconstruction_y`).
 The Fortran side is out of scope here; this file covers only what gets
-written in the TIM repository.
+written in the protoMOMxx repository (plus, rarely, the shared C types
+that live in TIM — see §3).
 
 The implementation is a strict **three-tier separation**:
 
@@ -38,16 +43,27 @@ can be unit-tested or replaced independently.
 
 ---
 
-## 1. C++ file layout in TIM
+## 1. C++ file layout in protoMOMxx
 
 | File | Role |
 |---|---|
-| `turbotmp/turbotmp_helper.{hpp,cpp}` | generic `A4Box`/`IntA4Box` containers + GPU arena alloc/free + Fortran↔C transpose. Reusable across all bridges. |
-| `mom/cpp/turbotmp_<module>_bridge.h` | `extern "C"` prototypes of the bridge entry points; mirror C structs for `RealArray_C`, `LogicalArray_C`, `Box_C`. |
-| `mom/cpp/turbotmp_<module>_bridge.cpp` | bridge implementations: marshalling only, no math. |
-| `mom/cpp/<module>.hpp` | public AMReX kernel API in namespace `MOM`. |
-| `mom/cpp/<module>.cpp` | box-level AMReX kernels (`ParallelFor` lambdas). |
-| `mom/cpp/<module>_kernel.hpp` | per-cell device primitives `*_point`. |
+| `src/mom_kernels/turbotmp/turbotmp_helper.{hpp,cpp}` | generic `A4Box`/`IntA4Box` containers + GPU arena alloc/free + Fortran↔C transpose. Reusable across all bridges. |
+| `src/mom_kernels/turbotmp_<module>_bridge.h` | `extern "C"` prototypes of the bridge entry points; includes TIM's `turbotmp_bridge_c_types.h` for `RealArray_C`, `LogicalArray_C`, `Box_C`. |
+| `src/mom_kernels/turbotmp_<module>_bridge.cpp` | bridge implementations: marshalling only, no math. |
+| `src/mom_kernels/<module>.hpp` | public AMReX kernel API in namespace `MOM`. |
+| `src/mom_kernels/<module>.cpp` | box-level AMReX kernels (`ParallelFor` lambdas). |
+| `src/mom_kernels/<module>_kernel.hpp` | per-cell device primitives `*_point`. |
+
+Build targets (all in `src/mom_kernels/CMakeLists.txt`): kernel `.cpp`
+files go into `mom_kernels` (alias `protoMOMxx::mom_kernels`, links
+`AMReX::amrex_3d`); bridge `.cpp` files plus `turbotmp_helper.cpp` go
+into `mom_bridge` (alias `protoMOMxx::mom_bridge`, links `mom_kernels`,
+`TIM::tim`, `AMReX::amrex_3d`) — the bridge never recompiles kernel
+sources. Both share one configure function carrying
+`-ffp-contract=off` / `-fp-model=precise`, and every `.cpp` is also
+listed in that file's CUDA `LANGUAGE` source properties. Everything
+under `src/` must be fully Doxygen-documented: protoMOMxx's
+`docs-check.yaml` runs Doxygen with `WARN_AS_ERROR`.
 
 Naming is symmetric with the Fortran side: bridges are co-located with the
 kernels they wrap and prefixed `turbotmp_` to mark them as scaffolding —
@@ -160,11 +176,12 @@ serves both layers — there is no separate "_C" bridge type and
 pattern for a module-specific type: forward-declared in the module's
 `turbotmp_<module>_bridge.h` (a pointer parameter only needs a forward
 declaration), with the **full** definition living in the module's
-kernel header (`mom/cpp/<module>.hpp`), where kernels read its fields
+kernel header (`src/mom_kernels/<module>.hpp`), where kernels read its fields
 directly (e.g. `CS.vol_CFL`) — never in the shared
-`turbotmp_bridge_c_types.h`, which is for universal, reusable-across-
-every-module types (`RealArray_C`, `Box_C`, `LogicalArray_C`), not a
-single Fortran module's own config type. At the kernel layer this is
+`turbotmp_bridge_c_types.h` (TIM's `tim/cpp/`), which is for universal,
+reusable-across-every-module types (`RealArray_C`, `Box_C`,
+`LogicalArray_C`, `IntArray_C`), not a single Fortran module's own
+config type. At the kernel layer this is
 `const transport_adjust_CS_C&` (an ordinary aggregate parameter, no
 different from taking `const Box&`).
 
@@ -234,9 +251,12 @@ Signature conventions:
   Example: `const Box_C* bx_HOST`, `const RealArray_C* h_HOST`,
   `RealArray_C* dz_HOST`.
 
-`RealArray_C` and `Box_C` are defined once in `mom/cpp/turbotmp_bridge_c_types.h`.
-Bridge headers `#include "turbotmp_bridge_c_types.h"` instead of re-declaring
-the structs. The bridge header then looks like:
+`RealArray_C`, `IntArray_C`, `LogicalArray_C` and `Box_C` (with typedefs
+for all four) are defined once in TIM's `tim/cpp/turbotmp_bridge_c_types.h`
+— not in `src/mom_kernels/`. Bridge headers `#include "turbotmp_bridge_c_types.h"`
+instead of re-declaring the structs; the header resolves through the
+`TIM::tim` target's include path, which `mom_bridge` links. The bridge
+header then looks like:
 
 ```cpp
 #pragma once
@@ -259,9 +279,11 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
 ```
 
 The struct member order in `turbotmp_bridge_c_types.h` **must** match the
-Fortran-side `RealArray_C` / `Box_C` declarations field-for-field. The
+Fortran-side `RealArray_C` / `Box_C` declarations (TIM's
+`tim/fortran/turbotmp_bridge_c_types.F90`) field-for-field. The
 Fortran field is `int :: rank`; the C field is `int dim` — only the names
-differ, the layout matches.
+differ, the layout matches. Both files are TIM's: any change to these
+shared C types is a TIM change, not a protoMOMxx change.
 
 ### 3.1 Mapping a Fortran `bind(C)` interface to a C prototype
 

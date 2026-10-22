@@ -46,6 +46,7 @@ jobs:
             https://github.com/AMReX-Codes/amrex.git amrex-src
           cmake -S amrex-src -B amrex-build \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=20 \
             -DAMReX_MPI=ON \
             -DAMReX_FORTRAN=OFF \
             -DAMReX_OMP=OFF \

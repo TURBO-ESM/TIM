@@ -1,7 +1,7 @@
 ---
 name: generate_amrex_code
 version: "0.3.2"
-description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
+description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/protoMOMxx checkout (under src/mom_kernels/) — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8 (that code now lives in protoMOMxx).
 user-invocable: true
 argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
 ---
@@ -29,22 +29,23 @@ verbatim and stop:
 Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
 
 Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine
-inside a TURBO-ESM/TIM checkout. Writes (or extends) three layers:
+inside a TURBO-ESM/protoMOMxx checkout. Writes (or extends) three layers:
 
-  - mom/cpp/<module>_kernel.hpp           pointwise device primitive
+  - src/mom_kernels/<module>_kernel.hpp   pointwise device primitive
                                           (stencil-free kernels only)
-  - mom/cpp/<module>.{hpp,cpp}            box-level AMReX kernel in
+  - src/mom_kernels/<module>.{hpp,cpp}    box-level AMReX kernel in
                                           namespace MOM
-  - mom/cpp/turbotmp_<module>_bridge.{h,cpp}
+  - src/mom_kernels/turbotmp_<module>_bridge.{h,cpp}
                                           extern "C" marshalling bridge
 
-Reuses turbotmp/turbotmp_helper.{hpp,cpp}; extends it only if a needed
-helper is missing.
+Reuses src/mom_kernels/turbotmp/turbotmp_helper.{hpp,cpp}; extends it
+only if a needed helper is missing.
 
 Arguments:
-  <work-directory>     Absolute path to an existing TURBO-ESM/TIM checkout
-                       (must contain mom/cpp/ and turbotmp/, and should be
-                       on the main branch). Cloning is not performed.
+  <work-directory>     Absolute path to an existing TURBO-ESM/protoMOMxx
+                       checkout (must contain src/mom_kernels/ and
+                       src/mom_kernels/turbotmp/, and should be on the
+                       main branch). Cloning is not performed.
   <function-name>      Name of the original Fortran subroutine being
                        bridged (e.g. PPM_limit_pos). Used to derive
                        the kernel symbol, the bridge symbol, and the
@@ -56,8 +57,8 @@ Arguments:
                        omitted, Step 3 asks the user to paste the
                        Fortran source body.
   --enable_src_validate  (optional) Run Step 1: verify the work directory is a
-                         TURBO-ESM/TIM checkout on the main branch and that the
-                         tree layout is valid. Off by default.
+                         TURBO-ESM/protoMOMxx checkout on the main branch and
+                         that the tree layout is valid. Off by default.
   --enable_git_commit    (optional) Force Step 12 to run this invocation
                          only, overriding the global git_commit_and_push
                          preference in ~/.claude/preferences.json.
@@ -73,23 +74,23 @@ follows ~/.claude/preferences.json's "git_commit_and_push" key ("auto" or
 or the JSON fails to parse).
 
 Example:
-  /generate_amrex_code /glade/derecho/scratch/sunjian/TIM PPM_limit_pos \
+  /generate_amrex_code /glade/derecho/scratch/sunjian/protoMOMxx PPM_limit_pos \
                        /glade/derecho/scratch/sunjian/MOM6
 ```
 
 ## Step 0 — validate inputs
 
-`$0` = work-directory (TIM), `$1` = function-name, `$2` =
+`$0` = work-directory (protoMOMxx), `$1` = function-name, `$2` =
 mom6-directory (optional). Stop on the first failure with a
 one-line, actionable error. Do not retry, do not assume defaults,
 do not create anything.
 
 1. **Argument count.** If `$0` empty OR `$1` empty → stop:
    `Error: missing arguments. Run "/generate_amrex_code --help" for usage.`
-2. **TIM work directory is an existing checkout.** If `$0` is not an
+2. **protoMOMxx work directory is an existing checkout.** If `$0` is not an
    existing directory → stop:
    `Error: work directory "<value>" does not exist.`
-   The directory must already contain a TURBO-ESM/TIM checkout —
+   The directory must already contain a TURBO-ESM/protoMOMxx checkout —
    cloning is not performed by this skill. Step 1 verifies the checkout
    identity and validates the tree layout.
 3. **MOM6 directory (optional).** If `$2` was provided but is not
@@ -113,7 +114,7 @@ global preference described in Step 12.
 ## Settle these decisions (ask if not obvious from the tree)
 
 1. **Bridge prefix** — default to whatever existing
-   `turbotmp_*_bridge` declarations under `$0/mom/cpp` use; otherwise
+   `turbotmp_*_bridge` declarations under `$0/src/mom_kernels` use; otherwise
    `turbotmp_`.
 2. **Host C++ module name** (`<module>`) — lowercase the Fortran host
    module that owns `$1` (e.g. `MOM_continuity_PPM` →
@@ -139,10 +140,10 @@ holds the template or rationale.
    on the `main` branch — that is the agreed base and what the Fortran
    side expects to merge against.
 
-   Verify `$0` is a TURBO-ESM/TIM checkout by running
+   Verify `$0` is a TURBO-ESM/protoMOMxx checkout by running
    `git -C $0 remote -v` and confirming the output contains
-   `TURBO-ESM/TIM`. If not → stop:
-   `Error: "<value>" is not a TURBO-ESM/TIM checkout.`
+   `TURBO-ESM/protoMOMxx`. If not → stop:
+   `Error: "<value>" is not a TURBO-ESM/protoMOMxx checkout.`
 
    Then run `git -C $0 fetch origin main` and check the branch state:
    - If the working tree is dirty (`git -C $0 status --porcelain` is
@@ -153,11 +154,13 @@ holds the template or rationale.
      continuing. Do not switch branches silently.
 
    Then validate the tree:
-   - `$0/mom/cpp` and `$0/turbotmp` both missing → stop:
-     `Error: "<value>" is not a TURBO-ESM/TIM checkout (missing mom/cpp/ and turbotmp/).`
-     One missing is OK — Steps 7–9 will create the sibling.
-   - `$0/.claude/skills/generate_amrex_code/lessons.md` missing → stop:
-     `Error: lessons.md not found at <work-directory>/.claude/skills/generate_amrex_code/lessons.md.`
+   - `$0/src/mom_kernels` and `$0/src/mom_kernels/turbotmp` both missing → stop:
+     `Error: "<value>" is not a TURBO-ESM/protoMOMxx checkout (missing src/mom_kernels/ and src/mom_kernels/turbotmp/).`
+     One missing is OK — Steps 7–9 will create the other.
+   - `lessons.md` (this skill's companion file, alongside this SKILL.md
+     in TIM's `.claude/skills/generate_amrex_code/` — not in `$0`)
+     missing → stop:
+     `Error: lessons.md not found next to generate_amrex_code/SKILL.md.`
    - **Read `lessons.md` in full.** Authoritative for naming,
      signature conventions, and the three-tier layout. Prefer it over
      this file on conflict and report the discrepancy.
@@ -215,7 +218,7 @@ holds the template or rationale.
    the absence but continue — Step 11 will skip the replay and
    record "AMReX-mode replay deferred" in Step 12.
 
-### 5. Pointwise primitive in `mom/cpp/<module>_kernel.hpp`
+### 5. Pointwise primitive in `src/mom_kernels/<module>_kernel.hpp`
    Skip if "Settle these decisions" #3 (as confirmed at the end of
    Step 3) said "no pointwise factor". Otherwise add
    `MOM::<lowercased_$1>_point(...)` per lessons.md §5, porting the
@@ -231,7 +234,7 @@ holds the template or rationale.
    `thickness_to_dz_3d_point_boussinesq` /
    `thickness_to_dz_3d_point_nonboussinesq`). See lessons.md §7 #9.
 
-### 6. Box-level AMReX kernel in `mom/cpp/<module>.{hpp,cpp}`
+### 6. Box-level AMReX kernel in `src/mom_kernels/<module>.{hpp,cpp}`
    Add `MOM::<lowercased_$1>(...)` per lessons.md §4. The body of the
    `ParallelFor` lambda is either a one-line call to the `*_point`
    primitive from Step 5 (stencil-free case) or a direct port of the
@@ -244,7 +247,8 @@ holds the template or rationale.
    A flat scalar-only Fortran `bind(C)` config struct (e.g.
    `transport_adjust_CS_C`) gets its **full** definition here too,
    alongside the opaque-type forward declarations — never in the
-   shared `turbotmp_bridge_c_types.h`. See lessons.md §2.2.
+   shared `turbotmp_bridge_c_types.h` (which is TIM's, not
+   protoMOMxx's). See lessons.md §2.2.
 
    If the Fortran source has logic gated on that same opaque type
    (e.g. an OBC segment loop) beyond the guard, port it into a single
@@ -257,10 +261,12 @@ holds the template or rationale.
    **before** the `ParallelFor`, never inside the lambda. Each lambda
    calls exactly one primitive with no conditional. See lessons.md §7 #9.
 
-### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
+### 7. Bridge header in `src/mom_kernels/turbotmp_<module>_bridge.h`
    First-time creation: start with `#include "turbotmp_bridge_c_types.h"`
    (do **not** re-define `RealArray_C` / `Box_C` — they live in that shared
-   file). Forward-declare any opaque types — and any flat scalar-only
+   file, which is TIM's `tim/cpp/turbotmp_bridge_c_types.h`, reached
+   through the `TIM::tim` target's include path, not a file in
+   `src/mom_kernels/`). Forward-declare any opaque types — and any flat scalar-only
    config struct (its full definition lives in the kernel header from
    Step 6; a forward declaration is enough for a pointer parameter here,
    lessons.md §2.2) — wrap prototypes in
@@ -271,7 +277,7 @@ holds the template or rationale.
    suffix in the declaration here, matching the `.cpp` implementation —
    see lessons.md §3.
 
-### 8. Bridge implementation in `mom/cpp/turbotmp_<module>_bridge.cpp`
+### 8. Bridge implementation in `src/mom_kernels/turbotmp_<module>_bridge.cpp`
    Implement the new prototype following the **7-step marshalling
    pattern** in lessons.md §3 (build `Box` with `turbotmp::to_box`,
    `make_array4(X_HOST)` each array, which sizes it by `shape[]` **and
@@ -280,7 +286,7 @@ holds the template or rationale.
    device→host for outputs/inouts only, free everything). No math, no
    value-dependent branches.
 
-### 9. Extend `turbotmp/turbotmp_helper.{hpp,cpp}` only if needed
+### 9. Extend `src/mom_kernels/turbotmp/turbotmp_helper.{hpp,cpp}` only if needed
    Reuse existing helpers (lessons.md §2, §2.1). `A4Box`/`make_array4`
    handles `RealArray_C`; `IntA4Box`/`make_int_array4` handles both
    `LogicalArray_C` and `IntArray_C` (identical C-side layout — see
@@ -288,9 +294,16 @@ holds the template or rationale.
    neither of those covers.
 
 ### 10. Wire into the build
-   Add the new sources alongside the existing `mom_continuity_ppm.cpp`
-   in `CMakeLists.txt` / `Makefile.am`. Run a clean build; verify the
-   resulting library exports `<prefix>_<lowercased_$1>_bridge` with
+   In `$0/src/mom_kernels/CMakeLists.txt`, add a new kernel
+   `<module>.cpp` to the `mom_kernels` target's sources alongside the
+   existing `mom_continuity_ppm.cpp`, add a new
+   `turbotmp_<module>_bridge.cpp` to the `mom_bridge` target's sources
+   (never add kernel sources to `mom_bridge` — it links `mom_kernels`
+   instead of recompiling them), and add each new `.cpp` to the CUDA
+   `LANGUAGE` source-properties list in the same file. Do not add
+   per-target FP flags; both targets share the existing configure
+   function (`-ffp-contract=off` / `-fp-model=precise`). Run a clean
+   build; verify the resulting `mom_bridge` library exports `<prefix>_<lowercased_$1>_bridge` with
    C linkage (`nm -D --defined-only` + `grep`). On failure, surface
    the diagnostic; do not patch by changing kernel signatures or
    removing `const` without checking lessons.md §6.
@@ -356,7 +369,7 @@ Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.1`
 marker line — the shared version number for this whole skill family
 (the same 0.3.1 used by the Fortran-side `generate_cpp_bridge`'s
 `!!SKILLS: 0.3.1`, so `grep -rn "SKILLS:"` finds both sides of a port
-across the MOM6 and TIM trees). Applies to every file Steps 5–9 create
+across the MOM6 and protoMOMxx trees). Applies to every file Steps 5–9 create
 or extend: `<module>_kernel.hpp`, `<module>.hpp`, `<module>.cpp`,
 `turbotmp_<module>_bridge.h`, `turbotmp_<module>_bridge.cpp`, and
 `turbotmp_helper.{hpp,cpp}` if Step 9 extends it. Place it as its own
@@ -392,7 +405,13 @@ Deliberately grep-able and meant to be stripped later.
   (lessons.md §7 #11).
 - Do not modify any Fortran source, the existing
   `turbotmp_helper.{hpp,cpp}` core API, or the mirror C struct
-  layout (`RealArray_C`, `Box_C`).
+  layout (`RealArray_C`, `Box_C`) — those live in TIM
+  (`tim/cpp/turbotmp_bridge_c_types.h` / `tim/fortran/turbotmp_bridge_c_types.F90`),
+  so any change to them is a TIM change, not a protoMOMxx one.
+- Every new declaration under `src/mom_kernels/` (functions,
+  parameters, structs, files) must carry complete Doxygen comments:
+  protoMOMxx's `docs-check.yaml` runs Doxygen with `WARN_AS_ERROR`
+  over `src`, so an undocumented symbol fails CI.
 - Do not invent kernel math. The AMReX body must come from the
   Fortran source captured in Step 3, ported verbatim.
 - Doc comments state physical meaning only (what a quantity is, its
@@ -411,8 +430,10 @@ Report:
 1. Bridge symbol implemented and the kernel symbol it dispatches to.
 2. Source-of-truth for the port: file path + line range (if grep'd
    from `$2`) or "user paste".
-3. List of TIM files created or extended.
-4. Build result (clean, with the bridge symbol exported).
+3. List of protoMOMxx files created or extended.
+4. Build result (clean, with the bridge symbol exported), and whether
+   the new code is fully Doxygen-documented (docs-check runs with
+   `WARN_AS_ERROR`).
 5. Replay-against-capture result, or "deferred" with the reason.
 6. Branch pushed to `origin`.
 7. What still needs to happen, if anything (e.g. `OceanOBC`

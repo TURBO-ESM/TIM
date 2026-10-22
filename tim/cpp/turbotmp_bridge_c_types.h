@@ -17,6 +17,15 @@ struct RealArray_C {
     int dim;        ///< Number of dimensions.
 };
 
+/// @brief C view of a Fortran multidimensional integer array passed across the bridge.
+struct IntArray_C {
+    int* data;      ///< Pointer to the multidimensional array data.
+    int* shape;     ///< Array of per-dimension extents.
+    int* lb;        ///< Per-dimension lower bounds.
+    int* ub;        ///< Per-dimension upper bounds.
+    int dim;        ///< Number of dimensions.
+};
+
 /// @brief C view of a Fortran multidimensional logical array passed across the bridge.
 /// @details The Fortran side stores a `logical` array natively but exposes it here through
 /// an integer-encoded (0/1) shadow buffer (`LogicalArray_t%data_c`, filled by `%to_c()` and
@@ -41,6 +50,10 @@ struct Box_C {
  * names usable from both languages; they are redundant-but-legal in C++. */
 
 /// @brief Alias letting C callers spell the array view without the `struct` keyword.
-typedef struct RealArray_C RealArray_C;
+typedef struct RealArray_C    RealArray_C;
+/// @brief Alias letting C callers spell the integer array view without the `struct` keyword.
+typedef struct IntArray_C     IntArray_C;
+/// @brief Alias letting C callers spell the logical array view without the `struct` keyword.
+typedef struct LogicalArray_C LogicalArray_C;
 /// @brief Alias letting C callers spell the index box without the `struct` keyword.
-typedef struct Box_C       Box_C;
+typedef struct Box_C          Box_C;

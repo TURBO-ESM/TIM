@@ -1,7 +1,7 @@
 ---
 name: generate_amrex_unit_test
 version: "0.3.1"
-description: Add (or extend) GoogleTest coverage under test_mom/ for an already-implemented MOM::<kernel> AMReX function inside a TURBO-ESM/TIM checkout, replaying it against the Fortran-captured regression fixture (capture/<kernel>.{bin,meta}) via the existing test_mom::CapturedFile / expect_arrays_equal harness. Assumes the box-level AMReX kernel (mom/cpp/<module>.{hpp,cpp}) already exists -- produced by generate_amrex_code; this skill does not write kernel or bridge code, only test_mom/ test files and CMake wiring. When no capture fixture exists yet, grounds the field mapping in the Fortran shim's capture-mode rec%add(...) calls (via an optional MOM6 checkout path or by user paste) so a real assertion can still be written, falling back to a GTEST_SKIP() stub only when neither a fixture nor Fortran source is available. Mirrors the pattern established by the existing test_mom/mom_continuity_ppm/test_mom_continuity_ppm.cpp tests.
+description: Add (or extend) GoogleTest coverage under tests/test_mom/ for an already-implemented MOM::<kernel> AMReX function inside a TURBO-ESM/protoMOMxx checkout, replaying it against the Fortran-captured regression fixture (capture/<kernel>.{bin,meta}) via the existing test_mom::CapturedFile / expect_arrays_equal harness. Assumes the box-level AMReX kernel (src/mom_kernels/<module>.{hpp,cpp}) already exists -- produced by generate_amrex_code; this skill does not write kernel or bridge code, only tests/test_mom/ test files and CMake wiring. When no capture fixture exists yet, grounds the field mapping in the Fortran shim's capture-mode rec%add(...) calls (via an optional MOM6 checkout path or by user paste) so a real assertion can still be written, falling back to a GTEST_SKIP() stub only when neither a fixture nor Fortran source is available. Mirrors the pattern established by the existing tests/test_mom/mom_continuity_ppm/test_mom_continuity_ppm.cpp tests.
 user-invocable: true
 argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_build] [--enable_git_commit] [--disable_git_commit]
 ---
@@ -9,16 +9,16 @@ argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src
 # Generate a GoogleTest unit test for a MOM AMReX kernel
 
 This skill is the **execution checklist**; there is no companion
-lessons file — the reference material (the `test_mom/` layout, the
+lessons file — the reference material (the `tests/test_mom/` layout, the
 `CapturedFile` API, the naming conventions) is small enough to live
 inline in each step below.
 
 **Out of scope:** writing or modifying the kernel itself
-(`mom/cpp/<module>.{hpp,cpp}`), the pointwise primitive, the bridge
+(`src/mom_kernels/<module>.{hpp,cpp}`), the pointwise primitive, the bridge
 (`turbotmp_<module>_bridge.{h,cpp}`), or any Fortran source. All of
 that is `generate_amrex_code`'s job and is assumed already merged —
 Step 2 stops if the kernel isn't there yet. This skill only adds to
-`test_mom/`: a `TEST(...)` case, and CMake wiring if the module has no
+`tests/test_mom/`: a `TEST(...)` case, and CMake wiring if the module has no
 test executable yet.
 
 **These tests bypass the bridge.** Every `TEST(...)` this skill writes
@@ -54,14 +54,15 @@ verbatim and stop:
 ```
 Usage: /generate_amrex_unit_test <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_build] [--enable_git_commit] [--disable_git_commit]
 
-Add GoogleTest coverage under test_mom/ for an already-implemented
+Add GoogleTest coverage under tests/test_mom/ for an already-implemented
 MOM::<kernel> AMReX function, replayed against its Fortran-captured
 regression fixture. Does not write kernel or bridge code.
 
 Arguments:
-  <work-directory>     Absolute path to an existing TURBO-ESM/TIM checkout
-                       (must contain mom/cpp/ and test_mom/, and should be
-                       on the main branch). Cloning is not performed.
+  <work-directory>     Absolute path to an existing TURBO-ESM/protoMOMxx
+                       checkout (must contain src/mom_kernels/ and
+                       tests/test_mom/, and should be on the main
+                       branch). Cloning is not performed.
   <function-name>      Name of the original Fortran subroutine whose
                        AMReX kernel (MOM::<lowercased_name>) is being
                        tested (e.g. PPM_limit_pos). Used to derive the
@@ -76,9 +77,9 @@ Arguments:
                        modified). When omitted and no fixture exists,
                        Step 3 asks the user to paste that block instead.
   --enable_src_validate  (optional) Run Step 1: verify the work directory is a
-                         TURBO-ESM/TIM checkout on the main branch and that the
-                         test_mom/ scaffold (common/, test_mom_main.cpp) is
-                         present. Off by default.
+                         TURBO-ESM/protoMOMxx checkout on the main branch and
+                         that the tests/test_mom/ scaffold (common/,
+                         test_mom_main.cpp) is present. Off by default.
   --enable_build          (optional) Run Steps 9-10: configure, build (from
                          source, including AMReX if no install is found --
                          this can take a long time on a first build), and
@@ -102,20 +103,20 @@ or the JSON fails to parse). There is no equivalent global preference for
 first build compiles AMReX from source and can take a long time.
 
 Example:
-  /generate_amrex_unit_test /glade/derecho/scratch/sunjian/TIM PPM_limit_pos \
+  /generate_amrex_unit_test /glade/derecho/scratch/sunjian/protoMOMxx PPM_limit_pos \
                             /glade/derecho/scratch/sunjian/MOM6
 ```
 
 ## Step 0 — validate inputs
 
-`$0` = work-directory (TIM), `$1` = function-name, `$2` =
+`$0` = work-directory (protoMOMxx), `$1` = function-name, `$2` =
 mom6-directory (optional). Stop on the first failure with a one-line,
 actionable error. Do not retry, do not assume defaults, do not create
 anything.
 
 1. **Argument count.** If `$0` empty OR `$1` empty → stop:
    `Error: missing arguments. Run "/generate_amrex_unit_test --help" for usage.`
-2. **TIM work directory is an existing checkout.** If `$0` is not an
+2. **protoMOMxx work directory is an existing checkout.** If `$0` is not an
    existing directory → stop:
    `Error: work directory "<value>" does not exist.`
    Cloning is not performed by this skill. Step 1 verifies checkout
@@ -146,9 +147,9 @@ by the global preference described in Step 11.
 ## Settle these decisions (ask if not obvious from the tree)
 
 1. **Host C++ module (`<module>`)** — discovered in Step 2 by grepping
-   `mom/cpp/*.hpp`, not assumed from any Fortran module name.
+   `src/mom_kernels/*.hpp`, not assumed from any Fortran module name.
 2. **Test target** — `test_mom_<module>`, file
-   `test_mom/<module>/test_<module>.cpp`. Append to it if it exists;
+   `tests/test_mom/<module>/test_<module>.cpp`. Append to it if it exists;
    create it (and the CMake block) if not.
 3. **Capture-fixture location** — default search: the user's CWD, then
    `$0/capture`. Ask if not found in either.
@@ -166,10 +167,10 @@ If the user already specified any of these, take their values as-is.
    All test work in this skill is based on the `main` branch — the
    same base `generate_amrex_code` uses.
 
-   Verify `$0` is a TURBO-ESM/TIM checkout by running
+   Verify `$0` is a TURBO-ESM/protoMOMxx checkout by running
    `git -C $0 remote -v` and confirming the output contains
-   `TURBO-ESM/TIM`. If not → stop:
-   `Error: "<value>" is not a TURBO-ESM/TIM checkout.`
+   `TURBO-ESM/protoMOMxx`. If not → stop:
+   `Error: "<value>" is not a TURBO-ESM/protoMOMxx checkout.`
 
    Then run `git -C $0 fetch origin main` and check the branch state:
    - If the working tree is dirty (`git -C $0 status --porcelain` is
@@ -180,22 +181,22 @@ If the user already specified any of these, take their values as-is.
      continuing. Do not switch branches silently.
 
    Then validate the tree — stop on the first failure:
-   - `$0/mom/cpp` missing → stop:
-     `Error: "<value>"/mom/cpp not found — the AMReX kernel must exist before it can be tested. Run generate_amrex_code first.`
-   - `$0/test_mom/common` or `$0/test_mom/test_mom_main.cpp` missing →
+   - `$0/src/mom_kernels` missing → stop:
+     `Error: "<value>"/src/mom_kernels not found — the AMReX kernel must exist before it can be tested. Run generate_amrex_code first.`
+   - `$0/tests/test_mom/common` or `$0/tests/test_mom/test_mom_main.cpp` missing →
      stop:
-     `Error: test_mom/ scaffold not found under <work-directory> (common/, test_mom_main.cpp). This skill extends that scaffold; it does not create it from scratch.`
+     `Error: tests/test_mom/ scaffold not found under <work-directory> (common/, test_mom_main.cpp). This skill extends that scaffold; it does not create it from scratch.`
 
    **Confirm the plan.** Print one paragraph naming: the function name,
-   and that Step 2 will now search `mom/cpp/*.hpp` for its kernel
+   and that Step 2 will now search `src/mom_kernels/*.hpp` for its kernel
    declaration. Then proceed to Step 2.
 
 ### 2. Locate the kernel declaration
-   Run `grep -rln "[[:space:]]<lowercased_$1>[[:space:]]*(" $0/mom/cpp/*.hpp`
+   Run `grep -rln "[[:space:]]<lowercased_$1>[[:space:]]*(" $0/src/mom_kernels/*.hpp`
    (match the symbol inside `namespace MOM`, case-sensitive on the
    lowercased form generate_amrex_code uses).
    - 0 matches → stop:
-     `Error: MOM::<lowercased_$1> not found under <work-directory>/mom/cpp. Run generate_amrex_code first to produce the kernel.`
+     `Error: MOM::<lowercased_$1> not found under <work-directory>/src/mom_kernels. Run generate_amrex_code first to produce the kernel.`
    - >1 matches → list the candidate files and ask the user which
      `<module>` to use.
    - 1 match → record `<module>` = that header's basename (without
@@ -232,8 +233,8 @@ If the user already specified any of these, take their values as-is.
          `.meta`-equivalent type: `type(RealArray_t)` → `RealArray_t`,
          `type(Box_t)` → `Box_t`, `real` → `real64`, `logical` →
          `logical`, `integer` → `integer`. Also read the matching
-         `bind(C)` interface block (or the TIM-side bridge
-         header/`.cpp` under `$0/mom/cpp/turbotmp_<module>_bridge.*`)
+         `bind(C)` interface block (or the protoMOMxx-side bridge
+         header/`.cpp` under `$0/src/mom_kernels/turbotmp_<module>_bridge.*`)
          as an independent cross-check on argument order and type —
          if the two disagree, stop and ask rather than picking one.
          Record `ground_truth=fortran_source` plus the file path and
@@ -258,7 +259,7 @@ If the user already specified any of these, take their values as-is.
    - If `ground_truth=meta_file`: read `<capture-path>.meta`, each
      line `<name> <type> <byte-offset>`, `<type>` one of `Box_t`,
      `RealArray_t`, `real64`, `logical`, `integer` (see
-     `test_mom/common/captured_io.hpp`'s header comment for the exact
+     `tests/test_mom/common/captured_io.hpp`'s header comment for the exact
      `.bin` layout — do not re-derive it, `CapturedFile` already
      implements the reader).
    - If `ground_truth=fortran_source` or `user_paste`: the field list
@@ -297,30 +298,31 @@ If the user already specified any of these, take their values as-is.
    a `.meta` file or from Fortran source.
 
 ### 6. Determine the target test file and CMake wiring
-   - If `$0/test_mom/<module>/test_<module>.cpp` exists **and**
-     `$0/test_mom/CMakeLists.txt` already has an
+   - If `$0/tests/test_mom/<module>/test_<module>.cpp` exists **and**
+     `$0/tests/test_mom/CMakeLists.txt` already has an
      `add_executable(test_mom_<module> ...)` block referencing it →
      this run only appends a new `TEST(...)` case to that file (Step
      7). No CMake changes.
    - Otherwise → this run creates
-     `test_mom/<module>/test_<module>.cpp` (containing only the new
+     `tests/test_mom/<module>/test_<module>.cpp` (containing only the new
      `TEST(...)` case) and appends a new block to
-     `test_mom/CMakeLists.txt`, copied structurally from the existing
+     `tests/test_mom/CMakeLists.txt`, copied structurally from the existing
      `test_mom_continuity_ppm` block: `add_executable(test_mom_<module>
      test_mom_main.cpp common/captured_io.cpp
      common/amrex_assertions.cpp <module>/test_<module>.cpp)`, the
      `AMReX_GPU_BACKEND STREQUAL "CUDA"` source-properties guard over
      the same file list, `target_include_directories(...
-     PRIVATE common)`, `target_link_libraries(... PRIVATE <lib>
+     PRIVATE common)`, `target_link_libraries(... PRIVATE mom_kernels
      GTest::gtest)`, and `gtest_discover_tests(... EXTRA_ARGS
      --data-dir=${TEST_MOM_DATA_DIR} DISCOVERY_MODE PRE_TEST)`.
 
-     Determine `<lib>` by running
-     `grep -B5 "<module>\.cpp" $0/mom/cpp/CMakeLists.txt` and reading
-     off the enclosing `add_library(<lib> ...)` — do not assume
-     `<lib>` equals `<module>` (e.g. `mom_continuity_ppm.cpp` is built
-     into the `mom_continuity` library, not a `mom_continuity_ppm`
-     one).
+     The library is always `mom_kernels` (defined in
+     `$0/src/mom_kernels/CMakeLists.txt`, which builds every kernel
+     `.cpp`) — not a per-module library, and not `mom_bridge` (the
+     tests bypass the bridge). If `grep -n "<module>\.cpp"
+     $0/src/mom_kernels/CMakeLists.txt` shows the kernel source is not
+     in `mom_kernels`, stop and report it — that is a
+     generate_amrex_code wiring gap, not something this skill fixes.
 
 ### 7. Write the test case
    Test name: `TEST(<PascalCase(function-name)>, MatchesFortranCapture)`
@@ -387,7 +389,7 @@ If the user already specified any of these, take their values as-is.
    and do not use this branch merely because the fixture is absent if
    a field mapping was in fact derived from Fortran source in Step 3.
 
-### 8. Extend `test_mom/common/` only if needed
+### 8. Extend `tests/test_mom/common/` only if needed
    Reuse `CapturedFile` and `expect_arrays_equal`/`to_host_fab` as-is.
    Only add a new accessor (e.g. for a captured type Step 4 found that
    `captured_io.hpp` doesn't yet expose) or a new assertion helper if
@@ -403,11 +405,12 @@ If the user already specified any of these, take their values as-is.
    long time and is a real environment dependency the user may not
    want triggered as a side effect of writing a test file.
 
-   Default build dir: `$0/build/test_mom` (matching the header comment
-   in `test_mom/CMakeLists.txt`), unless the user specifies otherwise.
+   Default build dir: `$0/build`, unless the user specifies otherwise.
+   The tests are built from protoMOMxx's top-level tree with test
+   targets enabled — never by configuring `tests/test_mom` standalone:
 
    ```
-   cmake -S $0/test_mom -B <build-dir> -DTEST_MOM_DATA_DIR=<capture-dir-from-step-3-or-a-placeholder>
+   cmake -S $0 -B <build-dir> -DPROTOMOM_ADD_TEST_TARGETS=ON -DTEST_MOM_DATA_DIR=<capture-dir-from-step-3-or-a-placeholder>
    cmake --build <build-dir>
    ctest --test-dir <build-dir> --output-on-failure
    ```
@@ -486,9 +489,9 @@ Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.1`
 marker line — the same shared version number `generate_amrex_code` and
 the Fortran-side `generate_cpp_bridge` use (`!!SKILLS: 0.3.1`), so
 `grep -rn "SKILLS:"` finds every touched file across the Fortran and
-C++ trees for a given port. Applies to `test_mom/<module>/test_<module>.cpp`
-(Step 7) and to any `test_mom/common/*.{hpp,cpp}` file Step 8 extends —
-not to `test_mom/CMakeLists.txt`. Place it as its own line immediately
+C++ trees for a given port. Applies to `tests/test_mom/<module>/test_<module>.cpp`
+(Step 7) and to any `tests/test_mom/common/*.{hpp,cpp}` file Step 8 extends —
+not to `tests/test_mom/CMakeLists.txt`. Place it as its own line immediately
 after the file's top-of-file header comment (every test file in this
 tree opens with one, e.g. `// Unit tests for ...`), before the first
 `#include`; if the file has no header comment, it is the first line.
@@ -504,7 +507,7 @@ be stripped later.
   or, per Step 7, a one-line ground-truth citation — never a narrative
   about how or why the port/mapping was done (`generate_amrex_code`'s
   lessons.md §7 #10 applies here too).
-- Never modify `mom/cpp/` kernel or bridge sources, or any Fortran
+- Never modify `src/mom_kernels/` kernel or bridge sources, or any Fortran
   source under `$2` — read-only in both cases, used only to derive the
   kernel signature (Step 2) or ground a field mapping (Step 3).
 - Never fabricate expected values. Assertions come only from a
@@ -527,8 +530,12 @@ be stripped later.
   list — every file compiled into a `test_mom_*` target needs it.
 - One `TEST(<PascalCaseKernel>, MatchesFortranCapture)` per kernel; do
   not invent a different naming convention.
-- Never patch `mom/cpp/` or `test_mom/common/` code just to make a
+- Never patch `src/mom_kernels/` or `tests/test_mom/common/` code just to make a
   failing assertion pass — report the mismatch instead.
+- Document every new test helper or `common/` addition with Doxygen
+  comments, matching the existing files; protoMOMxx's `docs-check.yaml`
+  runs Doxygen with `WARN_AS_ERROR` over `src` (and `config_src`), so
+  any helper that lands under `src/` must be fully documented.
 
 ## Output to the user on success
 

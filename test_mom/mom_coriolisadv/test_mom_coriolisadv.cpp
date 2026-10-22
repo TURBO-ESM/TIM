@@ -50,7 +50,7 @@ OptionalDiagnostic bind_optional_diagnostic(const test_mom::CapturedFile& captur
 // -------------------------------------------------------------------------
 // gradKE
 // -------------------------------------------------------------------------
-// Field mapping: MOM6 src/core/MOM_CoriolisAdv.F90:2473-2498 (gradKE capture block).
+// Field mapping: MOM6 src/core/MOM_CoriolisAdv.F90:3843–3868 (gradKE capture block).
 TEST(Gradke, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "gradke");
 

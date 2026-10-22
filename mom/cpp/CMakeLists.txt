@@ -42,6 +42,7 @@ endfunction()
 # add_subdirectory(), and linking the target there is enough to get it built.
 add_library(mom_continuity STATIC EXCLUDE_FROM_ALL
     mom_continuity_ppm.cpp
+    mom_coriolisadv.cpp
 )
 mom_cpp_configure(mom_continuity)
 target_include_directories(mom_continuity PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -60,6 +61,8 @@ if(TIM_ENABLE_MOM_BRIDGE)
     add_library(mom_bridge STATIC
         mom_continuity_ppm.cpp
         turbotmp_mom_continuity_ppm_bridge.cpp
+        mom_coriolisadv.cpp
+        turbotmp_mom_coriolisadv_bridge.cpp
         ${mom_turbotmp_dir}/turbotmp_helper.cpp
     )
     add_library(TIM::mom_bridge ALIAS mom_bridge)
@@ -87,6 +90,7 @@ if(TIM_ENABLE_MOM_BRIDGE)
     # It stays visible to the build through the BUILD_INTERFACE entry above.
     install(FILES
         turbotmp_mom_continuity_ppm_bridge.h
+        turbotmp_mom_coriolisadv_bridge.h
         turbotmp_bridge_c_types.h
         DESTINATION include/tim/mom)
 endif()
@@ -99,6 +103,8 @@ if(AMReX_GPU_BACKEND STREQUAL "CUDA")
     set_source_files_properties(
         mom_continuity_ppm.cpp
         turbotmp_mom_continuity_ppm_bridge.cpp
+        mom_coriolisadv.cpp
+        turbotmp_mom_coriolisadv_bridge.cpp
         ${mom_turbotmp_dir}/turbotmp_helper.cpp
         PROPERTIES LANGUAGE CUDA)
 endif()

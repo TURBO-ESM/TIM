@@ -31,8 +31,9 @@ Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>] 
 Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine
 inside a TURBO-ESM/TIM checkout. Writes (or extends) three layers:
 
-  - mom/cpp/<module>_kernel.hpp           pointwise device primitive
-                                          (stencil-free kernels only)
+  - mom/cpp/<module>_kernel.hpp           pointwise device primitives
+                                          (stencil-free kernel bodies, and
+                                          ported per-point helper procedures)
   - mom/cpp/<module>.{hpp,cpp}            box-level AMReX kernel in
                                           namespace MOM
   - mom/cpp/turbotmp_<module>_bridge.{h,cpp}
@@ -124,6 +125,11 @@ global preference described in Step 12.
    stencil (`(i, j±1, k)` etc.). Controls whether Step 5 produces a
    `*_point` primitive. The Fortran source captured in Step 3 is
    what determines this — confirm or correct after Step 3.
+   **Independently of this factor:** if the Fortran loop body calls
+   per-point helper procedures (`pure`/`elemental`, taking scalars or
+   fixed-size stencil arrays, e.g. the WENO/UP3 helpers), every such
+   helper is ported as its own `_point` device function in Step 5,
+   whether or not the kernel itself is stencil-free (lessons.md §5.1).
 
 If the user already specified any of these, take their values as-is.
 
@@ -207,6 +213,19 @@ holds the template or rationale.
    etc.), set the factor to `no` and record the change. If the body
    is purely `(i,j,k)`-local, keep `yes`.
 
+   **Cross-check the body against the Step 2 contract.** List every
+   array the captured body writes — directly, through a callee's
+   `intent(inout)`/`intent(out)` actual, or as a derived-type field
+   (`BT_cont%h_u`) — and confirm each has an output channel in the
+   `bind(C)` signature. If one doesn't, the Fortran bridge contract is
+   incomplete: **stop and report it** (the missing field, where the body
+   writes it, and that the fix belongs to the MOM6-side
+   `generate_cpp_bridge` interface, its AMREX arm and its capture
+   records). Do not port around the gap, and do not record it as
+   "out of scope" in a source comment — a missing output leaves the
+   Fortran-side value stale in AMReX mode with no error at all.
+
+
    Do not proceed to Step 4 until the body has been captured.
 
 ### 4. Locate the capture file (regression input)
@@ -222,6 +241,14 @@ holds the template or rationale.
    Fortran inner loop body captured in Step 3 verbatim (preserve
    parenthesisation to keep floating-point evaluation order). If the
    file exists, append inside the existing `namespace MOM`.
+
+   Separately, and even when the kernel is not stencil-free, port every
+   per-point helper procedure the Fortran body calls (Settle these
+   decisions #3) as its own `_point` device function, one-to-one with the
+   Fortran helpers and in the same arithmetic order, per lessons.md §5.1.
+   Settle once per helper family how stencil values are passed (a small
+   local array, or the `Array4` plus the point's indices) and record it
+   in the Step 12 report. These helpers have no bridges of their own.
 
    **Mode flags:** If the Fortran inner loop contains an `if`-test on
    a bool that is constant for the entire loop (a mode flag such as
@@ -256,6 +283,28 @@ holds the template or rationale.
    modes (Step 5), select between them with a single `if/else`
    **before** the `ParallelFor`, never inside the lambda. Each lambda
    calls exactly one primitive with no conditional. See lessons.md §7 #9.
+
+   **Orchestrators: reproduce each callee shim's argument handling.** When
+   the Fortran body calls another bridged subroutine (a shim) and the C++
+   kernel calls that callee's `MOM::` kernel directly, the C++ call
+   bypasses the shim — so it must do whatever the shim does to its
+   arguments before calling its own bridge. For every such call, read the
+   callee's Fortran shim (not just its `_fortran` worker) and list each
+   value it derives or defaults before the bridge call: a scaled scalar
+   (`h_min = 2.0 * Angstrom_H`), a default for an absent optional
+   (`h_min = 0.0 ; if (present(hmin)) h_min = hmin`), a field pulled out
+   of a control structure. Pass the same derived value from the C++
+   orchestrator. Compare against the Fortran caller's actual argument,
+   not the kernel parameter's name — `Angstrom_H` at the Fortran call
+   site and an `h_min` parameter on the C++ kernel is exactly the
+   mismatch to catch (lessons.md §7 #14).
+
+   **Comments.** Carry over the Fortran source's own comments for the
+   code being ported, reworded only as far as C++ syntax requires. Add no
+   commentary about the conversion itself — no notes on what the Fortran
+   does differently, which shim a value mirrors, what is deferred or out
+   of scope, or why a scratch buffer exists. That reasoning goes in the
+   Step 12 report, not the source (lessons.md §7 #10).
 
 ### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
    First-time creation: start with `#include "turbotmp_bridge_c_types.h"`
@@ -352,10 +401,10 @@ holds the template or rationale.
 
 ## Versioning marker
 
-Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.1`
+Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.2`
 marker line — the shared version number for this whole skill family
-(the same 0.3.1 used by the Fortran-side `generate_cpp_bridge`'s
-`!!SKILLS: 0.3.1`, so `grep -rn "SKILLS:"` finds both sides of a port
+(the same 0.3.2 used by the Fortran-side `generate_cpp_bridge`'s
+`!!SKILLS: 0.3.2`, so `grep -rn "SKILLS:"` finds both sides of a port
 across the MOM6 and TIM trees). Applies to every file Steps 5–9 create
 or extend: `<module>_kernel.hpp`, `<module>.hpp`, `<module>.cpp`,
 `turbotmp_<module>_bridge.h`, `turbotmp_<module>_bridge.cpp`, and
@@ -368,7 +417,7 @@ Deliberately grep-able and meant to be stripped later.
 
 ## Hard rules
 
-- Never skip the `// SKILLS: 0.3.1` marker on a file this skill
+- Never skip the `// SKILLS: 0.3.2` marker on a file this skill
   touches, and never add a second marker line if one already exists.
 - Bridge functions contain marshalling only — no math, no
   value-dependent branches (lessons.md §3).
@@ -393,6 +442,10 @@ Deliberately grep-able and meant to be stripped later.
 - Do not modify any Fortran source, the existing
   `turbotmp_helper.{hpp,cpp}` core API, or the mirror C struct
   layout (`RealArray_C`, `Box_C`).
+- Do not silently work around a bridge contract that is missing an
+  output the Fortran body writes (Step 3's cross-check) — stop and
+  report it for the MOM6 side to fix; never leave an "out of scope"
+  comment in its place (lessons.md §7 #13).
 - Do not invent kernel math. The AMReX body must come from the
   Fortran source captured in Step 3, ported verbatim.
 - Doc comments state physical meaning only (what a quantity is, its
@@ -400,6 +453,13 @@ Deliberately grep-able and meant to be stripped later.
   the conversion itself — index-base remapping rationale, Fortran
   naming quirks, why a Fortran-side guard exists — in the shipped
   comment (lessons.md §7 #10).
+- When a C++ kernel calls another `MOM::` kernel directly in place of a
+  Fortran shim call, pass exactly the values that shim passes to its own
+  bridge — including any scaling or defaulting it does (Step 6,
+  lessons.md §7 #14).
+- Do not add conversion commentary to source or test files. Copy the
+  Fortran comments; put any explanation of the port in the Step 12
+  report (Step 6).
 
 If something not covered here comes up, consult lessons.md §7
 (C++-side pitfalls) before improvising.

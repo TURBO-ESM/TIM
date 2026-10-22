@@ -388,6 +388,41 @@ Where the original Fortran takes a stencil (e.g.,
 primitive is necessary unless the inner expression is used in multiple
 places.
 
+### 5.1 Fortran per-point helper procedures → one device function each
+
+A separate case: the Fortran loop body *calls* per-point helper
+procedures. They are `pure`/`elemental` subroutines or functions taking
+scalars or small fixed-size stencil arrays, never grid arrays: `flux_elem`
+in continuity, and CorAdCalc's 23 WENO/UP3 helpers
+(`weno_seven_h_weight_reconstruction(q8, h8, u8, h_tiny, u, qr, …)` and
+the weight/reconstruction helpers it calls, `fac_fn`,
+`UP3_reconstruction`). These were never bridged on the Fortran side
+(`convert_calltree` Step 2), so the `generate_amrex_code` invocation for
+the kernel that calls them ports each one as its own `_point` device
+function in `<module>_kernel.hpp`, alongside that kernel.
+- **One-to-one with the Fortran helpers.** Keep the call structure
+  (driver → weight/reconstruction helpers → `fac_fn`) and each helper's
+  arithmetic in the same order. Bit-for-bit comparison against the
+  Fortran reference depends on the order of operations.
+- **Stencil inputs.** A Fortran `q8(8)` that the caller filled from a
+  grid slice (`abs_vort(I,J-4:J+3,k)`) becomes either:
+  - a small local array, `Real q8[8]` or `amrex::GpuArray<Real,8>`,
+    filled in the `ParallelFor` lambda. This is the most literal port and
+    easiest to check against the Fortran;
+  - or the `Array4` plus the point's indices, reading neighbours directly.
+    This avoids the copies. Choose once per helper family, before
+    porting, and record it in the Step 12 report.
+- **Reversed-slice stencils** (`q8(5:2:-1)`, the upwind direction) must
+  keep exactly the Fortran element order: index the local array
+  backwards, or pass an explicit stride. Never "simplify" them by
+  symmetry.
+- **Optional stencil inputs** used only under a run-time flag (the WENO
+  velocity stencils `u4/u6/u8`, read only when `weno_velocity_smooth`
+  is true): form and pass them only when the flag is set, testing it
+  once outside the `ParallelFor` (§7 #9).
+- **Naming:** `<helper>_point`, following §5's `_point`-suffix rule
+  (`weno_seven_h_weight_reconstruction_point`, `fac_fn_point`).
+
 ---
 
 ## 6. Index-base, const, and pointer conventions
@@ -530,6 +565,59 @@ PR #8's ~30 commits surface the friction worth flagging:
     (§2, §6), not just `shape[]`.
 
 ---
+13. **A Fortran output with no bridge channel.** `zonal_mass_flux`'s
+    Fortran body ends by writing `BT_cont%h_u` via
+    `zonal_flux_thickness`, but its `bind(C)` interface carried only
+    the six `FA_u_*`/`uBT_*` BT_cont fields. The C++ port noticed and
+    left a source comment calling `h_u` "out of scope" because the
+    bridge "does not currently expose an h_u channel" — consistent with
+    this skill's no-Fortran-edits rule, but the gap was never reported
+    back, so AMReX mode silently returned a stale `h_u`. A missing
+    channel is a bridge-contract bug on the MOM6 side: stop and report
+    it (SKILL.md Step 3) rather than documenting it in code.
+14. **An orchestrator skipping a shim's argument transformation.**
+    `continuity_PPM_fortran` calls `zonal_edge_thickness(..., Angstrom_H,
+    ...)`; that shim computes `h_min = 2.0 * Angstrom_H` and passes the
+    doubled value to its bridge and `_fortran` worker. The C++
+    `MOM::continuity_PPM` called `MOM::zonal_edge_thickness` directly
+    with `Angstrom_H`, so the PPM reconstruction ran with half the
+    minimum thickness (`continuity_PPM_2d_fluxes` had the same bug).
+    Every leaf kernel matched Fortran bit-for-bit when run individually
+    — each shim still did its own doubling — and only
+    `CONTINUITY_PPM_MODE=AMREX` diverged, and only where an edge value
+    reached the thickness floor. Fix: for every callee the C++
+    orchestrator invokes directly, read the callee's Fortran shim and
+    reproduce each scaled, derived, or defaulted argument (SKILL.md
+    Step 6).
+15. **Comments use the C++ Doxygen form `///`, never `/** ... */`.**
+    Every comment written into a generated C++ file — the `@file`/
+    `@brief` header, function and parameter doc blocks (`@param`),
+    struct-member docs (`///<`), and in-body step comments — uses
+    `///`. Model new files on `mom_continuity_ppm*`, which use this
+    style throughout. Do not copy the `/** ... */` blocks in
+    `mom_interface_heights*` or in the pre-existing header of
+    `turbotmp_bridge_c_types.h`. Leave those existing comments as
+    they are; the rule covers only text this skill writes. The gradKE
+    bridge was first written with `/** */` blocks copied from the
+    interface_heights bridge and had to be converted. The one
+    allowed `/* ... */` is the single disabling wrapper around a
+    deferred block of real code (#11), which is not a comment.
+16. **Array4 bounds come from `Box(arr)`, never from `arr.begin.x`.**
+    Since AMReX 26.x, `Array4::begin`/`end` are `IntVectND<4>`, not
+    `Dim3`. They have no `.x`/`.y`/`.z` members, so code like
+    `IntVect(q.begin.x, q.begin.y, k)` no longer compiles. To size a
+    scratch `FArrayBox` from an argument array, use
+    `Box(arr).smallEnd(d)` / `Box(arr).bigEnd(d)`. When the whole box
+    is wanted, use `Box(arr)` itself, as `mom_continuity_ppm.cpp` does
+    (commit 28b0798). `Box(arr).bigEnd(d)` already equals the old
+    `arr.end.x - 1`, so do not subtract 1 again. Both the PPM
+    continuity port and the CorAdCalc port (`coradv_setup`,
+    `coradv_arakawa`, `coradv_sadourny`, `coradcalc_tr`) hit this
+    build error. The
+    `Array4(p, Dim3 begin, Dim3 end, ncomp)` constructor, and the
+    `.p` member, are still available in 26.x.
+
+---
 
 ## 8. C++ verification harness (replay against captures)
 
@@ -568,3 +656,8 @@ working and there's a reason to care about the extra launches (e.g. a
 profiling result), since option 2 means refactoring
 `zonal_flux_adjust`/`meridional_flux_adjust`'s already-approved kernel
 bodies rather than just adding new code.
+
+The same shared-per-thread-device-function pattern is now the planned
+approach for per-point helper families (§5.1). CorAdCalc's WENO/UP3
+helpers were decided that way from the start, so the Fortran helpers
+are never bridged individually.

@@ -94,8 +94,7 @@ struct A4Box {
     int nx, ny, nz, ncomp;
 };
 
-A4Box make_array4(int nx, int ny, int nz, int ncomp,
-                  int lbx, int lby, int lbz);
+A4Box make_array4(const RealArray_C* a);
 void  free_array4(A4Box& a4);
 void  copy_FortranHost_to_array4(const double* f, A4Box& a4);
 void  copy_array4_to_FortranHost(const A4Box& a4, double* f);
@@ -103,10 +102,10 @@ void  copy_array4_to_FortranHost(const A4Box& a4, double* f);
 
 Memory comes from `amrex::The_Arena()` so the same code runs on CPU and
 GPU. The Fortran↔C transpose happens in a `ParallelFor` lambda *on the
-device* — there is no host-side reordering. `lbx`/`lby`/`lbz` are the
-array's Fortran 1-based lower bounds (`RealArray_C::lb[]`/
-`LogicalArray_C::lb[]`, pass `1` for a faked-out 2D dimension, matching
-how `nz=1` is passed for 2D arrays) — `make_array4` positions `a4.bx`,
+device* — there is no host-side reordering. `make_array4` takes the
+extents and Fortran 1-based lower bounds from the descriptor itself
+(`RealArray_C::shape[]`/`lb[]`; a 2D descriptor, `dim == 2`, gets
+`nz = 1` and `lbz = 1`; `ncomp` is always 1) and positions `a4.bx`,
 and therefore `a4.arr`'s valid index range, at the array's **true
 absolute location** (`lb-1 .. lb-1+n-1`), not at `[0, n-1]`. This
 matters because the kernel is launched over the bridge's *iteration*
@@ -127,8 +126,7 @@ Byte-for-byte the same shape as `A4Box`, with `int` in place of `Real`
 throughout (`amrex::Array4<int> arr`, `int* data`/`data_f`):
 
 ```cpp
-IntA4Box make_int_array4(int nx, int ny, int nz, int ncomp,
-                         int lbx, int lby, int lbz);
+IntA4Box make_int_array4(const LogicalArray_C* a);
 void      free_int_array4(IntA4Box& a4);
 void      copy_FortranHost_to_int_array4(const int* f, IntA4Box& a4);
 void      copy_int_array4_to_FortranHost(const IntA4Box& a4, int* f);
@@ -199,22 +197,18 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
                                    const double h_min)
 {
     // 1. Reconstruct the iteration Box (Fortran 1-based -> AMReX 0-based)
-    Box bx(IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
-           IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
+    Box bx = turbotmp::to_box(bx_HOST);
 
     // 2. Allocate one A4Box per array, sized by RealArray_C::shape[] and
-    //    positioned by RealArray_C::lb[] (pass 1 for a faked-out 2D
-    //    dimension, matching how nz=1 is passed for 2D arrays -- see §2).
+    //    positioned by RealArray_C::lb[] (make_array4 reads both from the
+    //    descriptor -- see §2).
     //    Positioning matters even for a single-array-type kernel like this
     //    one: get it wrong and it stays invisible here (h_in/h_L/h_R all
     //    share the same lb) but silently corrupts any kernel that mixes
     //    differently-staggered arrays over one iteration box (§7 #12).
-    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1,
-                                          h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
-    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2],  1,
-                                          h_L_HOST->lb[0], h_L_HOST->lb[1], h_L_HOST->lb[2]);
-    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2],  1,
-                                          h_R_HOST->lb[0], h_R_HOST->lb[1], h_R_HOST->lb[2]);
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST);
 
     // 3. Copy host -> device for every array (including inout, kernels may read first)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
@@ -421,17 +415,17 @@ places.
 ## 6. Index-base, const, and pointer conventions
 
 - **1-based → 0-based.** Fortran `idxS[0] == 1` at the leftmost cell;
-  AMReX `IntVect` is 0-based. Subtract 1 from every index when
-  constructing the `Box` in the bridge. Do this in the bridge, never in
-  the kernel.
+  AMReX `IntVect` is 0-based. Build the bridge's `Box` with
+  `turbotmp::to_box(bx_HOST)`, which subtracts 1 from every index. Do
+  this in the bridge, never in the kernel.
 - **The array, not just the iteration box, needs positioning.** The
   bridge's iteration `Box` is built at the array's true absolute
   location (`idxS-1`..`idxE-1`), but `RealArray_C`/`LogicalArray_C`
   arguments have their **own** `lb`/`ub`, independent of the iteration
   box and of each other — a staggered u/v-point array legitimately has
-  a different `lb` than the h-point arrays it's called alongside. Pass
-  every array's own `lb[]` into `make_array4`/`make_int_array4` (§2) so
-  its `Array4` is positioned at that array's real offset; a kernel
+  a different `lb` than the h-point arrays it's called alongside.
+  `make_array4`/`make_int_array4` take each array's own descriptor (§2)
+  and position its `Array4` at that array's real offset; a kernel
   indexing several such arrays with the same shared iteration
   coordinate only lands on the correct element in each when every one
   is positioned correctly. Never rebase an array to `[0, shape-1]`

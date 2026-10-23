@@ -620,6 +620,19 @@ PR #8's ~30 commits surface the friction worth flagging:
     build error. The
     `Array4(p, Dim3 begin, Dim3 end, ncomp)` constructor, and the
     `.p` member, are still available in 26.x.
+17. **Every box-level kernel starts with `BL_PROFILE`.** The first
+    statement of each public `MOM::<kernel>` in `mom/cpp/<module>.cpp`
+    is `BL_PROFILE("<kernel>");`, with the kernel's own C++ name as the
+    label, followed by a blank line. It goes before any OBC guard, so
+    the timer covers the whole call. Include `<AMReX.H>` in the
+    `.cpp`. The `_point` device helpers, file-local templates in the
+    `.cpp` and the bridge functions get no profiling call. This is the
+    convention in `mom_continuity_ppm.cpp` (e.g.
+    `BL_PROFILE("ppm_limit_pos")`) and `mom_coriolisadv.cpp` (e.g.
+    `BL_PROFILE("coradv_setup")`). The `mom_vert_friction` port first
+    shipped without these calls because this checklist did not ask
+    for them, which left its kernels out of the AMReX TinyProfiler
+    output.
 
 ---
 

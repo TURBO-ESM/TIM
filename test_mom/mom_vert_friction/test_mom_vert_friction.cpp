@@ -5,7 +5,7 @@
 // <data-dir>/<name>.{bin,meta}, runs the C++ kernel over equivalent AMReX
 // containers, and compares the result against the captured "after" arrays.
 
-// SKILLS: 0.3.2
+// SKILLS: 0.3.3
 
 #include <gtest/gtest.h>
 

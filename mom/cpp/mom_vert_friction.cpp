@@ -1,4 +1,4 @@
-// SKILLS: 0.3.2
+// SKILLS: 0.3.3
 ///
 /// @file mom_vert_friction.cpp
 /// @brief Box-level AMReX kernels for the MOM6 vertical friction (viscosity) terms.
@@ -44,6 +44,8 @@ void vertvisc_limit_vel(const Box& bxU0,
                         Array4<int>        const& dowrite_v,
                         int& ntrunc_sum)
 {
+    BL_PROFILE("vertvisc_limit_vel");
+
     const Real vel_underflow = CS.vel_underflow;
     const Real CFL_trunc     = CS.CFL_trunc;
     const Real CFL_report    = CS.CFL_report;
@@ -254,6 +256,8 @@ void vertvisc_remnant_tr(const Box& bxU0,
                          Array4<const Real> const& h_u,
                          Array4<const Real> const& h_v)
 {
+    BL_PROFILE("vertvisc_remnant_tr");
+
     const int nz = ke;
 
     Box colU = bxU0;
@@ -416,6 +420,8 @@ void vertfpmix_tr(const Box& bxU0,
                   Array4<Real>       const& uInc_u,
                   Array4<Real>       const& vInc_v)
 {
+    BL_PROFILE("vertfpmix_tr");
+
     const int klo = 0;
     const int khi = bxU0.bigEnd(2);
 
@@ -564,6 +570,8 @@ void vertvisc_coef_tr(const Box& bxU0,
                       Array4<Real>       const& Kv_gl90_u,
                       Array4<Real>       const& Kv_gl90_v)
 {
+    BL_PROFILE("vertvisc_coef_tr");
+
     if (OBC != nullptr) {
         AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }
@@ -1445,6 +1453,8 @@ void vertvisc_tr(const Box& bxU0,
                  Array4<const Real> const& Us_x,
                  Array4<const Real> const& Us_y)
 {
+    BL_PROFILE("vertvisc_tr");
+
     if (OBC != nullptr) {
         AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }

@@ -1,4 +1,4 @@
-// SKILLS: 0.3.2
+// SKILLS: 0.3.3
 #pragma once
 ///
 /// @file mom_vert_friction.hpp

@@ -1,6 +1,6 @@
 ---
 name: generate_amrex_unit_test
-version: "0.3.2"
+version: "0.3.3"
 description: Add (or extend) GoogleTest coverage under test_mom/ for an already-implemented MOM::<kernel> AMReX function inside a TURBO-ESM/TIM checkout, replaying it against the Fortran-captured regression fixture (capture/<kernel>.{bin,meta}) via the existing test_mom::CapturedFile / expect_arrays_equal harness. Assumes the box-level AMReX kernel (mom/cpp/<module>.{hpp,cpp}) already exists -- produced by generate_amrex_code; this skill does not write kernel or bridge code, only test_mom/ test files and CMake wiring. When no capture fixture exists yet, grounds the field mapping in the Fortran shim's capture-mode rec%add(...) calls (via an optional MOM6 checkout path or by user paste) so a real assertion can still be written, falling back to a GTEST_SKIP() stub only when neither a fixture nor Fortran source is available. Mirrors the pattern established by the existing test_mom/mom_continuity_ppm/test_mom_continuity_ppm.cpp tests.
 user-invocable: true
 argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_build] [--enable_git_commit] [--disable_git_commit]
@@ -482,9 +482,9 @@ If the user already specified any of these, take their values as-is.
 
 ## Versioning marker
 
-Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.2`
+Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.3`
 marker line — the same shared version number `generate_amrex_code` and
-the Fortran-side `generate_cpp_bridge` use (`!!SKILLS: 0.3.2`), so
+the Fortran-side `generate_cpp_bridge` use (`!!SKILLS: 0.3.3`), so
 `grep -rn "SKILLS:"` finds every touched file across the Fortran and
 C++ trees for a given port. Applies to `test_mom/<module>/test_<module>.cpp`
 (Step 7) and to any `test_mom/common/*.{hpp,cpp}` file Step 8 extends —
@@ -498,7 +498,7 @@ be stripped later.
 
 ## Hard rules
 
-- Never skip the `// SKILLS: 0.3.2` marker on a file this skill
+- Never skip the `// SKILLS: 0.3.3` marker on a file this skill
   touches, and never add a second marker line if one already exists.
 - Comments state physical meaning (what the kernel/fixture represents)
   or, per Step 7, a one-line ground-truth citation — never a narrative

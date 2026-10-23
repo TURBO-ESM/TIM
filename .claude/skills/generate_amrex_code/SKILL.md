@@ -1,6 +1,6 @@
 ---
 name: generate_amrex_code
-version: "0.3.2"
+version: "0.3.3"
 description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
 user-invocable: true
 argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
@@ -306,6 +306,12 @@ holds the template or rationale.
    of scope, or why a scratch buffer exists. That reasoning goes in the
    Step 12 report, not the source (lessons.md §7 #10).
 
+   **Profiling.** Make the first statement of every box-level
+   `MOM::<kernel>` this step adds `BL_PROFILE("<kernel>");`, using the
+   kernel's C++ name, and include `<AMReX.H>` in the `.cpp`. Do not add
+   it to `_point` helpers, file-local templates or the bridge
+   (lessons.md §7 #17).
+
 ### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
    First-time creation: start with `#include "turbotmp_bridge_c_types.h"`
    (do **not** re-define `RealArray_C` / `Box_C` — they live in that shared
@@ -401,10 +407,10 @@ holds the template or rationale.
 
 ## Versioning marker
 
-Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.2`
+Every C++ file this skill creates or modifies gets a `// SKILLS: 0.3.3`
 marker line — the shared version number for this whole skill family
-(the same 0.3.2 used by the Fortran-side `generate_cpp_bridge`'s
-`!!SKILLS: 0.3.2`, so `grep -rn "SKILLS:"` finds both sides of a port
+(the same 0.3.3 used by the Fortran-side `generate_cpp_bridge`'s
+`!!SKILLS: 0.3.3`, so `grep -rn "SKILLS:"` finds both sides of a port
 across the MOM6 and TIM trees). Applies to every file Steps 5–9 create
 or extend: `<module>_kernel.hpp`, `<module>.hpp`, `<module>.cpp`,
 `turbotmp_<module>_bridge.h`, `turbotmp_<module>_bridge.cpp`, and
@@ -417,7 +423,7 @@ Deliberately grep-able and meant to be stripped later.
 
 ## Hard rules
 
-- Never skip the `// SKILLS: 0.3.2` marker on a file this skill
+- Never skip the `// SKILLS: 0.3.3` marker on a file this skill
   touches, and never add a second marker line if one already exists.
 - Bridge functions contain marshalling only — no math, no
   value-dependent branches (lessons.md §3).
@@ -460,6 +466,8 @@ Deliberately grep-able and meant to be stripped later.
 - Do not add conversion commentary to source or test files. Copy the
   Fortran comments; put any explanation of the port in the Step 12
   report (Step 6).
+- Every box-level `MOM::<kernel>` starts with
+  `BL_PROFILE("<kernel>");` (Step 6, lessons.md §7 #17).
 
 If something not covered here comes up, consult lessons.md §7
 (C++-side pitfalls) before improvising.

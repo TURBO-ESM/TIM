@@ -520,9 +520,13 @@ PR #8's ~30 commits surface the friction worth flagging:
     vs. merely guarded by `%associated()` on a mandatory argument. A
     parameter whose Fortran container may be unassociated should be
     documented as what the C++ code does about it now (e.g. "may be
-    absent; pass a default-constructed `Array4` to represent absence"),
+    unallocated; pass a default-constructed `Array4` when unallocated"),
     not as a discussion of Fortran's optional-argument semantics or the
-    porting decision behind the guard. If a disabled/deferred block
+    porting decision behind the guard. Say "unallocated"/"allocated",
+    never "absent"/"present"/"optional": the `bind(C)` interfaces have
+    no `optional` dummies, only containers (`RealArray_t` arguments or
+    derived-type components) that may not be allocated, which
+    `%to_c()` passes as `data == nullptr`. If a disabled/deferred block
     needs a comment, reuse the file's existing convention for that (see
     the `NOTE: OBC support temporarily disabled` comment already used by
     `PPM_reconstruction_x`/`_y`) rather than inventing a new explanatory

@@ -1,4 +1,4 @@
-// SKILLS: 0.3.1
+// SKILLS: 0.3.3
 
 #include "captured_io.hpp"
 
@@ -170,6 +170,54 @@ amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
 
 amrex::FArrayBox CapturedFile::fab_device(const std::string& name) const {
     amrex::FArrayBox host = fab_host(name);
+    amrex::FArrayBox dev(host.box(), host.nComp(), amrex::The_Arena());
+    const std::size_t n = static_cast<std::size_t>(host.box().numPts()) *
+                          static_cast<std::size_t>(host.nComp());
+    amrex::Gpu::copy(amrex::Gpu::hostToDevice,
+                     host.dataPtr(), host.dataPtr() + n,
+                     dev.dataPtr());
+    amrex::Gpu::streamSynchronize();
+    return dev;
+}
+
+amrex::FArrayBox CapturedFile::fab_host_1d(const std::string& name) const {
+    const auto& e = lookup(name, "RealArray_t");
+    std::size_t off = e.offset - 1;
+    int ndim = read_be_i32(bin_, off);
+    if (ndim != 1) {
+        throw std::runtime_error(
+            "captured_io: fab_1d expects a 1D array (got ndim=" +
+            std::to_string(ndim) + ") for '" + name + "'");
+    }
+    int shape = read_be_i32(bin_, off);
+    int lb = read_be_i32(bin_, off);
+    int ub = read_be_i32(bin_, off);
+    if (lb != 1) {
+        throw std::runtime_error(
+            "captured_io: fab_1d assumes Fortran lb==1 (got " +
+            std::to_string(lb) + ") for '" + name + "'");
+    }
+    if (ub - lb + 1 != shape) {
+        throw std::runtime_error(
+            "captured_io: fab_1d bounds inconsistent with shape (lb=" +
+            std::to_string(lb) + ", ub=" + std::to_string(ub) + ", shape=" +
+            std::to_string(shape) + ") for '" + name + "'");
+    }
+    int32_t nelem = read_be_i32(bin_, off);
+    if (nelem != shape) {
+        throw std::runtime_error(
+            "captured_io: RealArray_t nelem mismatch for '" + name + "' (got " +
+            std::to_string(nelem) + ", expected " + std::to_string(shape) + ")");
+    }
+    amrex::Box sbx(amrex::IntVect(0, 0, 0), amrex::IntVect(shape - 1, 0, 0));
+    amrex::FArrayBox fab(sbx, 1, amrex::The_Pinned_Arena());
+    auto arr = fab.array();
+    for (int i = 0; i < shape; ++i) arr(i, 0, 0) = read_be_f64(bin_, off);
+    return fab;
+}
+
+amrex::FArrayBox CapturedFile::fab_device_1d(const std::string& name) const {
+    amrex::FArrayBox host = fab_host_1d(name);
     amrex::FArrayBox dev(host.box(), host.nComp(), amrex::The_Arena());
     const std::size_t n = static_cast<std::size_t>(host.box().numPts()) *
                           static_cast<std::size_t>(host.nComp());

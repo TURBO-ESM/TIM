@@ -43,6 +43,7 @@ endfunction()
 add_library(mom_continuity STATIC EXCLUDE_FROM_ALL
     mom_continuity_ppm.cpp
     mom_coriolisadv.cpp
+    mom_vert_friction.cpp
 )
 mom_cpp_configure(mom_continuity)
 target_include_directories(mom_continuity PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -63,6 +64,8 @@ if(TIM_ENABLE_MOM_BRIDGE)
         turbotmp_mom_continuity_ppm_bridge.cpp
         mom_coriolisadv.cpp
         turbotmp_mom_coriolisadv_bridge.cpp
+        mom_vert_friction.cpp
+        turbotmp_mom_vert_friction_bridge.cpp
         ${mom_turbotmp_dir}/turbotmp_helper.cpp
     )
     add_library(TIM::mom_bridge ALIAS mom_bridge)
@@ -91,6 +94,7 @@ if(TIM_ENABLE_MOM_BRIDGE)
     install(FILES
         turbotmp_mom_continuity_ppm_bridge.h
         turbotmp_mom_coriolisadv_bridge.h
+        turbotmp_mom_vert_friction_bridge.h
         turbotmp_bridge_c_types.h
         DESTINATION include/tim/mom)
 endif()
@@ -105,6 +109,8 @@ if(AMReX_GPU_BACKEND STREQUAL "CUDA")
         turbotmp_mom_continuity_ppm_bridge.cpp
         mom_coriolisadv.cpp
         turbotmp_mom_coriolisadv_bridge.cpp
+        mom_vert_friction.cpp
+        turbotmp_mom_vert_friction_bridge.cpp
         ${mom_turbotmp_dir}/turbotmp_helper.cpp
         PROPERTIES LANGUAGE CUDA)
 endif()

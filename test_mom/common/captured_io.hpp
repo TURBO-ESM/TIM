@@ -62,7 +62,7 @@
 //   the payload through a pinned-host buffer. int_fab_host()/int_fab_device()
 //   are the LogicalArray_t counterparts, returning amrex::IArrayBox.
 
-// SKILLS: 0.3.1
+// SKILLS: 0.3.3
 
 #pragma once
 
@@ -90,6 +90,11 @@ public:
     amrex::Box       box           (const std::string& name) const;
     amrex::FArrayBox fab_host      (const std::string& name) const;
     amrex::FArrayBox fab_device    (const std::string& name) const;
+    // 1D RealArray_t counterparts of fab_host()/fab_device(): the storage box
+    // spans [0, shape-1] along the first index and the single index 0 along
+    // the other two.
+    amrex::FArrayBox fab_host_1d   (const std::string& name) const;
+    amrex::FArrayBox fab_device_1d (const std::string& name) const;
     amrex::IArrayBox int_fab_host  (const std::string& name) const;
     amrex::IArrayBox int_fab_device(const std::string& name) const;
     double           real64       (const std::string& name) const;

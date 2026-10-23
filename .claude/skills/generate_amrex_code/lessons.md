@@ -520,9 +520,13 @@ PR #8's ~30 commits surface the friction worth flagging:
     vs. merely guarded by `%associated()` on a mandatory argument. A
     parameter whose Fortran container may be unassociated should be
     documented as what the C++ code does about it now (e.g. "may be
-    absent; pass a default-constructed `Array4` to represent absence"),
+    unallocated; pass a default-constructed `Array4` when unallocated"),
     not as a discussion of Fortran's optional-argument semantics or the
-    porting decision behind the guard. If a disabled/deferred block
+    porting decision behind the guard. Say "unallocated"/"allocated",
+    never "absent"/"present"/"optional": the `bind(C)` interfaces have
+    no `optional` dummies, only containers (`RealArray_t` arguments or
+    derived-type components) that may not be allocated, which
+    `%to_c()` passes as `data == nullptr`. If a disabled/deferred block
     needs a comment, reuse the file's existing convention for that (see
     the `NOTE: OBC support temporarily disabled` comment already used by
     `PPM_reconstruction_x`/`_y`) rather than inventing a new explanatory
@@ -616,6 +620,19 @@ PR #8's ~30 commits surface the friction worth flagging:
     build error. The
     `Array4(p, Dim3 begin, Dim3 end, ncomp)` constructor, and the
     `.p` member, are still available in 26.x.
+17. **Every box-level kernel starts with `BL_PROFILE`.** The first
+    statement of each public `MOM::<kernel>` in `mom/cpp/<module>.cpp`
+    is `BL_PROFILE("<kernel>");`, with the kernel's own C++ name as the
+    label, followed by a blank line. It goes before any OBC guard, so
+    the timer covers the whole call. Include `<AMReX.H>` in the
+    `.cpp`. The `_point` device helpers, file-local templates in the
+    `.cpp` and the bridge functions get no profiling call. This is the
+    convention in `mom_continuity_ppm.cpp` (e.g.
+    `BL_PROFILE("ppm_limit_pos")`) and `mom_coriolisadv.cpp` (e.g.
+    `BL_PROFILE("coradv_setup")`). The `mom_vert_friction` port first
+    shipped without these calls because this checklist did not ask
+    for them, which left its kernels out of the AMReX TinyProfiler
+    output.
 
 ---
 

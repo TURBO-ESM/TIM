@@ -1,8 +1,10 @@
 // GoogleTest-style assertions for AMReX types, shared across the MOM C++
 // unit tests. Add new helpers here as more kernel tests land.
+// SKILLS: 0.3.3
 #pragma once
 
 #include <AMReX_FArrayBox.H>
+#include <AMReX_IArrayBox.H>
 
 namespace test_mom {
 
@@ -20,5 +22,16 @@ void expect_arrays_equal(const amrex::FArrayBox& expected,
 // the underlying Gpu::copy is a std::copy. Use this to bring a kernel-output
 // device FAB back to host before calling expect_arrays_equal.
 amrex::FArrayBox to_host_fab(const amrex::FArrayBox& src);
+
+// Element-wise EXPECT_EQ between `got` and `expected` integer arrays (e.g. the
+// integer-encoded logicals from CapturedFile::int_fab_host) over the expected
+// array's box. Asserts the boxes match before iterating. Both IArrayBoxes must
+// be host-resident.
+void expect_int_arrays_equal(const amrex::IArrayBox& expected,
+                             const amrex::IArrayBox& got,
+                             const char* label);
+
+// IArrayBox counterpart of to_host_fab().
+amrex::IArrayBox to_host_int_fab(const amrex::IArrayBox& src);
 
 } // namespace test_mom

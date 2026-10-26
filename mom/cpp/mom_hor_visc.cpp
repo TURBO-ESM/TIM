@@ -696,22 +696,10 @@ void hor_visc_leith_grad_a(const Box& bxH,
 
     } else {
 
-        ParallelFor(u_pts(amrex::grow(bxKh_i, 1, 1)), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            div_xx_dx(i,j,kk) = 0.0_rt;
-        });
-        ParallelFor(v_pts(amrex::grow(bxKh_j, 0, 1)), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            div_xx_dy(i,j,kk) = 0.0_rt;
-        });
-        ParallelFor(bxKh, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            grad_div_mag_h(i,j,kk) = 0.0_rt;
-        });
-        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            grad_div_mag_q(i,j,kk) = 0.0_rt;
-        });
+        FArrayBox(div_xx_dx).setVal<RunOn::Device>(0.0_rt, u_pts(amrex::grow(bxKh_i, 1, 1)));
+        FArrayBox(div_xx_dy).setVal<RunOn::Device>(0.0_rt, v_pts(amrex::grow(bxKh_j, 0, 1)));
+        FArrayBox(grad_div_mag_h).setVal<RunOn::Device>(0.0_rt, bxKh);
+        FArrayBox(grad_div_mag_q).setVal<RunOn::Device>(0.0_rt, q_pts(bxH));
 
     }
 
@@ -805,10 +793,8 @@ void hor_visc_leithy_m(const Box& bxKh,
         Box m_leithy_bx = Box(m_leithy);
         m_leithy_bx.setSmall(2, bxKh.smallEnd(2));
         m_leithy_bx.setBig(2, bxKh.bigEnd(2));
-        ParallelFor(m_leithy_bx, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            m_leithy(i,j,kk) = 0.0_rt;  ///< This is here to initialize domain edge halo values.
-        });
+        /// This is here to initialize domain edge halo values.
+        FArrayBox(m_leithy).setVal<RunOn::Device>(0.0_rt, m_leithy_bx);
     }
     ParallelFor(bxKh, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
     {
@@ -861,10 +847,8 @@ void hor_visc_leithy_ah(const Box& bxKh,
         Box Ah_sq_bx = Box(Ah_sq);
         Ah_sq_bx.setSmall(2, bxKh.smallEnd(2));
         Ah_sq_bx.setBig(2, bxKh.bigEnd(2));
-        ParallelFor(Ah_sq_bx, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            Ah_sq(i,j,kk) = 0.0_rt;  ///< This is here to initialize domain edge halo values.
-        });
+        /// This is here to initialize domain edge halo values.
+        FArrayBox(Ah_sq).setVal<RunOn::Device>(0.0_rt, Ah_sq_bx);
         ParallelFor(bxKh, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             Ah_sq(i,j,kk) = Ah(i,j,kk)*Ah(i,j,kk);
@@ -1327,16 +1311,10 @@ void hor_visc_strain(const Box& bxH,
                     const int J = seg.HI.JsdB;
                     if (seg.is_N_or_S && (J >= Jsq-1) && (J <= Jeq+1)) {
                         const Box seg_bx(IntVect(seg.HI.isd, J, klo), IntVect(seg.HI.ied, J, khi));
-                        ParallelFor(seg_bx, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-                        {
-                            Del2v(i,j,kk) = 0._rt;
-                        });
+                        FArrayBox(Del2v).setVal<RunOn::Device>(0._rt, seg_bx);
                     } else if (seg.is_E_or_W && (I >= Isq-1) && (I <= Ieq+1)) {
                         const Box seg_bx(IntVect(I, seg.HI.jsd, klo), IntVect(I, seg.HI.jed, khi));
-                        ParallelFor(seg_bx, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-                        {
-                            Del2u(i,j,kk) = 0._rt;
-                        });
+                        FArrayBox(Del2u).setVal<RunOn::Device>(0._rt, seg_bx);
                     }
                 }
             }
@@ -1602,10 +1580,7 @@ void hor_visc_h_coeffs_a(const Box& bxH,
         /// In Leith+E parameterization Kh is computed after Ah in the biharmonic loop.
         /// The harmonic component of str_xx is added in the biharmonic loop.
         if (CS.use_Leithy) {
-            ParallelFor(bxKh, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-            {
-                Kh(i,j,kk) = 0._rt;
-            });
+            FArrayBox(Kh).setVal<RunOn::Device>(0._rt, bxKh);
         }
 
         if (CS.do_Kh_h || CS.debug) {
@@ -1652,10 +1627,7 @@ void hor_visc_h_coeffs_a(const Box& bxH,
             str_xx(i,j,kk) = -Kh(i,j,kk) * sh_xx(i,j,kk);
         });
     } else {
-        ParallelFor(bxQ_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            str_xx(i,j,kk) = 0.0_rt;
-        });
+        FArrayBox(str_xx).setVal<RunOn::Device>(0.0_rt, bxQ_pij);
     } /// Get Kh at h points and get Laplacian component of str_xx
 
     if (CS.anisotropic) {
@@ -2851,10 +2823,7 @@ void hor_visc_q_coeffs(const Box& bxH,
             });
         }
     } else {
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
-        {
-            str_xy(i,j,kk) = 0._rt;
-        });
+        FArrayBox(str_xy).setVal<RunOn::Device>(0._rt, bxH_mij);
     } /// get harmonic coefficient Kh at q points and harmonic part of str_xy
 
     if (CS.anisotropic) {
@@ -3141,30 +3110,12 @@ void horizontal_viscosity_tr(const Box& bxH0,
     const Real inv_PI6 = inv_PI3 * inv_PI3;
 
     if (CS.EY24_EBT_BS) {
-        ParallelFor(Box(visc_limit_h), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            visc_limit_h(i,j,k) = 0._rt;
-        });
-        ParallelFor(Box(visc_limit_q), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            visc_limit_q(i,j,k) = 0._rt;
-        });
-        ParallelFor(Box(visc_limit_h_flag), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            visc_limit_h_flag(i,j,k) = 0._rt;
-        });
-        ParallelFor(Box(visc_limit_q_flag), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            visc_limit_q_flag(i,j,k) = 0._rt;
-        });
-        ParallelFor(Box(visc_limit_h_frac), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            visc_limit_h_frac(i,j,k) = 0._rt;
-        });
-        ParallelFor(Box(visc_limit_q_frac), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            visc_limit_q_frac(i,j,k) = 0._rt;
-        });
+        FArrayBox(visc_limit_h).setVal<RunOn::Device>(0._rt);
+        FArrayBox(visc_limit_q).setVal<RunOn::Device>(0._rt);
+        FArrayBox(visc_limit_h_flag).setVal<RunOn::Device>(0._rt);
+        FArrayBox(visc_limit_q_flag).setVal<RunOn::Device>(0._rt);
+        FArrayBox(visc_limit_h_frac).setVal<RunOn::Device>(0._rt);
+        FArrayBox(visc_limit_q_frac).setVal<RunOn::Device>(0._rt);
     }
 
     const bool skeb_use_frict = X.skeb_use_frict;
@@ -3328,10 +3279,8 @@ void horizontal_viscosity_tr(const Box& bxH0,
     Array4<Real> const Ah_sq = Ah_sq_fab.array();
 
     if (CS.use_Leithy) {
-        ParallelFor(Box(m_leithy), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            m_leithy(i,j,k) = 0.0_rt; /// Initialize
-        });
+        /// Initialize
+        FArrayBox(m_leithy).setVal<RunOn::Device>(0.0_rt);
     }
 
     bool apply_OBC = false;
@@ -3400,26 +3349,14 @@ void horizontal_viscosity_tr(const Box& bxH0,
     bxH0_2d.setSmall(2, 0);
     bxH0_2d.setBig(2, 0);
     if (find_FrictWork && (X.MEKE_mom_src.p != nullptr)) {
-        Array4<Real> const MEKE_mom_src = X.MEKE_mom_src;
-        ParallelFor(bxH0_2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
-        {
-            MEKE_mom_src(i,j,0) = 0._rt;
-        });
+        FArrayBox(X.MEKE_mom_src).setVal<RunOn::Device>(0._rt, bxH0_2d);
 
         if (X.MEKE_mom_src_bh.p != nullptr) {
-            Array4<Real> const MEKE_mom_src_bh = X.MEKE_mom_src_bh;
-            ParallelFor(bxH0_2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
-            {
-                MEKE_mom_src_bh(i,j,0) = 0._rt;
-            });
+            FArrayBox(X.MEKE_mom_src_bh).setVal<RunOn::Device>(0._rt, bxH0_2d);
         }
 
         if (X.MEKE_GME_snk.p != nullptr) {
-            Array4<Real> const MEKE_GME_snk = X.MEKE_GME_snk;
-            ParallelFor(bxH0_2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
-            {
-                MEKE_GME_snk(i,j,0) = 0._rt;
-            });
+            FArrayBox(X.MEKE_GME_snk).setVal<RunOn::Device>(0._rt, bxH0_2d);
         }
     }
 

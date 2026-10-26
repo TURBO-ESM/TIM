@@ -305,6 +305,12 @@ holds the template or rationale.
    does differently, which shim a value mirrors, what is deferred or out
    of scope, or why a scratch buffer exists. That reasoning goes in the
    Step 12 report, not the source (lessons.md §7 #10).
+   This includes the comments on local-variable declarations: when a
+   Fortran local becomes a C++ local (a scalar, an `FArrayBox` scratch
+   field, or its `Array4` view), put its Fortran description and units
+   in a `///` comment directly above the C++ declaration. A local with
+   no C++ counterpart (a `%view` pointer, a loop index) drops its
+   comment along with it.
 
    **Halo updates.** For a flag-guarded branch containing `pass_var` /
    `pass_vector`, make `AMREX_ABORT_LOC(...)` the first statement of the
@@ -438,6 +444,12 @@ Deliberately grep-able and meant to be stripped later.
 - Pass scalars by value with `const`; use C++ `bool` to mate with
   Fortran `logical(c_bool)`. Never C99 `_Bool`.
 - Headers use `#pragma once`. No `using namespace` in headers.
+- Device functions put their macros on one line above the return type:
+  `AMREX_GPU_DEVICE AMREX_FORCE_INLINE` (lessons.md §5).
+- Every floating-point literal in kernel code carries the `_rt` suffix
+  (`0.25_rt`). Enable it with `using namespace amrex::literals;` at file
+  scope in the `.cpp`, and inside each function body in a header
+  (lessons.md §7 #19).
 - `extern "C"` lives only in the bridge `.h`. Kernel and helper
   headers are normal C++.
 - Every `make_array4` reaches a `free_array4` on every path —
@@ -472,6 +484,9 @@ Deliberately grep-able and meant to be stripped later.
 - Do not add conversion commentary to source or test files. Copy the
   Fortran comments; put any explanation of the port in the Step 12
   report (Step 6).
+- Every Fortran local that has a C++ counterpart keeps its declaration
+  comment (description and units) above the C++ declaration (Step 6,
+  lessons.md §7 #10).
 - Every box-level `MOM::<kernel>` starts with
   `BL_PROFILE("<kernel>");` (Step 6, lessons.md §7 #17).
 - A flag-guarded branch containing `pass_var`/`pass_vector` starts with

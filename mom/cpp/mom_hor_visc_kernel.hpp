@@ -26,16 +26,17 @@ using amrex::Real;
 /// @param sh_xx              horizontal tension (du/dx - dv/dy) including metric terms [T-1 ~> s-1]
 ///
 template <bool use_kh_struct>
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void hor_visc_backscatter_h_point(Real& str_xx, Real& Kh_BS,
                                   Real const visc_limit_h_flag,
                                   Real const MEKE_Ku,
                                   Real const BS_struct,
                                   Real const sh_xx) noexcept
 {
-    if (visc_limit_h_flag > 0.0) {
-        Kh_BS = 0.;
+    using namespace amrex::literals;
+
+    if (visc_limit_h_flag > 0.0_rt) {
+        Kh_BS = 0._rt;
     } else {
         if constexpr (use_kh_struct) {
             Kh_BS = MEKE_Ku * BS_struct;
@@ -59,13 +60,14 @@ void hor_visc_backscatter_h_point(Real& str_xx, Real& Kh_BS,
 /// @param Ah_bg_xx  The background biharmonic viscosity at h points [L4 T-1 ~> m4 s-1]
 /// @param Ah_sq     The square of the biharmonic viscosity [L8 T-2 ~> m8 s-2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void hor_visc_leithy_ah_h_smooth_point(Real& Ah, Real& Ah_h,
                                        Real const Ah_bg_xx,
                                        Real const Ah_sq) noexcept
 {
-    Ah_h = amrex::max(Ah_bg_xx, std::sqrt(amrex::max(0., Ah_sq)));
+    using namespace amrex::literals;
+
+    Ah_h = amrex::max(Ah_bg_xx, std::sqrt(amrex::max(0._rt, Ah_sq)));
     Ah   = Ah_h;
 }
 
@@ -75,8 +77,7 @@ void hor_visc_leithy_ah_h_smooth_point(Real& Ah, Real& Ah_h,
 /// @param Ah_h  biharmonic viscosity at thickness points [L4 T-1 ~> m4 s-1]
 /// @param Ah    biharmonic viscosity (h or q) [L4 T-1 ~> m4 s-1]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void hor_visc_leithy_ah_h_nosmooth_point(Real& Ah_h,
                                          Real const Ah) noexcept
 {

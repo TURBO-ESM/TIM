@@ -351,14 +351,17 @@ The innermost, stencil-free per-cell math is factored out into a
   `<kernel>_<mode>_point` (e.g. `thickness_to_dz_3d_boussinesq_point`,
   `thickness_to_dz_3d_nonboussinesq_point`) — not `<kernel>_point_<mode>`.
   This is consistent with `ppm_limit_pos_point` / `ppm_limit_cw84_point`.
-- Marked `AMREX_GPU_DEVICE AMREX_FORCE_INLINE noexcept`.
+- Marked `AMREX_GPU_DEVICE AMREX_FORCE_INLINE noexcept`. Write the two
+  macros together on one line, above the return type:
+  `AMREX_GPU_DEVICE AMREX_FORCE_INLINE`. The same applies to
+  `AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE` and to file-local device
+  helpers in the `.cpp`.
 - Inputs by value (`Real const h_in`), outputs by reference (`Real& h_L`).
 - No `Array4`, no `Box`, no indexing — the caller supplies the cell value.
 - Body is a literal port of the Fortran inner loop body.
 
 ```cpp
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void ppm_limit_pos_point(Real& h_L, Real& h_R,
                          Real const h_in, Real const h_min) noexcept
 {
@@ -493,6 +496,17 @@ PR #8's ~30 commits surface the friction worth flagging:
    ergonomic, but a non-null pointer arriving at the bridge will
    silently pass through. Guard with `AMREX_ABORT_LOC` to surface the
    case explicitly until OBC is implemented.
+   `AMREX_ABORT_LOC` is **not** an AMReX macro: each kernel `.cpp` that
+   uses it defines it locally, after its includes (with `<string>`):
+   ```cpp
+   /// @brief Abort with @p msg annotated by the source file and line number.
+   /// @param msg Message to report before aborting.
+   #define AMREX_ABORT_LOC(msg) \
+   	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
+   ```
+   The first kernel in a module to use it (an OBC guard or a halo-update
+   guard, #18) must add this block if the `.cpp` lacks it, or the build
+   fails with `'AMREX_ABORT_LOC' was not declared in this scope`.
 8. **AMReX include hygiene.** Bridges only need
    `<AMReX_Array4.H>`, `<AMReX_MultiFab.H>`, `<AMReX_Gpu.H>`,
    `<AMReX_FArrayBox.H>` (the last only when intermediate `FArrayBox`
@@ -533,6 +547,19 @@ PR #8's ~30 commits surface the friction worth flagging:
     note about why this particular instance is deferred. Anything about
     *why a choice was made during this port* belongs in the commit
     message, not in the shipped source.
+    The inverse also holds: the Fortran's own comments must not be lost.
+    That includes comments in the executable body (carried over at the
+    same place) and the comments on local-variable declarations
+    (`real :: hvel ! hvel is the thickness used at a velocity grid
+    point [H ~> m or kg m-2]`). When a Fortran local becomes a C++
+    local, whether a scalar, an `FArrayBox` scratch field or the
+    `Array4` view of one, its description and units go in a `///`
+    comment directly above the C++ declaration; for a scratch field put
+    it above the `FArrayBox`. Locals with no C++ counterpart (`%view`
+    pointers, loop indices) drop their comments with them. A port that
+    keeps every body comment but declares `hvel`, `dz_harm` and
+    `a_cpl_gl90` bare loses the units the reader most needs (seen in
+    the first `mom_vert_friction.cpp` port).
 11. **Disabled/deferred blocks get real code, one level of disabling.**
     When Fortran logic beyond an `AMREX_ABORT_LOC` guard (typically an
     OBC segment loop) is deferred rather than ported live, wrap it in a
@@ -648,6 +675,26 @@ PR #8's ~30 commits surface the friction worth flagging:
     belongs. Reaching the abort at run time means it's time to implement
     the exchange. If a `pass_var`/`pass_vector` call is ever found
     **outside** a flag, stop and report it rather than guarding it.
+19. **Floating-point literals carry the `_rt` suffix.** Write every
+    floating-point literal in kernel code as an `amrex::Real` literal:
+    `0.25_rt`, `1.0_rt`, `1.e-30_rt`, `0._rt`. Leave integer literals
+    used for indices and counts alone.
+    - **Why it matters:** in a double-precision build, `Real` is `double`, so
+      this changes nothing and results stay bit-for-bit identical. In a
+      single-precision AMReX build, a bare `0.25` is a `double`. That
+      promotes the expression to double, and mixed calls such as
+      `amrex::max(x, 0.0)` fail template deduction and do not compile.
+    - **How to enable it:** in a `.cpp`, add
+      `using namespace amrex::literals;` after `using namespace amrex;`. In
+      a header (`<module>_kernel.hpp`), put that using-directive inside each
+      function body that needs it, never at file or namespace scope. The
+      hard rule against `using namespace` in headers still holds.
+      `mom_continuity_ppm` set the convention, although its
+      `mom_continuity_ppm_kernel.hpp` uses a file-scope directive that this
+      rule now forbids.
+    - **Where it slipped:** the CorAdCalc, vertvisc and interface-heights
+      ports used bare literals because this list did not ask for `_rt`.
+      `mom_hor_visc` was converted afterwards.
 
 ---
 

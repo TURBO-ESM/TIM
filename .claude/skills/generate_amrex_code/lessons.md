@@ -633,6 +633,21 @@ PR #8's ~30 commits surface the friction worth flagging:
     shipped without these calls because this checklist did not ask
     for them, which left its kernels out of the AMReX TinyProfiler
     output.
+18. **Halo updates (`pass_var` / `pass_vector`) abort, everything else is
+    ported.** There is no tested C++ halo exchange yet. In MOM6 these calls
+    always sit inside a run-time flag (`if (CS%...) then ... call
+    pass_var(...) ... end if`), and the initial test configurations never
+    take that branch. Port the `if` faithfully and make the first
+    statement of its body
+    `AMREX_ABORT_LOC("<kernel>: halo update (pass_var) not yet implemented");`
+    (name `pass_vector` when that is the call). Port the rest of the branch
+    as live, compiled C++. In place of each halo-update call, put the
+    original Fortran call as a single `///` comment, e.g.
+    `/// call pass_var(u, G%Domain)`. This comment is a deliberate
+    exception to #10 and #11: it marks exactly where the missing exchange
+    belongs. Reaching the abort at run time means it's time to implement
+    the exchange. If a `pass_var`/`pass_vector` call is ever found
+    **outside** a flag, stop and report it rather than guarding it.
 
 ---
 

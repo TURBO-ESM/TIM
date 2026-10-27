@@ -945,30 +945,36 @@ void hor_visc_strain(const Box& bxH,
     /// u points [Isq-1:Ieq+1, js-1:je+1] where Del2u is computed: one point beyond bxU,
     /// because the biharmonic pass in hor_visc_h_coeffs_b differences Del2u between neighbours
     const Box bxUdel2 = grow_by(bxU, 1, 1, 1, 1);
-    /// u points [Isq-1:Ieq+1, js-2:je+2] where h_u is copied from hu_cont; two
-    /// points out in j for the OBC cross-corner projections
-    const Box bxUhcont = grow_by(bxU, 1, 2, 1, 2);
     /// v points [is-1:ie+1, Jsq-1:Jeq+1] where Del2v is computed: one point beyond bxV,
     /// because the biharmonic pass in hor_visc_h_coeffs_b differences Del2v between neighbours
     const Box bxVdel2 = grow_by(bxV, 1, 1, 1, 1);
-    /// v points [is-2:ie+2, Jsq-1:Jeq+1] where h_v is copied from hv_cont; two
-    /// points out in i for the OBC cross-corner projections
-    const Box bxVhcont = grow_by(bxV, 2, 1, 2, 1);
-    /// v points [is-2:ie+2, js-2:Jeq+1] where h_v is averaged from h; built from bxH
-    /// because the range starts at js-2 in both memory modes
-    const Box bxVhavg = grow_by(bxH, 2, 2, 2, 1);
-    /// u points [is-2:Ieq+1, js-2:je+2] where h_u is averaged from h; built from bxH
-    /// because the range starts at is-2 in both memory modes
-    const Box bxUhavg = grow_by(bxH, 2, 2, 1, 2);
+    /// v points [is-2:ie+2, js-2:Jeq+1] where h_v is set: hrat_min in
+    /// hor_visc_h_coeffs_a reads it on both sides of bxKh, and two points out in i
+    /// for the OBC cross-corner projections; built from bxH because the range starts
+    /// at js-2 in both memory modes
+    const Box bxVthick = grow_by(bxH, 2, 2, 2, 1);
+    /// u points [is-2:Ieq+1, js-2:je+2] where h_u is set: hrat_min in
+    /// hor_visc_h_coeffs_a reads it on both sides of bxKh, and two points out in j
+    /// for the OBC cross-corner projections; built from bxH because the range starts
+    /// at is-2 in both memory modes
+    const Box bxUthick = grow_by(bxH, 2, 2, 1, 2);
 
     /// q points of this tile where dudy, dvdx and vort_xy are computed,
     /// [is_vort:ie_vort, js_vort:je_vort, 1:kmax]: two points below and one above the h points; with
     /// a Leith scheme, around bxKh instead, because Leith takes gradients of the vorticity
     Box bxVort;
+    /// h points where dudx, dvdy and sh_xx are computed: bxHgrad, or with a Leith
+    /// scheme [is-2:ie+2, js-2:je+2], because the divergence in hor_visc_leith_grad_a
+    /// reads dudx and dvdy one point around bxKh; built from bxH because that range
+    /// starts at is-2 in both memory modes
+    Box bxHtens;
+    /// Set the halo sizes used for the vorticity calculations.
     if ((CS.Leith_Kh) || (CS.Leith_Ah) || (CS.use_Leithy)) {
         bxVort = grow_by(bxKh, 2, 2, 1, 1);
+        bxHtens = grow_by(bxH, 2, 2, 2, 2);
     } else {
         bxVort = grow_by(bxH, 2, 2, 1, 1);
+        bxHtens = bxHgrad;
     }
 
     /// The following are the forms of the horizontal tension and horizontal
@@ -976,7 +982,7 @@ void hor_visc_strain(const Box& bxH,
     /// Griffies and Hallberg (2000).
 
     /// Calculate horizontal tension
-    ParallelFor(bxHgrad, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+    ParallelFor(bxHtens, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
     {
         const int k = kstart + kk - 1;
         dudx(i,j,kk) = dy_dxT(i,j,0)*((IdyCu(i,j,0) * u(i,j,k)) -
@@ -1033,34 +1039,34 @@ void hor_visc_strain(const Box& bxH,
     /// even with OBCs if the accelerations are zeroed at OBC points, in which
     /// case the j-loop for h_u could collapse to j=js=1,je+1. -RWH
     if (use_cont_huv) {
-        ParallelFor(bxUhcont, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(bxUthick, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_u(i,j,kk) = hu_cont(i,j,k);
         });
-        ParallelFor(bxVhcont, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(bxVthick, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_v(i,j,kk) = hv_cont(i,j,k);
         });
     } else if (CS.use_land_mask) {
-        ParallelFor(bxUhavg, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(bxUthick, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_u(i,j,kk) = 0.5_rt * (mask2dT(i,j,0)*h(i,j,k) + mask2dT(i+1,j,0)*h(i+1,j,k));
         });
-        ParallelFor(bxVhavg, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(bxVthick, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_v(i,j,kk) = 0.5_rt * (mask2dT(i,j,0)*h(i,j,k) + mask2dT(i,j+1,0)*h(i,j+1,k));
         });
     } else {
-        ParallelFor(bxUhavg, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(bxUthick, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_u(i,j,kk) = 0.5_rt * (h(i,j,k) + h(i+1,j,k));
         });
-        ParallelFor(bxVhavg, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(bxVthick, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_v(i,j,kk) = 0.5_rt * (h(i,j,k) + h(i,j+1,k));

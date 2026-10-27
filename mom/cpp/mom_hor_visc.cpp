@@ -25,6 +25,53 @@ using namespace amrex::literals;
 namespace MOM {
 
 ///
+/// @brief Grow the i and j extents of a box by separate amounts on its low and high sides.
+///
+/// @param bx   The box to grow
+/// @param lo_i Number of cells to grow the low end in i
+/// @param lo_j Number of cells to grow the low end in j
+/// @param hi_i Number of cells to grow the high end in i
+/// @param hi_j Number of cells to grow the high end in j
+///
+static Box grow_by(Box bx, const int lo_i, const int lo_j, const int hi_i, const int hi_j)
+{
+    bx.growLo(0, lo_i).growLo(1, lo_j).growHi(0, hi_i).growHi(1, hi_j);
+    return bx;
+}
+
+///
+/// @brief The u points (east faces, I = i) bounding the h cells of a box: [is-1:ie, js:je].
+///
+/// @param bx The h-point box
+///
+static Box u_pts(Box bx)
+{
+    bx.growLo(0, 1);
+    return bx;
+}
+
+///
+/// @brief The v points (north faces, J = j) bounding the h cells of a box: [is:ie, js-1:je].
+///
+/// @param bx The h-point box
+///
+static Box v_pts(Box bx)
+{
+    bx.growLo(1, 1);
+    return bx;
+}
+
+///
+/// @brief The q points (corners, I = i, J = j) bounding the h cells of a box: [is-1:ie, js-1:je].
+///
+/// @param bx The h-point box
+///
+static Box q_pts(Box bx)
+{
+    return u_pts(v_pts(bx));
+}
+
+///
 /// @brief One pass of the 9-point smoothing filter applied to a field.
 ///
 /// @tparam zero_land If false, return the average of the surrounding ocean points when
@@ -361,25 +408,20 @@ void hor_visc_backscatter_q(const Box& bxH,
 {
     BL_PROFILE("hor_visc_backscatter_q");
 
-    /// bxH grown to [is-1:ie, js-1:je]
-    Box bxH_mij = bxH;
-    bxH_mij.growLo(0, 1);
-    bxH_mij.growLo(1, 1);
-
     if (use_kh_struct) {
         if (CS.do_BS_coeff_q) {
-            hor_visc_backscatter_q_loop<true, true>(bxH_mij, MEKE_Ku, BS_struct, kstart,
+            hor_visc_backscatter_q_loop<true, true>(q_pts(bxH), MEKE_Ku, BS_struct, kstart,
                                                     visc_limit_q_flag, sh_xy, str_xy, BS_coeff_q);
         } else {
-            hor_visc_backscatter_q_loop<true, false>(bxH_mij, MEKE_Ku, BS_struct, kstart,
+            hor_visc_backscatter_q_loop<true, false>(q_pts(bxH), MEKE_Ku, BS_struct, kstart,
                                                      visc_limit_q_flag, sh_xy, str_xy, BS_coeff_q);
         }
     } else {
         if (CS.do_BS_coeff_q) {
-            hor_visc_backscatter_q_loop<false, true>(bxH_mij, MEKE_Ku, BS_struct, kstart,
+            hor_visc_backscatter_q_loop<false, true>(q_pts(bxH), MEKE_Ku, BS_struct, kstart,
                                                      visc_limit_q_flag, sh_xy, str_xy, BS_coeff_q);
         } else {
-            hor_visc_backscatter_q_loop<false, false>(bxH_mij, MEKE_Ku, BS_struct, kstart,
+            hor_visc_backscatter_q_loop<false, false>(q_pts(bxH), MEKE_Ku, BS_struct, kstart,
                                                       visc_limit_q_flag, sh_xy, str_xy, BS_coeff_q);
         }
     }
@@ -430,9 +472,6 @@ void hor_visc_gme_bt(const Box& bxH0,
     bxQ0_mij_p2ij.growLo(0, 1).growLo(1, 1).growHi(0, 2).growHi(1, 2);
     /// bxH0 grown to [is-2:ie+2, js-2:je+2]
     const Box bxH0_g2ij = amrex::grow(bxH0_2d, IntVect(2, 2, 0));
-    /// bxH0 grown to [is-2:ie+1, js-2:je+1]
-    Box bxH0_m2ij_pij = bxH0_2d;
-    bxH0_m2ij_pij.growLo(0, 2).growLo(1, 2).growHi(0, 1).growHi(1, 1);
 
     /// The total thickness of all layers [H ~> m or kg m-2]
     Box htot_bx = Box(h);
@@ -464,12 +503,12 @@ void hor_visc_gme_bt(const Box& bxH0,
     });
 
     if (CS.no_slip) {
-        ParallelFor(bxH0_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+        ParallelFor(q_pts(amrex::grow(bxH0_2d, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
             sh_xy_bt(i,j,0) = (2.0_rt-mask2dBu(i,j,0)) * ( dvdx_bt(i,j,0) + dudy_bt(i,j,0) );
         });
     } else {
-        ParallelFor(bxH0_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+        ParallelFor(q_pts(amrex::grow(bxH0_2d, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
             sh_xy_bt(i,j,0) = mask2dBu(i,j,0) * ( dvdx_bt(i,j,0) + dudy_bt(i,j,0) );
         });
@@ -507,7 +546,7 @@ void hor_visc_gme_bt(const Box& bxH0,
         }
     });
 
-    ParallelFor(bxH0_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    ParallelFor(q_pts(amrex::grow(bxH0_2d, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
     {
         /// A mask that zeroes out cells with at least one land edge [nondim]
         Real const boundary_mask_q = (mask2dCv(i,j,0) * mask2dCv(i+1,j,0)) * (mask2dCu(i,j,0) * mask2dCu(i,j+1,0));
@@ -527,53 +566,6 @@ void hor_visc_gme_bt(const Box& bxH0,
             GME_effic_q(i,j,0) = 0.0_rt;
         }
     });
-}
-
-///
-/// @brief Grow the i and j extents of a box by separate amounts on its low and high sides.
-///
-/// @param bx   The box to grow
-/// @param lo_i Number of cells to grow the low end in i
-/// @param lo_j Number of cells to grow the low end in j
-/// @param hi_i Number of cells to grow the high end in i
-/// @param hi_j Number of cells to grow the high end in j
-///
-static Box grow_by(Box bx, const int lo_i, const int lo_j, const int hi_i, const int hi_j)
-{
-    bx.growLo(0, lo_i).growLo(1, lo_j).growHi(0, hi_i).growHi(1, hi_j);
-    return bx;
-}
-
-///
-/// @brief The u points (east faces, I = i) bounding the h cells of a box: [is-1:ie, js:je].
-///
-/// @param bx The h-point box
-///
-static Box u_pts(Box bx)
-{
-    bx.growLo(0, 1);
-    return bx;
-}
-
-///
-/// @brief The v points (north faces, J = j) bounding the h cells of a box: [is:ie, js-1:je].
-///
-/// @param bx The h-point box
-///
-static Box v_pts(Box bx)
-{
-    bx.growLo(1, 1);
-    return bx;
-}
-
-///
-/// @brief The q points (corners, I = i, J = j) bounding the h cells of a box: [is-1:ie, js-1:je].
-///
-/// @param bx The h-point box
-///
-static Box q_pts(Box bx)
-{
-    return u_pts(v_pts(bx));
 }
 
 void hor_visc_leith_grad_a(const Box& bxH,
@@ -609,20 +601,15 @@ void hor_visc_leith_grad_a(const Box& bxH,
 {
     BL_PROFILE("hor_visc_leith_grad_a");
 
-    const Box bxKh_i_mi_m2j_pij = grow_by(bxKh_i, 1, 2, 1, 1);  ///< bxKh_i grown to [is_Kh-1:ie_Kh+1, js-2:je+1]
-    const Box bxKh_j_m2i_mj_pij = grow_by(bxKh_j, 2, 1, 1, 1);  ///< bxKh_j grown to [is-2:ie+1, js_Kh-1:je_Kh+1]
-    const Box bxH_m2i_mj_pij    = grow_by(bxH,    2, 1, 1, 1);  ///< bxH grown to [is-2:ie+1, js-1:je+1]
-    const Box bxH_mi_m2j_pij    = grow_by(bxH,    1, 2, 1, 1);  ///< bxH grown to [is-1:ie+1, js-2:je+1]
-
     /// Vorticity gradient
-    ParallelFor(bxKh_i_mi_m2j_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+    ParallelFor(v_pts(amrex::grow(bxKh_i, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
     {
         /// Ratio of meridional over zonal grid spacing at vertices [nondim]
         Real const DY_dxBu = dyBu(i,j,0) * IdxBu(i,j,0);
         vort_xy_dx(i,j,kk) = DY_dxBu * ((vort_xy(i,j,kk) * IdyCu(i,j,0)) - (vort_xy(i-1,j,kk) * IdyCu(i-1,j,0)));
     });
 
-    ParallelFor(bxKh_j_m2i_mj_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+    ParallelFor(u_pts(amrex::grow(bxKh_j, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
     {
         /// Ratio of zonal over meridional grid spacing at vertices [nondim]
         Real const DX_dyBu = dxBu(i,j,0) * IdyBu(i,j,0);
@@ -705,11 +692,11 @@ void hor_visc_leith_grad_a(const Box& bxH,
 
     /// Add in beta for the Leith viscosity
     if (CS.use_beta_in_Leith) {
-        ParallelFor(bxH_mi_m2j_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(v_pts(amrex::grow(bxH, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             vort_xy_dx(i,j,kk) = vort_xy_dx(i,j,kk) + 0.5_rt * ( dF_dx(i,j,0) + dF_dx(i,j+1,0));
         });
-        ParallelFor(bxH_m2i_mj_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(u_pts(amrex::grow(bxH, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             vort_xy_dy(i,j,kk) = vort_xy_dy(i,j,kk) + 0.5_rt * ( dF_dy(i,j,0) + dF_dy(i+1,j,0));
         });
@@ -745,15 +732,13 @@ void hor_visc_leith_grad_b(const Box& bxH,
 {
     BL_PROFILE("hor_visc_leith_grad_b");
 
-    const Box bxH_mij = grow_by(bxH, 1, 1, 0, 0);  ///< bxH grown to [is-1:ie, js-1:je]
-
     ParallelFor(bxKh, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
     {
         Real const vort_xy_dx_h = 0.5_rt*(vort_xy_dx(i,j,kk) + vort_xy_dx(i,j-1,kk));
         Real const vort_xy_dy_h = 0.5_rt*(vort_xy_dy(i,j,kk) + vort_xy_dy(i-1,j,kk));
         grad_vort_mag_h(i,j,kk) = std::sqrt((vort_xy_dx_h*vort_xy_dx_h) + (vort_xy_dy_h*vort_xy_dy_h));
     });
-    ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+    ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
     {
         Real const vort_xy_dx_q = 0.5_rt*(vort_xy_dx(i,j,kk) + vort_xy_dx(i+1,j,kk));
         Real const vort_xy_dy_q = 0.5_rt*(vort_xy_dy(i,j,kk) + vort_xy_dy(i,j+1,kk));
@@ -952,17 +937,12 @@ void hor_visc_strain(const Box& bxH,
         AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }
 
-    const Box bxKh_mij          = grow_by(bxKh, 1, 1, 0, 0);  ///< bxKh grown to [is_Kh-1:ie_Kh, js_Kh-1:je_Kh]
     const Box bxQ_mij_p2ij      = grow_by(bxQ,  1, 1, 2, 2);  ///< bxQ grown to [Isq-1:Ieq+2, Jsq-1:Jeq+2]
     const Box bxQ_pij           = grow_by(bxQ,  0, 0, 1, 1);  ///< bxQ grown to [Isq:Ieq+1, Jsq:Jeq+1]
     const Box bxU_gij           = grow_by(bxU,  1, 1, 1, 1);  ///< bxU grown to [Isq-1:Ieq+1, js-1:je+1]
     const Box bxU_mi_m2j_pi_p2j = grow_by(bxU,  1, 2, 1, 2);  ///< bxU grown to [Isq-1:Ieq+1, js-2:je+2]
     const Box bxV_gij           = grow_by(bxV,  1, 1, 1, 1);  ///< bxV grown to [is-1:ie+1, Jsq-1:Jeq+1]
     const Box bxV_m2i_mj_p2i_pj = grow_by(bxV,  2, 1, 2, 1);  ///< bxV grown to [is-2:ie+2, Jsq-1:Jeq+1]
-    const Box bxH_m2ij_p2i_pj   = grow_by(bxH,  2, 2, 2, 1);  ///< bxH grown to [is-2:ie+2, js-2:je+1]
-    const Box bxH_m2ij_pi_p2j   = grow_by(bxH,  2, 2, 1, 2);  ///< bxH grown to [is-2:ie+1, js-2:je+2]
-    const Box bxH_m2ij_pij      = grow_by(bxH,  2, 2, 1, 1);  ///< bxH grown to [is-2:ie+1, js-2:je+1]
-    const Box bxH_mij           = grow_by(bxH,  1, 1, 0, 0);  ///< bxH grown to [is-1:ie, js-1:je]
 
     /// The following are the forms of the horizontal tension and horizontal
     /// shearing strain advocated by Smagorinsky (1993) and discussed in
@@ -1002,7 +982,7 @@ void hor_visc_strain(const Box& bxH,
         });
 
         /// Components for the shearing strain from smoothed velocity
-        ParallelFor(bxKh_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxKh), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             dvdx_smooth(i,j,kk) = dy_dxBu(i,j,0) *
@@ -1037,23 +1017,23 @@ void hor_visc_strain(const Box& bxH,
             h_v(i,j,kk) = hv_cont(i,j,k);
         });
     } else if (CS.use_land_mask) {
-        ParallelFor(bxH_m2ij_pi_p2j, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(u_pts(amrex::grow(bxH, IntVect(1, 2, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_u(i,j,kk) = 0.5_rt * (mask2dT(i,j,0)*h(i,j,k) + mask2dT(i+1,j,0)*h(i+1,j,k));
         });
-        ParallelFor(bxH_m2ij_p2i_pj, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(v_pts(amrex::grow(bxH, IntVect(2, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_v(i,j,kk) = 0.5_rt * (mask2dT(i,j,0)*h(i,j,k) + mask2dT(i,j+1,0)*h(i,j+1,k));
         });
     } else {
-        ParallelFor(bxH_m2ij_pi_p2j, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(u_pts(amrex::grow(bxH, IntVect(1, 2, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_u(i,j,kk) = 0.5_rt * (h(i,j,k) + h(i+1,j,k));
         });
-        ParallelFor(bxH_m2ij_p2i_pj, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(v_pts(amrex::grow(bxH, IntVect(2, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             h_v(i,j,kk) = 0.5_rt * (h(i,j,k) + h(i,j+1,k));
@@ -1250,18 +1230,18 @@ void hor_visc_strain(const Box& bxH,
     /// Shearing strain (including no-slip boundary conditions at the 2-D land-sea mask).
     /// dudy and dvdx include modifications at OBCs from above.
     if (CS.no_slip) {
-        ParallelFor(bxH_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(amrex::grow(bxH, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             sh_xy(i,j,kk) = (2.0_rt-mask2dBu(i,j,0)) * ( dvdx(i,j,kk) + dudy(i,j,kk) );
         });
     } else {
-        ParallelFor(bxH_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(amrex::grow(bxH, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             sh_xy(i,j,kk) = mask2dBu(i,j,0) * ( dvdx(i,j,kk) + dudy(i,j,kk) );
         });
     }
     if (CS.do_shearstress) {
-        ParallelFor(bxH_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(amrex::grow(bxH, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             const int k = kstart + kk - 1;
             ShSt(i,j,k) = sh_xy(i,j,kk);
@@ -1272,12 +1252,12 @@ void hor_visc_strain(const Box& bxH,
         /// Shearing strain (including no-slip boundary conditions at the 2-D land-sea mask).
         /// dudy_smooth and dvdx_smooth do not (yet) include modifications at OBCs from above.
         if (CS.no_slip) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 sh_xy_smooth(i,j,kk) = (2.0_rt-mask2dBu(i,j,0)) * ( dvdx_smooth(i,j,kk) + dudy_smooth(i,j,kk) );
             });
         } else {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 sh_xy_smooth(i,j,kk) = mask2dBu(i,j,0) * ( dvdx_smooth(i,j,kk) + dudy_smooth(i,j,kk) );
             });
@@ -1350,12 +1330,12 @@ void hor_visc_strain(const Box& bxH,
 
     if (CS.use_Leithy) {
         if (CS.no_slip) {
-            ParallelFor(bxKh_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxKh), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 vort_xy_smooth(i,j,kk) = (2.0_rt-mask2dBu(i,j,0)) * ( dvdx_smooth(i,j,kk) - dudy_smooth(i,j,kk) );
             });
         } else {
-            ParallelFor(bxKh_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxKh), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 vort_xy_smooth(i,j,kk) = mask2dBu(i,j,0) * ( dvdx_smooth(i,j,kk) - dudy_smooth(i,j,kk) );
             });
@@ -1969,7 +1949,6 @@ void hor_visc_stress_div(const Box& bxH,
 
     const int kmax = bxH.length(2);
     const Box bxQ_pij = grow_by(bxQ, 0, 0, 1, 1);  ///< bxQ grown to [Isq:Ieq+1, Jsq:Jeq+1]
-    const Box bxH_mij = grow_by(bxH, 1, 1, 0, 0);  ///< bxH grown to [is-1:ie, js-1:je]
     Box bxH_2d = bxH;
     bxH_2d.setSmall(2, 0);
     bxH_2d.setBig(2, 0);
@@ -1985,12 +1964,12 @@ void hor_visc_stress_div(const Box& bxH,
 
         /// This adds in GME and changes the units of str_xx from [L2 T-2 ~> m2 s-2] to [H L2 T-2 ~> m3 s-2 or kg s-2].
         if (CS.no_slip) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 str_xy(i,j,kk) = (str_xy(i,j,kk) + str_xy_GME(i,j,kk)) * (hq(i,j,kk) * reduction_xy(i,j,0));
             });
         } else {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 str_xy(i,j,kk) = (str_xy(i,j,kk) + str_xy_GME(i,j,kk)) *
                                  (hq(i,j,kk) * mask2dBu(i,j,0) * reduction_xy(i,j,0));
@@ -2006,12 +1985,12 @@ void hor_visc_stress_div(const Box& bxH,
 
         /// This changes the units of str_xy from [L2 T-2 ~> m2 s-2] to [H L2 T-2 ~> m3 s-2 or kg s-2].
         if (CS.no_slip) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 str_xy(i,j,kk) = str_xy(i,j,kk) * (hq(i,j,kk) * reduction_xy(i,j,0));
             });
         } else {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 str_xy(i,j,kk) = str_xy(i,j,kk) * (hq(i,j,kk) * mask2dBu(i,j,0) * reduction_xy(i,j,0));
             });
@@ -2296,7 +2275,6 @@ void hor_visc_h_coeffs_b(const Box& bxH,
     }
 
     const Box bxQ_pij = grow_by(bxQ, 0, 0, 1, 1);  ///< bxQ grown to [Isq:Ieq+1, Jsq:Jeq+1]
-    const Box bxH_mij = grow_by(bxH, 1, 1, 0, 0);  ///< bxH grown to [is-1:ie, js-1:je]
 
     if (CS.biharmonic) {
 
@@ -2427,7 +2405,7 @@ void hor_visc_h_coeffs_b(const Box& bxH,
 
     if (CS.biharmonic) {
         /// Gradient of Laplacian, for use in bi-harmonic term
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             dDel2vdx(i,j,kk) = dy_dxBu(i,j,0)*((Del2v(i+1,j,kk)*IdyCv(i+1,j,0)) - (Del2v(i,j,kk)*IdyCv(i,j,0)));
             dDel2udy(i,j,kk) = dx_dyBu(i,j,0)*((Del2u(i,j+1,kk)*IdxCu(i,j+1,0)) - (Del2u(i,j,kk)*IdxCu(i,j,0)));
@@ -2475,7 +2453,7 @@ void hor_visc_h_coeffs_b(const Box& bxH,
     }
 
     if ((CS.Smagorinsky_Kh) || (CS.Smagorinsky_Ah)) {
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             /// Square of shearing strain (sh_xy) [T-2 ~> s-2]
             Real const sh_xy_sq = sh_xy(i,j,kk)*sh_xy(i,j,kk);
@@ -2486,7 +2464,7 @@ void hor_visc_h_coeffs_b(const Box& bxH,
         });
     }
 
-    ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+    ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
     {
         /// temporary variables [H2 ~> m2 or kg2 m-4].
         Real const h2uq = 4.0_rt * (h_u(i,j,kk) * h_u(i,j+1,kk));
@@ -2496,7 +2474,7 @@ void hor_visc_h_coeffs_b(const Box& bxH,
     });
 
     if (CS.bound_Ah || CS.bound_Kh) {
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             /// Minimum h at the 4 neighboring velocity points [H ~> m]
             Real const h_min = amrex::min(h_u(i,j,kk), h_u(i,j+1,kk), h_v(i,j,kk), h_v(i+1,j,kk));
@@ -2508,7 +2486,7 @@ void hor_visc_h_coeffs_b(const Box& bxH,
     /// TODO: GPU??  Are h_[uv] on CPU?  update to hrat_min?
     if (CS.no_slip) {
         const bool no_slip = CS.no_slip;
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             if (no_slip && (mask2dBu(i,j,0) < 0.5_rt)) {
                 if ((mask2dCu(i,j,0) + mask2dCu(i,j+1,0)) +
@@ -2655,8 +2633,6 @@ void hor_visc_q_coeffs(const Box& bxH,
     BL_PROFILE("hor_visc_q_coeffs");
 
     const Box bxQ_mij_p2ij = grow_by(bxQ, 1, 1, 2, 2);  ///< bxQ grown to [Isq-1:Ieq+2, Jsq-1:Jeq+2]
-    const Box bxH_m2ij_pij = grow_by(bxH, 2, 2, 1, 1);  ///< bxH grown to [is-2:ie+1, js-2:je+1]
-    const Box bxH_mij      = grow_by(bxH, 1, 1, 0, 0);  ///< bxH grown to [is-1:ie, js-1:je]
 
     if (CS.Laplacian) {
         /// Determine the Laplacian viscosity at q points, using the
@@ -2665,7 +2641,7 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         if ((CS.Leith_Kh) || (CS.Leith_Ah)) {
             if (CS.use_QG_Leith_visc) {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     /// Vorticity gradient magnitude [L-1 T-1 ~> m-1 s-1]
                     Real const grad_vort = grad_vort_mag_q(i,j,kk) + grad_div_mag_q(i,j,kk);
@@ -2674,7 +2650,7 @@ void hor_visc_q_coeffs(const Box& bxH,
                     vert_vort_mag(i,j,kk) = amrex::min(grad_vort, grad_vort_qg);
                 });
             } else {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     vert_vort_mag(i,j,kk) = grad_vort_mag_q(i,j,kk) + grad_div_mag_q(i,j,kk);
                 });
@@ -2682,19 +2658,19 @@ void hor_visc_q_coeffs(const Box& bxH,
         }
 
         /// Static (pre-computed) background viscosity
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             Kh(i,j,kk) = Kh_bg_xy(i,j,0);
         });
 
         if (CS.Smagorinsky_Kh) {
             if (CS.add_LES_viscosity) {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     Kh(i,j,kk) = Kh(i,j,kk) + Laplac2_const_xy(i,j,0) * Shear_mag(i,j,kk);
                 });
             } else {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     Kh(i,j,kk) = amrex::max(Kh(i,j,kk), Laplac2_const_xy(i,j,0) * Shear_mag(i,j,kk) );
                 });
@@ -2703,13 +2679,13 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         if (CS.Leith_Kh) {
             if (CS.add_LES_viscosity) {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     /// Is this right? -AJA
                     Kh(i,j,kk) = Kh(i,j,kk) + Laplac3_const_xy(i,j,0) * vert_vort_mag(i,j,kk) * inv_PI3;
                 });
             } else {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     Kh(i,j,kk) = amrex::max(Kh(i,j,kk), Laplac3_const_xy(i,j,0) * vert_vort_mag(i,j,kk) * inv_PI3);
                 });
@@ -2719,14 +2695,14 @@ void hor_visc_q_coeffs(const Box& bxH,
         /// All viscosity contributions above are subject to resolution scaling
 
         if (rescale_Kh) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 Kh(i,j,kk) = Res_fn_q(i,j,0) * Kh(i,j,kk);
             });
         }
 
         const Real Kh_bg_min = CS.Kh_bg_min;
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             Kh(i,j,kk) = amrex::max(Kh(i,j,kk), Kh_bg_min); /// Place a floor on the viscosity, if desired.
         });
@@ -2734,15 +2710,15 @@ void hor_visc_q_coeffs(const Box& bxH,
         if (use_MEKE_Ku && !CS.EY24_EBT_BS) {
             if (use_kh_struct) {
                 if (CS.res_scale_MEKE) {
-                    hor_visc_meke_ku_q_loop<true, true>(bxH_mij, kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
+                    hor_visc_meke_ku_q_loop<true, true>(q_pts(bxH), kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
                 } else {
-                    hor_visc_meke_ku_q_loop<true, false>(bxH_mij, kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
+                    hor_visc_meke_ku_q_loop<true, false>(q_pts(bxH), kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
                 }
             } else {
                 if (CS.res_scale_MEKE) {
-                    hor_visc_meke_ku_q_loop<false, true>(bxH_mij, kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
+                    hor_visc_meke_ku_q_loop<false, true>(q_pts(bxH), kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
                 } else {
-                    hor_visc_meke_ku_q_loop<false, false>(bxH_mij, kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
+                    hor_visc_meke_ku_q_loop<false, false>(q_pts(bxH), kstart, MEKE_Ku, Res_fn_q, BS_struct, Kh);
                 }
             }
         }
@@ -2750,7 +2726,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         if (CS.anisotropic) {
             const Real Kh_aniso = CS.Kh_aniso;
             /// *Add* the shear component of anisotropic viscosity
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 Kh(i,j,kk) = Kh(i,j,kk) + Kh_aniso * (n1n2_q(i,j,0)*n1n2_q(i,j,0));
             });
@@ -2759,7 +2735,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         /// Newer method of bounding for stability
         if ((CS.bound_Kh) && (CS.bound_Ah)) {
             const bool backscatter_underbound = CS.backscatter_underbound;
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 visc_bound_rem(i,j,kk) = 1.0_rt;
                 /// The local maximum Laplacian viscosity for stability [L2 T-1 ~> m2 s-1]
@@ -2772,7 +2748,7 @@ void hor_visc_q_coeffs(const Box& bxH,
                 }
             });
         } else if (CS.bound_Kh) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 Kh(i,j,kk) = amrex::min(Kh(i,j,kk), hrat_min(i,j,kk) * Kh_Max_xy(i,j,0));
             });
@@ -2780,7 +2756,7 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         if (CS.use_Leithy) {
             /// Leith+E doesn't recompute Kh at q points, it just interpolates it from h to q points
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 Kh(i,j,kk) = 0.25_rt * ((Kh_h(i,j,k) + Kh_h(i+1,j+1,k)) + (Kh_h(i,j+1,k) + Kh_h(i+1,j,k)));
@@ -2788,7 +2764,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         }
 
         if (CS.do_Kh_q || CS.debug) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 Kh_q(i,j,k) = Kh(i,j,kk);
@@ -2796,7 +2772,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         }
 
         if (CS.do_vort_xy_q) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 vort_xy_q(i,j,k) = vort_xy(i,j,kk);
@@ -2804,7 +2780,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         }
 
         if (CS.do_sh_xy_q) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 sh_xy_q(i,j,k) = sh_xy(i,j,kk);
@@ -2812,23 +2788,23 @@ void hor_visc_q_coeffs(const Box& bxH,
         }
 
         if (!CS.use_Leithy) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 str_xy(i,j,kk) = -Kh(i,j,kk) * sh_xy(i,j,kk);
             });
         } else {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 str_xy(i,j,kk) = -Kh(i,j,kk) * sh_xy_smooth(i,j,kk);
             });
         }
     } else {
-        FArrayBox(str_xy).setVal<RunOn::Device>(0._rt, bxH_mij);
+        FArrayBox(str_xy).setVal<RunOn::Device>(0._rt, q_pts(bxH));
     } /// get harmonic coefficient Kh at q points and harmonic part of str_xy
 
     if (CS.anisotropic) {
         const Real Kh_aniso = CS.Kh_aniso;
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             /// Horizontal-tension averaged to q-points
             /// Local variable for interpolating computed strain rates [T-1 ~> s-1].
@@ -2843,7 +2819,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         /// Determine the biharmonic viscosity at q points, using the
         /// largest value from several parameterizations. Also get the
         /// biharmonic component of str_xy.
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             Ah(i,j,kk) = Ah_bg_xy(i,j,0);
         });
@@ -2851,7 +2827,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         if (CS.Smagorinsky_Ah || CS.Leith_Ah) {
             if (CS.Smagorinsky_Ah) {
                 if (CS.bound_Coriolis) {
-                    ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                    ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                     {
                         /// Smagorinsky biharmonic viscosity [L4 T-1 ~> m4 s-1]
                         Real const AhSm = Shear_mag(i,j,kk) * (Biharm_const_xy(i,j,0)
@@ -2859,7 +2835,7 @@ void hor_visc_q_coeffs(const Box& bxH,
                         Ah(i,j,kk) = amrex::max(Ah(i,j,kk), AhSm);
                     });
                 } else {
-                    ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                    ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                     {
                         /// Smagorinsky biharmonic viscosity [L4 T-1 ~> m4 s-1]
                         Real const AhSm = Biharm_const_xy(i,j,0) * Shear_mag(i,j,kk);
@@ -2869,7 +2845,7 @@ void hor_visc_q_coeffs(const Box& bxH,
             }
 
             if (CS.Leith_Ah) {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     /// 2D Leith biharmonic viscosity [L4 T-1 ~> m4 s-1]
                     Real const AhLth = Biharm6_const_xy(i,j,0) * amrex::Math::abs(Del2vort_q(i,j,kk)) * inv_PI6;
@@ -2880,7 +2856,7 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         if (use_MEKE_Au) {
             /// *Add* the MEKE contribution
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 Ah(i,j,kk) = Ah(i,j,kk) + 0.25_rt * (
                     (MEKE_Au(i,j,0) + MEKE_Au(i+1,j+1,0)) + (MEKE_Au(i+1,j,0) + MEKE_Au(i,j+1,0)) );
@@ -2889,7 +2865,7 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         /// XXX: It is just overwrites the values!
         if (CS.Re_Ah > 0.0_rt) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 Real const u_sum = u(i,j,k) + u(i,j+1,k);
@@ -2902,12 +2878,12 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         if (CS.bound_Ah) {
             if (CS.bound_Kh) {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     Ah(i,j,kk) = amrex::min(Ah(i,j,kk), visc_bound_rem(i,j,kk) * hrat_min(i,j,kk) * Ah_Max_xy(i,j,0));
                 });
             } else {
-                ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+                ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
                 {
                     Ah(i,j,kk) = amrex::min(Ah(i,j,kk), hrat_min(i,j,kk) * Ah_Max_xy(i,j,0));
                 });
@@ -2916,7 +2892,7 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         if (CS.EY24_EBT_BS) {
             const Real KS_coef = CS.KS_coef;
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 Real const tmp = KS_coef *hrat_min(i,j,kk) * Ah_Max_xy_KS(i,j,0);
@@ -2930,7 +2906,7 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         /// Leith+E doesn't recompute Ah at q points, it just interpolates it from h to q points
         if (CS.use_Leithy) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 Ah(i,j,kk) = 0.25_rt * ((Ah_h(i,j,k) + Ah_h(i+1,j+1,k)) + (Ah_h(i,j+1,k) + Ah_h(i+1,j,k)));
@@ -2938,7 +2914,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         }
 
         if (CS.do_Ah_q || CS.debug) {
-            ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 Ah_q(i,j,k) = Ah(i,j,kk);
@@ -2946,7 +2922,7 @@ void hor_visc_q_coeffs(const Box& bxH,
         }
 
         /// Again, need to initialize str_xy as if its biharmonic
-        ParallelFor(bxH_mij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+        ParallelFor(q_pts(bxH), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
         {
             /// Stress tensor update [L2 T-2 ~> m2 s-2]
             Real const d_str = Ah(i,j,kk) * (dDel2vdx(i,j,kk) + dDel2udy(i,j,kk));
@@ -2995,7 +2971,7 @@ void hor_visc_q_coeffs(const Box& bxH,
 
         /// The wider halo here is to permit one pass of smoothing without a halo update.
         if (CS.do_GME_coeff_q) {
-            ParallelFor(bxH_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(amrex::grow(bxH, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 /// The GME (negative) viscosity coefficient [L2 T-1 ~> m2 s-1]
@@ -3007,7 +2983,7 @@ void hor_visc_q_coeffs(const Box& bxH,
                 str_xy_GME(i,j,kk) = GME_coeff * sh_xy_bt(i,j,0);
             });
         } else {
-            ParallelFor(bxH_m2ij_pij, [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
+            ParallelFor(q_pts(amrex::grow(bxH, IntVect(1, 1, 0))), [=] AMREX_GPU_DEVICE (int i, int j, int kk) noexcept
             {
                 const int k = kstart + kk - 1;
                 /// The GME (negative) viscosity coefficient [L2 T-1 ~> m2 s-1]

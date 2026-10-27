@@ -254,9 +254,9 @@ holds the template or rationale.
    a bool that is constant for the entire loop (a mode flag such as
    Boussinesq), create **two** separate `_point` functions — one per
    mode — rather than a single function with a flag parameter. Name
-   them `<kernel>_point_<mode>` (e.g.
-   `thickness_to_dz_3d_point_boussinesq` /
-   `thickness_to_dz_3d_point_nonboussinesq`). See lessons.md §7 #9.
+   them `<kernel>_<mode>_point` — `_point` is always the final suffix
+   (e.g. `thickness_to_dz_3d_boussinesq_point` /
+   `thickness_to_dz_3d_nonboussinesq_point`). See lessons.md §5 and §7 #9.
 
 ### 6. Box-level AMReX kernel in `mom/cpp/<module>.{hpp,cpp}`
    Add `MOM::<lowercased_$1>(...)` per lessons.md §4. The body of the
@@ -305,6 +305,18 @@ holds the template or rationale.
    does differently, which shim a value mirrors, what is deferred or out
    of scope, or why a scratch buffer exists. That reasoning goes in the
    Step 12 report, not the source (lessons.md §7 #10).
+   This includes the comments on local-variable declarations: when a
+   Fortran local becomes a C++ local (a scalar, an `FArrayBox` scratch
+   field, or its `Array4` view), put its Fortran description and units
+   in a `///` comment directly above the C++ declaration. A local with
+   no C++ counterpart (a `%view` pointer, a loop index) drops its
+   comment along with it.
+
+   **Halo updates.** For a flag-guarded branch containing `pass_var` /
+   `pass_vector`, make `AMREX_ABORT_LOC(...)` the first statement of the
+   branch. Port the rest of the branch live, and replace each halo-update
+   call with a `///` comment holding the original Fortran call. If such a
+   call is not behind a flag, stop and report it (lessons.md §7 #18).
 
    **Profiling.** Make the first statement of every box-level
    `MOM::<kernel>` this step adds `BL_PROFILE("<kernel>");`, using the
@@ -432,6 +444,12 @@ Deliberately grep-able and meant to be stripped later.
 - Pass scalars by value with `const`; use C++ `bool` to mate with
   Fortran `logical(c_bool)`. Never C99 `_Bool`.
 - Headers use `#pragma once`. No `using namespace` in headers.
+- Device functions put their macros on one line above the return type:
+  `AMREX_GPU_DEVICE AMREX_FORCE_INLINE` (lessons.md §5).
+- Every floating-point literal in kernel code carries the `_rt` suffix
+  (`0.25_rt`). Enable it with `using namespace amrex::literals;` at file
+  scope in the `.cpp`, and inside each function body in a header
+  (lessons.md §7 #19).
 - `extern "C"` lives only in the bridge `.h`. Kernel and helper
   headers are normal C++.
 - Every `make_array4` reaches a `free_array4` on every path —
@@ -466,8 +484,15 @@ Deliberately grep-able and meant to be stripped later.
 - Do not add conversion commentary to source or test files. Copy the
   Fortran comments; put any explanation of the port in the Step 12
   report (Step 6).
+- Every Fortran local that has a C++ counterpart keeps its declaration
+  comment (description and units) above the C++ declaration (Step 6,
+  lessons.md §7 #10).
 - Every box-level `MOM::<kernel>` starts with
   `BL_PROFILE("<kernel>");` (Step 6, lessons.md §7 #17).
+- A flag-guarded branch containing `pass_var`/`pass_vector` starts with
+  `AMREX_ABORT_LOC`. The rest of the branch is ported, and each halo call
+  becomes a `///` comment holding the Fortran call. An unguarded halo call
+  is reported, not ported (Step 6, lessons.md §7 #18).
 
 If something not covered here comes up, consult lessons.md §7
 (C++-side pitfalls) before improvising.

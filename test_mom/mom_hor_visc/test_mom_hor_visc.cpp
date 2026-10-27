@@ -111,7 +111,7 @@ TEST(SmoothGmeQPass, MatchesFortranCapture) {
 TEST(HorViscBackscatterH, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_backscatter_h");
 
-    const auto bxQ = captured.box("_bxQ");
+    const auto bxHstr = captured.box("_bxHstr");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -199,7 +199,7 @@ TEST(HorViscBackscatterH, MatchesFortranCapture) {
     const auto str_xx_after      = captured.fab_host("_str_xx_after");
     const auto BS_coeff_h_after  = captured.fab_host("_BS_coeff_h_after");
 
-    MOM::hor_visc_backscatter_h(bxQ, CS,
+    MOM::hor_visc_backscatter_h(bxHstr, CS,
                                 MEKE_Ku, BS_struct,
                                 use_kh_struct, kstart,
                                 visc_limit_h_flag.const_array(),
@@ -217,7 +217,7 @@ TEST(HorViscBackscatterH, MatchesFortranCapture) {
 TEST(HorViscBackscatterQ, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_backscatter_q");
 
-    const auto bxH = captured.box("_bxH");
+    const auto bxQstr = captured.box("_bxQstr");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -305,7 +305,7 @@ TEST(HorViscBackscatterQ, MatchesFortranCapture) {
     const auto str_xy_after      = captured.fab_host("_str_xy_after");
     const auto BS_coeff_q_after  = captured.fab_host("_BS_coeff_q_after");
 
-    MOM::hor_visc_backscatter_q(bxH, CS,
+    MOM::hor_visc_backscatter_q(bxQstr, CS,
                                 MEKE_Ku, BS_struct,
                                 use_kh_struct, kstart,
                                 visc_limit_q_flag.const_array(),
@@ -469,10 +469,12 @@ TEST(HorViscGmeBt, MatchesFortranCapture) {
 TEST(HorViscLeithGradA, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_leith_grad_a");
 
-    const auto bxH    = captured.box("_bxH");
-    const auto bxKh   = captured.box("_bxKh");
-    const auto bxKh_i = captured.box("_bxKh_i");
-    const auto bxKh_j = captured.box("_bxKh_j");
+    const auto bxH        = captured.box("_bxH");
+    const auto bxKh       = captured.box("_bxKh");
+    const auto bxKh_i     = captured.box("_bxKh_i");
+    const auto bxKh_j     = captured.box("_bxKh_j");
+    const auto bxQstr     = captured.box("_bxQstr");
+    const auto bxQvsmooth = captured.box("_bxQvsmooth");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -572,7 +574,7 @@ TEST(HorViscLeithGradA, MatchesFortranCapture) {
     const auto vort_xy_dy_smooth_after  = captured.fab_host("_vort_xy_dy_smooth_after");
     const auto div_xx_dx_after          = captured.fab_host("_div_xx_dx_after");
 
-    MOM::hor_visc_leith_grad_a(bxH, bxKh, bxKh_i, bxKh_j, CS,
+    MOM::hor_visc_leith_grad_a(bxH, bxKh, bxKh_i, bxKh_j, bxQstr, bxQvsmooth, CS,
                                dyBu.const_array(), IdxBu.const_array(), IdyCu.const_array(), dxBu.const_array(),
                                IdyBu.const_array(),
                                IdxCv.const_array(), IdyCv.const_array(), IdxCu.const_array(), dF_dx.const_array(),
@@ -603,8 +605,8 @@ TEST(HorViscLeithGradA, MatchesFortranCapture) {
 TEST(HorViscLeithGradB, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_leith_grad_b");
 
-    const auto bxH  = captured.box("_bxH");
-    const auto bxKh = captured.box("_bxKh");
+    const auto bxKh   = captured.box("_bxKh");
+    const auto bxQstr = captured.box("_bxQstr");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -678,7 +680,7 @@ TEST(HorViscLeithGradB, MatchesFortranCapture) {
     const auto grad_vort_mag_q_after      = captured.fab_host("_grad_vort_mag_q_after");
     const auto vert_vort_mag_smooth_after = captured.fab_host("_vert_vort_mag_smooth_after");
 
-    MOM::hor_visc_leith_grad_b(bxH, bxKh, CS,
+    MOM::hor_visc_leith_grad_b(bxKh, bxQstr, CS,
                                grad_vort_mag_h.array(), grad_vort_mag_q.array(), vert_vort_mag_smooth.array(),
                                vort_xy_dx.const_array(), vort_xy_dx_smooth.const_array(),
                                vort_xy_dy.const_array(), vort_xy_dy_smooth.const_array());
@@ -1006,12 +1008,16 @@ TEST(HorViscLeithyAhH, MatchesFortranCapture) {
 TEST(HorViscStrain, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_strain");
 
-    const auto bxH    = captured.box("_bxH");
-    const auto bxQ    = captured.box("_bxQ");
-    const auto bxU    = captured.box("_bxU");
-    const auto bxV    = captured.box("_bxV");
-    const auto bxKh   = captured.box("_bxKh");
-    const auto bxVort = captured.box("_bxVort");
+    const auto bxH        = captured.box("_bxH");
+    const auto bxQ        = captured.box("_bxQ");
+    const auto bxU        = captured.box("_bxU");
+    const auto bxV        = captured.box("_bxV");
+    const auto bxKh       = captured.box("_bxKh");
+    const auto bxHstr     = captured.box("_bxHstr");
+    const auto bxQstr     = captured.box("_bxQstr");
+    const auto bxHgrad    = captured.box("_bxHgrad");
+    const auto bxQshear   = captured.box("_bxQshear");
+    const auto bxQvsmooth = captured.box("_bxQvsmooth");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -1187,10 +1193,6 @@ TEST(HorViscStrain, MatchesFortranCapture) {
     const bool apply_OBC_strain = captured.logical("_apply_OBC_strain");
     const bool use_cont_huv     = captured.logical("_use_cont_huv");
     // Loop ranges for vorticity terms
-    const int  is_vort          = captured.integer("_is_vort") - 1;
-    const int  ie_vort          = captured.integer("_ie_vort") - 1;
-    const int  js_vort          = captured.integer("_js_vort") - 1;
-    const int  je_vort          = captured.integer("_je_vort") - 1;
 
     const auto u        = captured.fab_device("_u");
     const auto v        = captured.fab_device("_v");
@@ -1252,7 +1254,7 @@ TEST(HorViscStrain, MatchesFortranCapture) {
     const auto vort_xy_after        = captured.fab_host("_vort_xy_after");
     const auto vort_xy_smooth_after = captured.fab_host("_vort_xy_smooth_after");
 
-    MOM::hor_visc_strain(bxH, bxQ, bxU, bxV, bxKh, bxVort,
+    MOM::hor_visc_strain(bxH, bxQ, bxU, bxV, bxKh, bxHstr, bxQstr, bxHgrad, bxQshear, bxQvsmooth,
                          CS,
                          IdyCu.const_array(), IdxCv.const_array(), IdyCv.const_array(), IdxCu.const_array(),
                          mask2dT.const_array(), dxBu.const_array(), mask2dBu.const_array(), IareaBu.const_array(),
@@ -1262,7 +1264,6 @@ TEST(HorViscStrain, MatchesFortranCapture) {
                          nullptr,
                          kstart,
                          use_vort_xy, apply_OBC, apply_OBC_strain, use_cont_huv,
-                         is_vort, ie_vort, js_vort, je_vort,
                          u.const_array(), v.const_array(), h.const_array(),
                          hu_cont, hv_cont,
                          u_smooth.const_array(), v_smooth.const_array(),
@@ -1298,9 +1299,9 @@ TEST(HorViscStrain, MatchesFortranCapture) {
 TEST(HorViscHCoeffsA, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_h_coeffs_a");
 
-    const auto bxH  = captured.box("_bxH");
-    const auto bxQ  = captured.box("_bxQ");
-    const auto bxKh = captured.box("_bxKh");
+    const auto bxH    = captured.box("_bxH");
+    const auto bxKh   = captured.box("_bxKh");
+    const auto bxHstr = captured.box("_bxHstr");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -1520,7 +1521,7 @@ TEST(HorViscHCoeffsA, MatchesFortranCapture) {
     const auto hrat_min_after           = captured.fab_host("_hrat_min_after");
     const auto visc_bound_rem_after     = captured.fab_host("_visc_bound_rem_after");
 
-    MOM::hor_visc_h_coeffs_a(bxH, bxQ, bxKh, CS, MEKE_Ku, Res_fn_h, BS_struct, Kh_bg_xx, Ah_bg_xx, Kh_Max_xx, n1n2_h,
+    MOM::hor_visc_h_coeffs_a(bxH, bxKh, bxHstr, CS, MEKE_Ku, Res_fn_h, BS_struct, Kh_bg_xx, Ah_bg_xx, Kh_Max_xx, n1n2_h,
                              n1n1_m_n2n2_h, grid_sp_h2, Laplac2_const_xx, Biharm6_const_xx, Laplac3_const_xx,
                              Biharm_const_xx, Biharm_const2_xx, kstart, h_neglect, inv_PI3, inv_PI6, use_kh_struct,
                              use_MEKE_Ku, rescale_Kh, u.const_array(), v.const_array(), h.const_array(),
@@ -1550,9 +1551,11 @@ TEST(HorViscHCoeffsA, MatchesFortranCapture) {
 TEST(HorViscHCoeffsB, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_h_coeffs_b");
 
-    const auto bxH  = captured.box("_bxH");
-    const auto bxQ  = captured.box("_bxQ");
-    const auto bxKh = captured.box("_bxKh");
+    const auto bxH    = captured.box("_bxH");
+    const auto bxQ    = captured.box("_bxQ");
+    const auto bxKh   = captured.box("_bxKh");
+    const auto bxHstr = captured.box("_bxHstr");
+    const auto bxQstr = captured.box("_bxQstr");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -1771,7 +1774,7 @@ TEST(HorViscHCoeffsB, MatchesFortranCapture) {
     const auto Shear_mag_after         = captured.fab_host("_Shear_mag_after");
     const auto hrat_min_after          = captured.fab_host("_hrat_min_after");
 
-    MOM::hor_visc_h_coeffs_b(bxH, bxQ, bxKh, CS, MEKE_Au, MEKE_Ku, BS_struct, IdyCu.const_array(),
+    MOM::hor_visc_h_coeffs_b(bxH, bxQ, bxKh, bxHstr, bxQstr, CS, MEKE_Au, MEKE_Ku, BS_struct, IdyCu.const_array(),
                              IdxCv.const_array(), IdyCv.const_array(), IdxCu.const_array(), mask2dBu.const_array(),
                              mask2dCu.const_array(), mask2dCv.const_array(), reduction_xx, Ah_Max_xx, Ah_Max_xx_KS,
                              grid_sp_h3, dx_dyT, dy_dxT, dx_dyBu, dy_dxBu, Re_Ah_const_xx, nullptr, kstart,
@@ -1808,10 +1811,11 @@ TEST(HorViscHCoeffsB, MatchesFortranCapture) {
 TEST(HorViscStressDiv, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_stress_div");
 
-    const auto bxH = captured.box("_bxH");
-    const auto bxQ = captured.box("_bxQ");
-    const auto bxU = captured.box("_bxU");
-    const auto bxV = captured.box("_bxV");
+    const auto bxH    = captured.box("_bxH");
+    const auto bxU    = captured.box("_bxU");
+    const auto bxV    = captured.box("_bxV");
+    const auto bxHstr = captured.box("_bxHstr");
+    const auto bxQstr = captured.box("_bxQstr");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -2019,8 +2023,8 @@ TEST(HorViscStressDiv, MatchesFortranCapture) {
     const auto str_xx_after            = captured.fab_host("_str_xx_after");
     const auto str_xy_after            = captured.fab_host("_str_xy_after");
 
-    MOM::hor_visc_stress_div(bxH, bxQ, bxU, bxV, CS, MEKE_mom_src, MEKE_mom_src_bh, MEKE_GME_snk, backscatter_Ro_pow,
-                             backscatter_Ro_c, skeb_diss, skeb_frict_coef, mask2dBu.const_array(),
+    MOM::hor_visc_stress_div(bxH, bxU, bxV, bxHstr, bxQstr, CS, MEKE_mom_src, MEKE_mom_src_bh, MEKE_GME_snk,
+                             backscatter_Ro_pow, backscatter_Ro_c, skeb_diss, skeb_frict_coef, mask2dBu.const_array(),
                              IdxCu.const_array(), IdyCu.const_array(), IareaCu.const_array(), IdyCv.const_array(),
                              IdxCv.const_array(), IareaCv.const_array(), IdxT.const_array(), IdyT.const_array(),
                              IdyBu.const_array(), IdxBu.const_array(), IareaT.const_array(), dxCu.const_array(),
@@ -2062,8 +2066,9 @@ TEST(HorViscStressDiv, MatchesFortranCapture) {
 TEST(HorViscQCoeffs, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "hor_visc_q_coeffs");
 
-    const auto bxH = captured.box("_bxH");
-    const auto bxQ = captured.box("_bxQ");
+    const auto bxQstr   = captured.box("_bxQstr");
+    const auto bxHgrad  = captured.box("_bxHgrad");
+    const auto bxQshear = captured.box("_bxQshear");
 
     hv_opts_CS_C CS{};
     CS.Laplacian              = captured.logical("_CS_Laplacian");
@@ -2341,8 +2346,8 @@ TEST(HorViscQCoeffs, MatchesFortranCapture) {
     const auto vert_vort_mag_after      = captured.fab_host("_vert_vort_mag_after");
     const auto visc_bound_rem_after     = captured.fab_host("_visc_bound_rem_after");
 
-    MOM::hor_visc_q_coeffs(bxH, bxQ, CS, MEKE_Ku, MEKE_Au, Res_fn_q, BS_struct, mask2dBu.const_array(), Kh_bg_xy,
-                           Ah_bg_xy, reduction_xy, Kh_Max_xy, Ah_Max_xy, Ah_Max_xy_KS, n1n2_q, n1n1_m_n2n2_q,
+    MOM::hor_visc_q_coeffs(bxQstr, bxHgrad, bxQshear, CS, MEKE_Ku, MEKE_Au, Res_fn_q, BS_struct, mask2dBu.const_array(),
+                           Kh_bg_xy, Ah_bg_xy, reduction_xy, Kh_Max_xy, Ah_Max_xy, Ah_Max_xy_KS, n1n2_q, n1n1_m_n2n2_q,
                            Laplac2_const_xy, Biharm6_const_xy, Laplac3_const_xy, Biharm_const_xy, Biharm_const2_xy,
                            Re_Ah_const_xy, kstart, inv_PI3, inv_PI6, find_FrictWork, use_kh_struct, use_MEKE_Ku,
                            use_MEKE_Au, rescale_Kh, u.const_array(), v.const_array(), sh_xx_bt.const_array(),

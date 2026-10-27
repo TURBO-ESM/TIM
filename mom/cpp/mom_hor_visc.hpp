@@ -198,7 +198,8 @@ void smooth_gme_q_pass(const Box& bxPass,
 ///        the stress tensor at h-points. The caller must only invoke this routine when
 ///        CS%EY24_EBT_BS is true.
 ///
-/// @param bxQ               The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
+/// @param bxHstr            The h points of this tile where the normal stresses are computed,
+///                          [IscB:IecB+1, JscB:JecB+1, 1:kmax]
 /// @param CS                Options used by the horizontal viscosity kernels
 /// @param MEKE_Ku           The MEKE-derived lateral viscosity coefficient [L2 T-1 ~> m2 s-1];
 ///                          may be unallocated; pass a default-constructed Array4 when unallocated
@@ -211,7 +212,7 @@ void smooth_gme_q_pass(const Box& bxPass,
 /// @param str_xx            The diagonal term in the stress tensor [H L2 T-2 ~> m3 s-2 or kg s-2]
 /// @param BS_coeff_h        A diagnostic array of the backscatter coefficient [L2 T-1 ~> m2 s-1]
 ///
-void hor_visc_backscatter_h(const Box& bxQ,
+void hor_visc_backscatter_h(const Box& bxHstr,
                             const hv_opts_CS_C& CS,
                             Array4<const Real> const& MEKE_Ku,
                             Array4<const Real> const& BS_struct,
@@ -227,7 +228,8 @@ void hor_visc_backscatter_h(const Box& bxQ,
 ///        the stress tensor at q-points. The caller must only invoke this routine when
 ///        CS%EY24_EBT_BS is true.
 ///
-/// @param bxH               The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
+/// @param bxQstr            The q points of this tile where the shear stresses are computed,
+///                          [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param CS                Options used by the horizontal viscosity kernels
 /// @param MEKE_Ku           The MEKE-derived lateral viscosity coefficient [L2 T-1 ~> m2 s-1];
 ///                          may be unallocated; pass a default-constructed Array4 when unallocated
@@ -240,7 +242,7 @@ void hor_visc_backscatter_h(const Box& bxQ,
 /// @param str_xy            The cross term in the stress tensor [H L2 T-2 ~> m3 s-2 or kg s-2]
 /// @param BS_coeff_q        A diagnostic array of the backscatter coefficient [L2 T-1 ~> m2 s-1]
 ///
-void hor_visc_backscatter_q(const Box& bxH,
+void hor_visc_backscatter_q(const Box& bxQstr,
                             const hv_opts_CS_C& CS,
                             Array4<const Real> const& MEKE_Ku,
                             Array4<const Real> const& BS_struct,
@@ -324,6 +326,10 @@ void hor_visc_gme_bt(const Box& bxH0,
 /// @param bxKh               The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
 /// @param bxKh_i             The thickness-point viscosity range in i only, [is_Kh:ie_Kh, jsc:jec, 1:kmax]
 /// @param bxKh_j             The thickness-point viscosity range in j only, [isc:iec, js_Kh:je_Kh, 1:kmax]
+/// @param bxQstr             The q points of this tile where the shear stresses are computed,
+///                           [isc-1:iec, jsc-1:jec, 1:kmax]
+/// @param bxQvsmooth         The q points of this tile where the smoothed vorticity terms are computed,
+///                           [is_Kh-1:ie_Kh, js_Kh-1:je_Kh, 1:kmax]
 /// @param CS                 Options used by the horizontal viscosity kernels
 /// @param dyBu               dyBu is delta y at q points [L ~> m]
 /// @param IdxBu              1/dxBu [L-1 ~> m-1]
@@ -355,6 +361,8 @@ void hor_visc_leith_grad_a(const Box& bxH,
                            const Box& bxKh,
                            const Box& bxKh_i,
                            const Box& bxKh_j,
+                           const Box& bxQstr,
+                           const Box& bxQvsmooth,
                            const hv_opts_CS_C& CS,
                            Array4<const Real> const& dyBu,
                            Array4<const Real> const& IdxBu,
@@ -386,8 +394,9 @@ void hor_visc_leith_grad_a(const Box& bxH,
 /// @brief Calculates the magnitudes of the vorticity gradients used within horizontal_viscosity by the
 ///        Leith viscosity schemes, after any QG Leith contribution has been added.
 ///
-/// @param bxH                  The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
 /// @param bxKh                 The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxQstr               The q points of this tile where the shear stresses are computed,
+///                             [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param CS                   Options used by the horizontal viscosity kernels
 /// @param grad_vort_mag_h      Magnitude of vorticity gradient at h-points [L-1 T-1 ~> m-1 s-1]
 /// @param grad_vort_mag_q      Magnitude of vorticity gradient at q-points [L-1 T-1 ~> m-1 s-1]
@@ -397,8 +406,8 @@ void hor_visc_leith_grad_a(const Box& bxH,
 /// @param vort_xy_dy           y-derivative of vertical vorticity (d/dy(dv/dx - du/dy)) [L-1 T-1 ~> m-1 s-1]
 /// @param vort_xy_dy_smooth    y-derivative of smoothed vertical vorticity [L-1 T-1 ~> m-1 s-1]
 ///
-void hor_visc_leith_grad_b(const Box& bxH,
-                           const Box& bxKh,
+void hor_visc_leith_grad_b(const Box& bxKh,
+                           const Box& bxQstr,
                            const hv_opts_CS_C& CS,
                            Array4<Real>       const& grad_vort_mag_h,
                            Array4<Real>       const& grad_vort_mag_q,
@@ -503,7 +512,16 @@ void hor_visc_leithy_ah_h(const Box& bxKh,
 /// @param bxU              The u-point iteration box of this tile, [IscB:IecB, jsc:jec, 1:kmax]
 /// @param bxV              The v-point iteration box of this tile, [isc:iec, JscB:JecB, 1:kmax]
 /// @param bxKh             The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
-/// @param bxVort           The vorticity box of this tile, [is_vort:ie_vort, js_vort:je_vort, 1:kmax]
+/// @param bxHstr           The h points of this tile where the normal stresses are computed,
+///                         [IscB:IecB+1, JscB:JecB+1, 1:kmax]
+/// @param bxQstr           The q points of this tile where the shear stresses are computed,
+///                         [isc-1:iec, jsc-1:jec, 1:kmax]
+/// @param bxHgrad          The h points of this tile where the velocity gradients are computed,
+///                         [IscB-1:IecB+2, JscB-1:JecB+2, 1:kmax]
+/// @param bxQshear         The q points of this tile where the shearing strain is computed,
+///                         [isc-2:iec+1, jsc-2:jec+1, 1:kmax]
+/// @param bxQvsmooth       The q points of this tile where the smoothed vorticity terms are computed,
+///                         [is_Kh-1:ie_Kh, js_Kh-1:je_Kh, 1:kmax]
 /// @param CS               Options used by the horizontal viscosity kernels
 /// @param IdyCu            1/dyCu [L-1 ~> m-1]
 /// @param IdxCv            1/dxCv [L-1 ~> m-1]
@@ -545,10 +563,6 @@ void hor_visc_leithy_ah_h(const Box& bxKh,
 /// @param apply_OBC        If true, open boundary conditions are applied on this PE
 /// @param apply_OBC_strain If true, the specified open boundary strain configuration is applied
 /// @param use_cont_huv     If true, use the continuity solver thicknesses at velocity points
-/// @param is_vort          Loop ranges for vorticity terms
-/// @param ie_vort          Loop ranges for vorticity terms
-/// @param js_vort          Loop ranges for vorticity terms
-/// @param je_vort          Loop ranges for vorticity terms
 /// @param u                The zonal velocity [L T-1 ~> m s-1]
 /// @param v                The meridional velocity [L T-1 ~> m s-1]
 /// @param h                Layer thicknesses [H ~> m or kg m-2]
@@ -582,7 +596,11 @@ void hor_visc_strain(const Box& bxH,
                      const Box& bxU,
                      const Box& bxV,
                      const Box& bxKh,
-                     const Box& bxVort,
+                     const Box& bxHstr,
+                     const Box& bxQstr,
+                     const Box& bxHgrad,
+                     const Box& bxQshear,
+                     const Box& bxQvsmooth,
                      const hv_opts_CS_C& CS,
                      Array4<const Real> const& IdyCu,
                      Array4<const Real> const& IdxCv,
@@ -612,10 +630,6 @@ void hor_visc_strain(const Box& bxH,
                      const bool apply_OBC,
                      const bool apply_OBC_strain,
                      const bool use_cont_huv,
-                     const int is_vort,
-                     const int ie_vort,
-                     const int js_vort,
-                     const int je_vort,
                      Array4<const Real> const& u,
                      Array4<const Real> const& v,
                      Array4<const Real> const& h,
@@ -647,8 +661,9 @@ void hor_visc_strain(const Box& bxH,
 ///        the related stability bounds, and the Laplacian component of str_xx.
 ///
 /// @param bxH                The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxQ                The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
 /// @param bxKh               The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxHstr             The h points of this tile where the normal stresses are computed,
+///                           [IscB:IecB+1, JscB:JecB+1, 1:kmax]
 /// @param CS                 Options used by the horizontal viscosity kernels
 /// @param MEKE_Ku            The MEKE-derived lateral viscosity coefficient [L2 T-1 ~> m2 s-1]; may be unallocated;
 ///                           pass a default-constructed Array4 when unallocated
@@ -713,8 +728,8 @@ void hor_visc_strain(const Box& bxH,
 /// @param visc_bound_rem     fraction of overall viscous bounds that remain to be applied (h or q) [nondim]
 ///
 void hor_visc_h_coeffs_a(const Box& bxH,
-                         const Box& bxQ,
                          const Box& bxKh,
+                         const Box& bxHstr,
                          const hv_opts_CS_C& CS,
                          Array4<const Real> const& MEKE_Ku,
                          Array4<const Real> const& Res_fn_h,
@@ -768,9 +783,12 @@ void hor_visc_h_coeffs_a(const Box& bxH,
 ///        contributions to the MEKE and SKEBS source terms.
 ///
 /// @param bxH                The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxQ                The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
 /// @param bxU                The u-point iteration box of this tile, [IscB:IecB, jsc:jec, 1:kmax]
 /// @param bxV                The v-point iteration box of this tile, [isc:iec, JscB:JecB, 1:kmax]
+/// @param bxHstr             The h points of this tile where the normal stresses are computed,
+///                           [IscB:IecB+1, JscB:JecB+1, 1:kmax]
+/// @param bxQstr             The q points of this tile where the shear stresses are computed,
+///                           [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param CS                 Options used by the horizontal viscosity kernels
 /// @param MEKE_mom_src       MEKE source from lateral friction in the momentum equations [R Z L2 T-3 ~> W m-2]; may be
 ///                           unallocated; pass a default-constructed Array4 when unallocated
@@ -854,9 +872,10 @@ void hor_visc_h_coeffs_a(const Box& bxH,
 /// @param s_to_T             A constant that translates time intervals in seconds to the units of time [T s-1 ~> 1]
 ///
 void hor_visc_stress_div(const Box& bxH,
-                         const Box& bxQ,
                          const Box& bxU,
                          const Box& bxV,
+                         const Box& bxHstr,
+                         const Box& bxQstr,
                          const hv_opts_CS_C& CS,
                          Array4<Real>       const& MEKE_mom_src,
                          Array4<Real>       const& MEKE_mom_src_bh,
@@ -926,6 +945,10 @@ void hor_visc_stress_div(const Box& bxH,
 /// @param bxH               The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
 /// @param bxQ               The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
 /// @param bxKh              The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxHstr            The h points of this tile where the normal stresses are computed,
+///                          [IscB:IecB+1, JscB:JecB+1, 1:kmax]
+/// @param bxQstr            The q points of this tile where the shear stresses are computed,
+///                          [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param CS                Options used by the horizontal viscosity kernels
 /// @param MEKE_Au           The MEKE-derived lateral biharmonic viscosity coefficient [L4 T-1 ~> m4 s-1]; may be
 ///                          unallocated; pass a default-constructed Array4 when unallocated
@@ -1000,6 +1023,8 @@ void hor_visc_stress_div(const Box& bxH,
 void hor_visc_h_coeffs_b(const Box& bxH,
                          const Box& bxQ,
                          const Box& bxKh,
+                         const Box& bxHstr,
+                         const Box& bxQstr,
                          const hv_opts_CS_C& CS,
                          Array4<const Real> const& MEKE_Au,
                          Array4<const Real> const& MEKE_Ku,
@@ -1060,8 +1085,12 @@ void hor_visc_h_coeffs_b(const Box& bxH,
 /// @brief Determines the Laplacian and biharmonic viscosities at q points and the harmonic and
 ///        biharmonic parts of str_xy, adds the MEKE backscatter, and computes the GME stresses.
 ///
-/// @param bxH                The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxQ                The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
+/// @param bxQstr             The q points of this tile where the shear stresses are computed,
+///                           [isc-1:iec, jsc-1:jec, 1:kmax]
+/// @param bxHgrad            The h points of this tile where the velocity gradients are computed,
+///                           [IscB-1:IecB+2, JscB-1:JecB+2, 1:kmax]
+/// @param bxQshear           The q points of this tile where the shearing strain is computed,
+///                           [isc-2:iec+1, jsc-2:jec+1, 1:kmax]
 /// @param CS                 Options used by the horizontal viscosity kernels
 /// @param MEKE_Ku            The MEKE-derived lateral viscosity coefficient [L2 T-1 ~> m2 s-1]; may be unallocated;
 ///                           pass a default-constructed Array4 when unallocated
@@ -1154,8 +1183,9 @@ void hor_visc_h_coeffs_b(const Box& bxH,
 /// @param hrat_min           h_min divided by the thickness at the stress point (h or q) [nondim]
 /// @param visc_bound_rem     fraction of overall viscous bounds that remain to be applied (h or q) [nondim]
 ///
-void hor_visc_q_coeffs(const Box& bxH,
-                       const Box& bxQ,
+void hor_visc_q_coeffs(const Box& bxQstr,
+                       const Box& bxHgrad,
+                       const Box& bxQshear,
                        const hv_opts_CS_C& CS,
                        Array4<const Real> const& MEKE_Ku,
                        Array4<const Real> const& MEKE_Au,

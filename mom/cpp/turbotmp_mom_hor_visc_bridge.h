@@ -183,8 +183,8 @@ void turbotmp_smooth_gme_q_pass_bridge(const grid_core_C* Gcore_HOST,
 
 /// @brief Bridge for the MOM6 hor_visc_backscatter_h subroutine.
 ///
-/// @param bxQ_HOST               The B-grid-index iteration box of this tile,
-///                               [IscB:IecB, JscB:JecB, 1:kmax]
+/// @param bxHstr_HOST            The h points of this tile where the normal stresses are computed,
+///                               [IscB:IecB+1, JscB:JecB+1, 1:kmax]
 /// @param CS_HOST                Options used by the horizontal viscosity kernels
 /// @param MEKE_HOST              MEKE fields related to Mesoscale Eddy Kinetic Energy; each field
 ///                               may be unallocated (data == nullptr)
@@ -197,7 +197,7 @@ void turbotmp_smooth_gme_q_pass_bridge(const grid_core_C* Gcore_HOST,
 /// @param sh_xx_HOST             horizontal tension (du/dx - dv/dy) including metric terms [T-1 ~> s-1]
 /// @param str_xx_HOST            The diagonal term in the stress tensor [H L2 T-2 ~> m3 s-2 or kg s-2]
 /// @param BS_coeff_h_HOST        A diagnostic array of the backscatter coefficient [L2 T-1 ~> m2 s-1]
-void turbotmp_hor_visc_backscatter_h_bridge(const Box_C* bxQ_HOST,
+void turbotmp_hor_visc_backscatter_h_bridge(const Box_C* bxHstr_HOST,
                                             const hv_opts_CS_C* CS_HOST,
                                             const hor_visc_MEKE_C* MEKE_HOST,
                                             const hor_visc_VarMix_C* VarMix_HOST,
@@ -211,7 +211,8 @@ void turbotmp_hor_visc_backscatter_h_bridge(const Box_C* bxQ_HOST,
 
 /// @brief Bridge for the MOM6 hor_visc_backscatter_q subroutine.
 ///
-/// @param bxH_HOST               The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
+/// @param bxQstr_HOST            The q points of this tile where the shear stresses are computed,
+///                               [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param CS_HOST                Options used by the horizontal viscosity kernels
 /// @param MEKE_HOST              MEKE fields related to Mesoscale Eddy Kinetic Energy; each field
 ///                               may be unallocated (data == nullptr)
@@ -225,7 +226,7 @@ void turbotmp_hor_visc_backscatter_h_bridge(const Box_C* bxQ_HOST,
 ///                               [T-1 ~> s-1]
 /// @param str_xy_HOST            The cross term in the stress tensor [H L2 T-2 ~> m3 s-2 or kg s-2]
 /// @param BS_coeff_q_HOST        A diagnostic array of the backscatter coefficient [L2 T-1 ~> m2 s-1]
-void turbotmp_hor_visc_backscatter_q_bridge(const Box_C* bxH_HOST,
+void turbotmp_hor_visc_backscatter_q_bridge(const Box_C* bxQstr_HOST,
                                             const hv_opts_CS_C* CS_HOST,
                                             const hor_visc_MEKE_C* MEKE_HOST,
                                             const hor_visc_VarMix_C* VarMix_HOST,
@@ -276,10 +277,13 @@ void turbotmp_hor_visc_gme_bt_bridge(const grid_core_C* Gcore_HOST,
 /// @brief Bridge for the MOM6 hor_visc_Leith_grad_a subroutine.
 ///
 /// @param bxH_HOST                The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxKh_HOST               The thickness-point viscosity box of this tile,
-///                                [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxKh_HOST               The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
 /// @param bxKh_i_HOST             The thickness-point viscosity range in i only, [is_Kh:ie_Kh, jsc:jec, 1:kmax]
 /// @param bxKh_j_HOST             The thickness-point viscosity range in j only, [isc:iec, js_Kh:je_Kh, 1:kmax]
+/// @param bxQstr_HOST             The q points of this tile where the shear stresses are computed,
+///                                [isc-1:iec, jsc-1:jec, 1:kmax]
+/// @param bxQvsmooth_HOST         The q points of this tile where the smoothed vorticity terms are computed,
+///                                [is_Kh-1:ie_Kh, js_Kh-1:je_Kh, 1:kmax]
 /// @param Gcore_HOST              Persistent copies of the core ocean grid fields
 /// @param CS_HOST                 Options used by the horizontal viscosity kernels
 /// @param nkblock                 The k-block size used to size the following arrays [nondim]
@@ -302,6 +306,8 @@ void turbotmp_hor_visc_leith_grad_a_bridge(const Box_C* bxH_HOST,
                                            const Box_C* bxKh_HOST,
                                            const Box_C* bxKh_i_HOST,
                                            const Box_C* bxKh_j_HOST,
+                                           const Box_C* bxQstr_HOST,
+                                           const Box_C* bxQvsmooth_HOST,
                                            const grid_core_C* Gcore_HOST,
                                            const hv_opts_CS_C* CS_HOST,
                                            const int nkblock,
@@ -323,9 +329,9 @@ void turbotmp_hor_visc_leith_grad_a_bridge(const Box_C* bxH_HOST,
 
 /// @brief Bridge for the MOM6 hor_visc_Leith_grad_b subroutine.
 ///
-/// @param bxH_HOST                  The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxKh_HOST                 The thickness-point viscosity box of this tile,
-///                                  [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxKh_HOST                 The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxQstr_HOST               The q points of this tile where the shear stresses are computed,
+///                                  [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param CS_HOST                   Options used by the horizontal viscosity kernels
 /// @param nkblock                   The k-block size used to size the following arrays [nondim]
 /// @param grad_vort_mag_h_HOST      Magnitude of vorticity gradient at h-points [L-1 T-1 ~> m-1 s-1]
@@ -335,8 +341,8 @@ void turbotmp_hor_visc_leith_grad_a_bridge(const Box_C* bxH_HOST,
 /// @param vort_xy_dx_smooth_HOST    x-derivative of smoothed vertical vorticity [L-1 T-1 ~> m-1 s-1]
 /// @param vort_xy_dy_HOST           y-derivative of vertical vorticity (d/dy(dv/dx - du/dy)) [L-1 T-1 ~> m-1 s-1]
 /// @param vort_xy_dy_smooth_HOST    y-derivative of smoothed vertical vorticity [L-1 T-1 ~> m-1 s-1]
-void turbotmp_hor_visc_leith_grad_b_bridge(const Box_C* bxH_HOST,
-                                           const Box_C* bxKh_HOST,
+void turbotmp_hor_visc_leith_grad_b_bridge(const Box_C* bxKh_HOST,
+                                           const Box_C* bxQstr_HOST,
                                            const hv_opts_CS_C* CS_HOST,
                                            const int nkblock,
                                            RealArray_C* grad_vort_mag_h_HOST,
@@ -429,17 +435,22 @@ void turbotmp_hor_visc_leithy_ah_h_bridge(const Box_C* bxKh_HOST,
 /// @param bxU_HOST                   The u-point iteration box of this tile, [IscB:IecB, jsc:jec, 1:kmax]
 /// @param bxV_HOST                   The v-point iteration box of this tile, [isc:iec, JscB:JecB, 1:kmax]
 /// @param bxKh_HOST                  The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
-/// @param bxVort_HOST                The vorticity box of this tile, [is_vort:ie_vort, js_vort:je_vort, 1:kmax]
+/// @param bxHstr_HOST                The h points of this tile where the normal stresses are computed,
+///                                   [IscB:IecB+1, JscB:JecB+1, 1:kmax]
+/// @param bxQstr_HOST                The q points of this tile where the shear stresses are computed,
+///                                   [isc-1:iec, jsc-1:jec, 1:kmax]
+/// @param bxHgrad_HOST               The h points of this tile where the velocity gradients are computed,
+///                                   [IscB-1:IecB+2, JscB-1:JecB+2, 1:kmax]
+/// @param bxQshear_HOST              The q points of this tile where the shearing strain is computed,
+///                                   [isc-2:iec+1, jsc-2:jec+1, 1:kmax]
+/// @param bxQvsmooth_HOST            The q points of this tile where the smoothed vorticity terms are computed,
+///                                   [is_Kh-1:ie_Kh, js_Kh-1:je_Kh, 1:kmax]
 /// @param nkblock                    The effective k-block size [nondim]
 /// @param kstart                     The first absolute k-layer of the current k-block
 /// @param use_vort_xy                True if vort_xy must be computed
 /// @param apply_OBC                  If true, open boundary conditions are applied on this PE
 /// @param apply_OBC_strain           If true, the specified open boundary strain configuration is applied
 /// @param use_cont_huv               If true, use the continuity solver thicknesses at velocity points
-/// @param is_vort                    Loop ranges for vorticity terms
-/// @param ie_vort                    Loop ranges for vorticity terms
-/// @param js_vort                    Loop ranges for vorticity terms
-/// @param je_vort                    Loop ranges for vorticity terms
 /// @param u_HOST                     The zonal velocity [L T-1 ~> m s-1].
 /// @param v_HOST                     The meridional velocity [L T-1 ~> m s-1].
 /// @param h_HOST                     Layer thicknesses [H ~> m or kg m-2].
@@ -477,17 +488,17 @@ void turbotmp_hor_visc_strain_bridge(const grid_core_C* Gcore_HOST,
                                      const Box_C* bxU_HOST,
                                      const Box_C* bxV_HOST,
                                      const Box_C* bxKh_HOST,
-                                     const Box_C* bxVort_HOST,
+                                     const Box_C* bxHstr_HOST,
+                                     const Box_C* bxQstr_HOST,
+                                     const Box_C* bxHgrad_HOST,
+                                     const Box_C* bxQshear_HOST,
+                                     const Box_C* bxQvsmooth_HOST,
                                      const int nkblock,
                                      const int kstart,
                                      const bool use_vort_xy,
                                      const bool apply_OBC,
                                      const bool apply_OBC_strain,
                                      const bool use_cont_huv,
-                                     const int is_vort,
-                                     const int ie_vort,
-                                     const int js_vort,
-                                     const int je_vort,
                                      const RealArray_C* u_HOST,
                                      const RealArray_C* v_HOST,
                                      const RealArray_C* h_HOST,
@@ -523,8 +534,9 @@ void turbotmp_hor_visc_strain_bridge(const grid_core_C* Gcore_HOST,
 /// @param metrics_HOST            Persistent copies of the horizontal viscosity metric and coefficient arrays; each
 ///                                field may be unallocated (data == nullptr)
 /// @param bxH_HOST                The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxQ_HOST                The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
 /// @param bxKh_HOST               The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxHstr_HOST             The h points of this tile where the normal stresses are computed,
+///                                [IscB:IecB+1, JscB:JecB+1, 1:kmax]
 /// @param nkblock                 The effective k-block size [nondim]
 /// @param kstart                  The first absolute k-layer of the current k-block
 /// @param h_neglect               thickness so small it can be lost in roundoff and so neglected [H ~> m or kg m-2]
@@ -564,8 +576,8 @@ void turbotmp_hor_visc_h_coeffs_a_bridge(const hor_visc_MEKE_C* MEKE_HOST,
                                          const hv_opts_CS_C* CS_HOST,
                                          const hv_metrics_CS_C* metrics_HOST,
                                          const Box_C* bxH_HOST,
-                                         const Box_C* bxQ_HOST,
                                          const Box_C* bxKh_HOST,
+                                         const Box_C* bxHstr_HOST,
                                          const int nkblock,
                                          const int kstart,
                                          const double h_neglect,
@@ -610,9 +622,12 @@ void turbotmp_hor_visc_h_coeffs_a_bridge(const hor_visc_MEKE_C* MEKE_HOST,
 /// @param OBC                    Pointer to an open boundary condition type
 /// @param STOCH_HOST             Stochastic control structure; skeb_diss may be unallocated (data == nullptr)
 /// @param bxH_HOST               The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxQ_HOST               The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
 /// @param bxU_HOST               The u-point iteration box of this tile, [IscB:IecB, jsc:jec, 1:kmax]
 /// @param bxV_HOST               The v-point iteration box of this tile, [isc:iec, JscB:JecB, 1:kmax]
+/// @param bxHstr_HOST            The h points of this tile where the normal stresses are computed,
+///                               [IscB:IecB+1, JscB:JecB+1, 1:kmax]
+/// @param bxQstr_HOST            The q points of this tile where the shear stresses are computed,
+///                               [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param nkblock                The effective k-block size [nondim]
 /// @param kstart                 The first absolute k-layer of the current k-block
 /// @param h_neglect              thickness so small it can be lost in roundoff and so neglected [H ~> m or kg m-2]
@@ -661,9 +676,10 @@ void turbotmp_hor_visc_stress_div_bridge(hor_visc_MEKE_C* MEKE_HOST,
                                          OceanOBC* OBC,
                                          hor_visc_STOCH_C* STOCH_HOST,
                                          const Box_C* bxH_HOST,
-                                         const Box_C* bxQ_HOST,
                                          const Box_C* bxU_HOST,
                                          const Box_C* bxV_HOST,
+                                         const Box_C* bxHstr_HOST,
+                                         const Box_C* bxQstr_HOST,
                                          const int nkblock,
                                          const int kstart,
                                          const double h_neglect,
@@ -710,6 +726,10 @@ void turbotmp_hor_visc_stress_div_bridge(hor_visc_MEKE_C* MEKE_HOST,
 /// @param bxH_HOST               The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
 /// @param bxQ_HOST               The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
 /// @param bxKh_HOST              The thickness-point viscosity box of this tile, [is_Kh:ie_Kh, js_Kh:je_Kh, 1:kmax]
+/// @param bxHstr_HOST            The h points of this tile where the normal stresses are computed,
+///                               [IscB:IecB+1, JscB:JecB+1, 1:kmax]
+/// @param bxQstr_HOST            The q points of this tile where the shear stresses are computed,
+///                               [isc-1:iec, jsc-1:jec, 1:kmax]
 /// @param nkblock                The effective k-block size [nondim]
 /// @param kstart                 The first absolute k-layer of the current k-block
 /// @param h_neglect              thickness so small it can be lost in roundoff and so neglected [H ~> m or kg m-2]
@@ -757,6 +777,8 @@ void turbotmp_hor_visc_h_coeffs_b_bridge(const hor_visc_MEKE_C* MEKE_HOST,
                                          const Box_C* bxH_HOST,
                                          const Box_C* bxQ_HOST,
                                          const Box_C* bxKh_HOST,
+                                         const Box_C* bxHstr_HOST,
+                                         const Box_C* bxQstr_HOST,
                                          const int nkblock,
                                          const int kstart,
                                          const double h_neglect,
@@ -802,8 +824,12 @@ void turbotmp_hor_visc_h_coeffs_b_bridge(const hor_visc_MEKE_C* MEKE_HOST,
 /// @param CS_HOST                 Options used by the horizontal viscosity kernels
 /// @param metrics_HOST            Persistent copies of the horizontal viscosity metric and coefficient arrays; each
 ///                                field may be unallocated (data == nullptr)
-/// @param bxH_HOST                The h-point iteration box of this tile, [isc:iec, jsc:jec, 1:kmax]
-/// @param bxQ_HOST                The B-grid-index iteration box of this tile, [IscB:IecB, JscB:JecB, 1:kmax]
+/// @param bxQstr_HOST             The q points of this tile where the shear stresses are computed,
+///                                [isc-1:iec, jsc-1:jec, 1:kmax]
+/// @param bxHgrad_HOST            The h points of this tile where the velocity gradients are computed,
+///                                [IscB-1:IecB+2, JscB-1:JecB+2, 1:kmax]
+/// @param bxQshear_HOST           The q points of this tile where the shearing strain is computed,
+///                                [isc-2:iec+1, jsc-2:jec+1, 1:kmax]
 /// @param nkblock                 The effective k-block size [nondim]
 /// @param kstart                  The first absolute k-layer of the current k-block
 /// @param inv_PI3                 Powers of the inverse of pi [nondim]
@@ -865,8 +891,9 @@ void turbotmp_hor_visc_q_coeffs_bridge(const hor_visc_MEKE_C* MEKE_HOST,
                                        const grid_core_C* Gcore_HOST,
                                        const hv_opts_CS_C* CS_HOST,
                                        const hv_metrics_CS_C* metrics_HOST,
-                                       const Box_C* bxH_HOST,
-                                       const Box_C* bxQ_HOST,
+                                       const Box_C* bxQstr_HOST,
+                                       const Box_C* bxHgrad_HOST,
+                                       const Box_C* bxQshear_HOST,
                                        const int nkblock,
                                        const int kstart,
                                        const double inv_PI3,

@@ -446,6 +446,9 @@ Deliberately grep-able and meant to be stripped later.
 - Headers use `#pragma once`. No `using namespace` in headers.
 - Device functions put their macros on one line above the return type:
   `AMREX_GPU_DEVICE AMREX_FORCE_INLINE` (lessons.md §5).
+- A loop that only fills an array with one value, or only copies a whole
+  array, is written as `FArrayBox(arr).setVal<RunOn::Device>(v[, bx])` or
+  `dst_fab.copy<RunOn::Device>(FArrayBox(src))` (lessons.md §7 #20).
 - Every floating-point literal in kernel code carries the `_rt` suffix
   (`0.25_rt`). Enable it with `using namespace amrex::literals;` at file
   scope in the `.cpp`, and inside each function body in a header

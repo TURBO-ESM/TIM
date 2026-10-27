@@ -21,16 +21,17 @@ using amrex::Real;
 ///           [l t-1 ~> m s-1] or [l2 t-1 ~> m2 s-1]
 /// @param qr Reconstruction of tracer q at point i-1/2 [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void up3_reconstruction_point(Real const q4[4], Real const u, Real& qr) noexcept
 {
-    constexpr Real C1_6 = 1.0/6.0;  // The ratio of 1/6 [nondim]
+    using namespace amrex::literals;
 
-    if (u > 0.0) {
-        qr = ((2.0*q4[2] + 5.0*q4[1]) - q4[0]) * C1_6;
+    constexpr Real C1_6 = 1.0_rt/6.0_rt;  // The ratio of 1/6 [nondim]
+
+    if (u > 0.0_rt) {
+        qr = ((2.0_rt*q4[2] + 5.0_rt*q4[1]) - q4[0]) * C1_6;
     } else {
-        qr = ((2.0*q4[1] + 5.0*q4[2]) - q4[3]) * C1_6;
+        qr = ((2.0_rt*q4[1] + 5.0_rt*q4[2]) - q4[3]) * C1_6;
     }
 }
 
@@ -43,21 +44,23 @@ void up3_reconstruction_point(Real const q4[4], Real const u, Real& qr) noexcept
 ///           [L T-1 ~> m s-1] or [L2 T-1 ~> m2 s-1]
 /// @param qr Reconstruction of tracer q on point i-1/2 [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void up3_koren_limiter_reconstruction_point(Real const q4[4], Real const u, Real& qr) noexcept
 {
-    constexpr Real C1_3 = 1.0/3.0;  // The ratio of 1/3 [nondim]
-    constexpr Real C1_6 = 1.0/6.0;  // The ratio of 1/6 [nondim]
+    using namespace amrex::literals;
+
+    constexpr Real C1_3 = 1.0_rt/3.0_rt;  // The ratio of 1/3 [nondim]
+    constexpr Real C1_6 = 1.0_rt/6.0_rt;  // The ratio of 1/6 [nondim]
     Real theta;                     // Ratio of gradient [nondim]
     Real psi;                       // Limiter function [nondim]
 
-    if (u > 0.0) {
+    if (u > 0.0_rt) {
         if (q4[2] == q4[1]) {
             qr = q4[1];
         } else {
             theta = (q4[1] - q4[0])/(q4[2] - q4[1]);
-            psi = amrex::max(0.0, amrex::min(1.0, C1_3 + C1_6*theta, theta)); // limiter introduced by Koren (1993)
+            // limiter introduced by Koren (1993)
+            psi = amrex::max(0.0_rt, amrex::min(1.0_rt, C1_3 + C1_6*theta, theta));
             qr = q4[1] + psi*(q4[2] - q4[1]);
         }
     } else {
@@ -65,7 +68,7 @@ void up3_koren_limiter_reconstruction_point(Real const q4[4], Real const u, Real
             qr = q4[2];
         } else {
             theta = (q4[3] - q4[2])/(q4[2] - q4[1]);
-            psi = amrex::max(0.0, amrex::min(1.0, C1_3 + C1_6*theta, theta));
+            psi = amrex::max(0.0_rt, amrex::min(1.0_rt, C1_3 + C1_6*theta, theta));
             qr = q4[2] + psi*(q4[1] - q4[2]);
         }
     }
@@ -78,13 +81,14 @@ void up3_koren_limiter_reconstruction_point(Real const q4[4], Real const u, Real
 /// @param b   The smoothness indicator [A ~> a]
 /// @return    The factor for the weight [nondim]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 Real fac_fn_point(Real const tau, Real const b) noexcept
 {
-    Real fac = 1.0e40;
-    if (amrex::Math::abs(b) > 1.0e-20*tau) {
-        Real const r = 1.0 + tau / b;
+    using namespace amrex::literals;
+
+    Real fac = 1.0e40_rt;
+    if (amrex::Math::abs(b) > 1.0e-20_rt*tau) {
+        Real const r = 1.0_rt + tau / b;
         fac = r*r;
     }
     return fac;
@@ -96,8 +100,7 @@ Real fac_fn_point(Real const tau, Real const b) noexcept
 /// @param q2 Tracer values on the two-point stencil [A ~> a]
 /// @param w0 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_three_weight_point(Real const q2[2], Real& w0) noexcept
 {
     Real const d = q2[0] - q2[1];
@@ -110,11 +113,12 @@ void weno_three_weight_point(Real const q2[2], Real& w0) noexcept
 /// @param q2 Tracer values on the two-point stencil [A ~> a]
 /// @param w0 Reconstruction of the quantity [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_three_reconstruction_0_point(Real const q2[2], Real& w0) noexcept
 {
-    w0 = (q2[0] + q2[1]) * 0.5;
+    using namespace amrex::literals;
+
+    w0 = (q2[0] + q2[1]) * 0.5_rt;
 }
 
 ///
@@ -123,11 +127,12 @@ void weno_three_reconstruction_0_point(Real const q2[2], Real& w0) noexcept
 /// @param q2 Tracer values on the two-point stencil [A ~> a]
 /// @param w0 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_three_reconstruction_1_point(Real const q2[2], Real& w0) noexcept
 {
-    w0 = (- q2[0] + 3.0 * q2[1]) * 0.5;
+    using namespace amrex::literals;
+
+    w0 = (- q2[0] + 3.0_rt * q2[1]) * 0.5_rt;
 }
 
 ///
@@ -143,18 +148,19 @@ void weno_three_reconstruction_1_point(Real const q2[2], Real& w0) noexcept
 ///               [L T-1 ~> m s-1] or [L2 T-1 ~> m2 s-1]
 /// @param qr     Reconstruction of tracer q on point i-1/2 [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_three_h_weight_reconstruction_point(Real const q4[4], Real const h4[4], Real const u4[4],
                                               Real const h_tiny, Real const u, Real& qr) noexcept
 {
-    constexpr Real C2_3 = 2.0/3.0;  // The ratio of 2/3 [nondim]
-    constexpr Real C1_3 = 1.0/3.0;  // The ratio of 1/3 [nondim]
+    using namespace amrex::literals;
+
+    constexpr Real C2_3 = 2.0_rt/3.0_rt;  // The ratio of 2/3 [nondim]
+    constexpr Real C1_3 = 1.0_rt/3.0_rt;  // The ratio of 1/3 [nondim]
     Real c0, c1;                    // Intermediate reconstruction of q [A ~> a]
     Real d0, d1;                    // Intermediate reconstruction of h [L ~> m]
     Real b0, b1;                    // Smoothness indicator [A ~> a]
 
-    if (u > 0.0) {
+    if (u > 0.0_rt) {
         weno_three_reconstruction_0_point(&q4[1], c0); // Reconstruction in the second upwind stencil
         weno_three_reconstruction_1_point(&q4[0], c1); // Reconstruction in the first upwind stencil
 
@@ -182,7 +188,7 @@ void weno_three_h_weight_reconstruction_point(Real const q4[4], Real const h4[4]
     Real w0 = C2_3 * fac_fn_point(tau, b0);    // Weights [nondim]
     Real w1 = C1_3 * fac_fn_point(tau, b1);
 
-    Real const s = 1. / (w0 + w1);
+    Real const s = 1._rt / (w0 + w1);
     w0 = w0 * s;   // Weights of stencils
     w1 = w1 * s;
 
@@ -199,12 +205,13 @@ void weno_three_h_weight_reconstruction_point(Real const q4[4], Real const h4[4]
 /// @param q3 Tracer values on the three-point stencil [A ~> a]
 /// @param w0 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_five_weight_0_point(Real const q3[3], Real& w0) noexcept
 {
-    w0 = (q3[0] * ((10.0 * q3[0] - 31.0 * q3[1]) + 11.0 * q3[2])) +
-         ((q3[1] * (25.0 * q3[1] - 19.0 * q3[2])) + 4.0 * (q3[2] * q3[2]));
+    using namespace amrex::literals;
+
+    w0 = (q3[0] * ((10.0_rt * q3[0] - 31.0_rt * q3[1]) + 11.0_rt * q3[2])) +
+         ((q3[1] * (25.0_rt * q3[1] - 19.0_rt * q3[2])) + 4.0_rt * (q3[2] * q3[2]));
 }
 
 ///
@@ -213,12 +220,13 @@ void weno_five_weight_0_point(Real const q3[3], Real& w0) noexcept
 /// @param q3 Tracer values on the three-point stencil [A ~> a]
 /// @param w1 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_five_weight_1_point(Real const q3[3], Real& w1) noexcept
 {
-    w1 = (q3[0] * ((4.0 * q3[0] - 13.0 * q3[1]) + 5.0 * q3[2])) +
-         ((q3[1] * (13.0 * q3[1] - 13.0 * q3[2])) + 4.0 * (q3[2] * q3[2]));
+    using namespace amrex::literals;
+
+    w1 = (q3[0] * ((4.0_rt * q3[0] - 13.0_rt * q3[1]) + 5.0_rt * q3[2])) +
+         ((q3[1] * (13.0_rt * q3[1] - 13.0_rt * q3[2])) + 4.0_rt * (q3[2] * q3[2]));
 }
 
 ///
@@ -227,12 +235,13 @@ void weno_five_weight_1_point(Real const q3[3], Real& w1) noexcept
 /// @param q3 Tracer values on the three-point stencil [A ~> a]
 /// @param w2 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_five_weight_2_point(Real const q3[3], Real& w2) noexcept
 {
-    w2 = (q3[0] * ((4.0 * q3[0] - 19.0 * q3[1]) + 11.0 * q3[2])) +
-         ((q3[1] * (25.0 * q3[1] - 31.0 * q3[2])) + 10.0 * (q3[2] * q3[2]));
+    using namespace amrex::literals;
+
+    w2 = (q3[0] * ((4.0_rt * q3[0] - 19.0_rt * q3[1]) + 11.0_rt * q3[2])) +
+         ((q3[1] * (25.0_rt * q3[1] - 31.0_rt * q3[2])) + 10.0_rt * (q3[2] * q3[2]));
 }
 
 ///
@@ -241,12 +250,13 @@ void weno_five_weight_2_point(Real const q3[3], Real& w2) noexcept
 /// @param q3 Tracer values on three points [A ~> a]
 /// @param p0 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_five_reconstruction_0_point(Real const q3[3], Real& p0) noexcept
 {
-    constexpr Real C1_6 = 1.0/6.0;  // One sixth [nondim]
-    p0 = ((2.0*q3[0] + 5.0*q3[1]) - q3[2]) * C1_6;
+    using namespace amrex::literals;
+
+    constexpr Real C1_6 = 1.0_rt/6.0_rt;  // One sixth [nondim]
+    p0 = ((2.0_rt*q3[0] + 5.0_rt*q3[1]) - q3[2]) * C1_6;
 }
 
 ///
@@ -255,12 +265,13 @@ void weno_five_reconstruction_0_point(Real const q3[3], Real& p0) noexcept
 /// @param q3 Tracer values on the three-point stencil [A ~> a]
 /// @param p1 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_five_reconstruction_1_point(Real const q3[3], Real& p1) noexcept
 {
-    constexpr Real C1_6 = 1.0/6.0;  // One sixth [nondim]
-    p1 = ((-q3[0] + 5.0*q3[1]) + 2.0*q3[2]) * C1_6;
+    using namespace amrex::literals;
+
+    constexpr Real C1_6 = 1.0_rt/6.0_rt;  // One sixth [nondim]
+    p1 = ((-q3[0] + 5.0_rt*q3[1]) + 2.0_rt*q3[2]) * C1_6;
 }
 
 ///
@@ -269,12 +280,13 @@ void weno_five_reconstruction_1_point(Real const q3[3], Real& p1) noexcept
 /// @param q3 Tracer values on the three-point stencil [A ~> a]
 /// @param p2 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_five_reconstruction_2_point(Real const q3[3], Real& p2) noexcept
 {
-    constexpr Real C1_6 = 1.0/6.0;  // One sixth [nondim]
-    p2 = ((2.0*q3[0] - 7.0*q3[1]) + 11.0*q3[2]) * C1_6;
+    using namespace amrex::literals;
+
+    constexpr Real C1_6 = 1.0_rt/6.0_rt;  // One sixth [nondim]
+    p2 = ((2.0_rt*q3[0] - 7.0_rt*q3[1]) + 11.0_rt*q3[2]) * C1_6;
 }
 
 ///
@@ -290,19 +302,20 @@ void weno_five_reconstruction_2_point(Real const q3[3], Real& p2) noexcept
 ///               [L T-1 ~> m s-1] or [L2 T-1 ~> m2 s-1]
 /// @param qr     Reconstruction of tracer q on point i-1/2 [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_five_h_weight_reconstruction_point(Real const q6[6], Real const h6[6], Real const u6[6],
                                              Real const h_tiny, Real const u, Real& qr) noexcept
 {
-    constexpr Real C3_10 = 3.0/10.0;  // The ratio of 3/10 [nondim]
-    constexpr Real C3_5 = 3.0/5.0;    // The ratio of 3/5 [nondim]
-    constexpr Real C1_10 = 1.0/10.0;  // The ratio of 1/10 [nondim]
+    using namespace amrex::literals;
+
+    constexpr Real C3_10 = 3.0_rt/10.0_rt;  // The ratio of 3/10 [nondim]
+    constexpr Real C3_5 = 3.0_rt/5.0_rt;    // The ratio of 3/5 [nondim]
+    constexpr Real C1_10 = 1.0_rt/10.0_rt;  // The ratio of 1/10 [nondim]
     Real c0, c1, c2;                  // Intermediate reconstruction of hq[A ~> a]
     Real d0, d1, d2;                  // Intermediate reconstruction of h [L ~> m]
     Real b0, b1, b2;                  // Smoothness indicator [A ~> a]
 
-    if (u > 0.0) {
+    if (u > 0.0_rt) {
         weno_five_reconstruction_0_point(&q6[2], c0); // Reconstruction in the third upwind stencil
         weno_five_reconstruction_1_point(&q6[1], c1); // Reconstruction in the second upwind stencil
         weno_five_reconstruction_2_point(&q6[0], c2); // Reconstruction in the first upwind stencil
@@ -340,7 +353,7 @@ void weno_five_h_weight_reconstruction_point(Real const q6[6], Real const h6[6],
     Real w1 = C3_5  * fac_fn_point(tau, b1);
     Real w2 = C1_10 * fac_fn_point(tau, b2);
 
-    Real const s = 1. / ((w0 + w1) + w2);
+    Real const s = 1._rt / ((w0 + w1) + w2);
     w0 = w0 * s;   // Weights of stencils
     w1 = w1 * s;
     w2 = w2 * s;
@@ -358,14 +371,15 @@ void weno_five_h_weight_reconstruction_point(Real const q6[6], Real const h6[6],
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param w0 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_weight_0_point(Real const q4[4], Real& w0) noexcept
 {
+    using namespace amrex::literals;
+
     // Coefficients from Balsara and Shu (2000). The division by 1000 will be normalized out by fac_fn
-    w0 = ((q4[0] * ((2.107 * q4[0] - 9.402 * q4[1]) + (7.042 * q4[2] - 1.854 * q4[3]))) +
-       (q4[1] * ((11.003 * q4[1] - 17.246 * q4[2]) + 4.642 * q4[3]))) +
-       ((q4[2] * (7.043 * q4[2] - 3.882 * q4[3])) + 0.547 * (q4[3] * q4[3]));
+    w0 = ((q4[0] * ((2.107_rt * q4[0] - 9.402_rt * q4[1]) + (7.042_rt * q4[2] - 1.854_rt * q4[3]))) +
+       (q4[1] * ((11.003_rt * q4[1] - 17.246_rt * q4[2]) + 4.642_rt * q4[3]))) +
+       ((q4[2] * (7.043_rt * q4[2] - 3.882_rt * q4[3])) + 0.547_rt * (q4[3] * q4[3]));
 }
 
 ///
@@ -374,14 +388,15 @@ void weno_seven_weight_0_point(Real const q4[4], Real& w0) noexcept
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param w1 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_weight_1_point(Real const q4[4], Real& w1) noexcept
 {
+    using namespace amrex::literals;
+
     // Coefficients from Balsara and Shu (2000). The division by 1000 will be normalized out by fac_fn
-    w1 = ((q4[0] * ((0.547 * q4[0] - 2.522 * q4[1]) + (1.922 * q4[2] - 0.494 * q4[3]))) +
-       (q4[1] * ((3.443 * q4[1] - 5.966 * q4[2]) + 1.602 * q4[3]))) +
-       ((q4[2] * (2.843 * q4[2] - 1.642 * q4[3])) + 0.267 * (q4[3] * q4[3]));
+    w1 = ((q4[0] * ((0.547_rt * q4[0] - 2.522_rt * q4[1]) + (1.922_rt * q4[2] - 0.494_rt * q4[3]))) +
+       (q4[1] * ((3.443_rt * q4[1] - 5.966_rt * q4[2]) + 1.602_rt * q4[3]))) +
+       ((q4[2] * (2.843_rt * q4[2] - 1.642_rt * q4[3])) + 0.267_rt * (q4[3] * q4[3]));
 }
 
 ///
@@ -390,14 +405,15 @@ void weno_seven_weight_1_point(Real const q4[4], Real& w1) noexcept
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param w2 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_weight_2_point(Real const q4[4], Real& w2) noexcept
 {
+    using namespace amrex::literals;
+
     // Coefficients from Balsara and Shu (2000). The division by 1000 will be normalized out by fac_fn
-    w2 = ((q4[0] * ((0.267 * q4[0] - 1.642 * q4[1]) + (1.602 * q4[2] - 0.494 * q4[3]))) +
-       (q4[1] * ((2.843 * q4[1] - 5.966 * q4[2]) + 1.922 * q4[3]))) +
-       ((q4[2] * (3.443 * q4[2] - 2.522 * q4[3])) + 0.547 * (q4[3] * q4[3]));
+    w2 = ((q4[0] * ((0.267_rt * q4[0] - 1.642_rt * q4[1]) + (1.602_rt * q4[2] - 0.494_rt * q4[3]))) +
+       (q4[1] * ((2.843_rt * q4[1] - 5.966_rt * q4[2]) + 1.922_rt * q4[3]))) +
+       ((q4[2] * (3.443_rt * q4[2] - 2.522_rt * q4[3])) + 0.547_rt * (q4[3] * q4[3]));
 }
 
 ///
@@ -406,14 +422,15 @@ void weno_seven_weight_2_point(Real const q4[4], Real& w2) noexcept
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param w3 Smoothness indicator for this stencil [A2 ~> a2]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_weight_3_point(Real const q4[4], Real& w3) noexcept
 {
+    using namespace amrex::literals;
+
     // Coefficients from Balsara and Shu (2000). The division by 1000 will be normalized out by fac_fn
-    w3 = ((q4[0] * ((0.547  * q4[0] - 3.882 * q4[1]) + (4.642 * q4[2] - 1.854 * q4[3]))) +
-       (q4[1] * ((7.043 * q4[1] - 17.246 * q4[2]) + 7.042 * q4[3]))) +
-       ((q4[2] * (11.003 * q4[2] - 9.402 * q4[3])) + 2.107 * (q4[3] * q4[3]));
+    w3 = ((q4[0] * ((0.547_rt  * q4[0] - 3.882_rt * q4[1]) + (4.642_rt * q4[2] - 1.854_rt * q4[3]))) +
+       (q4[1] * ((7.043_rt * q4[1] - 17.246_rt * q4[2]) + 7.042_rt * q4[3]))) +
+       ((q4[2] * (11.003_rt * q4[2] - 9.402_rt * q4[3])) + 2.107_rt * (q4[3] * q4[3]));
 }
 
 ///
@@ -422,12 +439,13 @@ void weno_seven_weight_3_point(Real const q4[4], Real& w3) noexcept
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param p0 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_reconstruction_0_point(Real const q4[4], Real& p0) noexcept
 {
-    constexpr Real C1_24 = 1.0/24.0;  // One twenty fourth [nondim]
-    p0 = (((6.0 * q4[0] + 26.0 * q4[1]) - 10.0 * q4[2]) + 2.0 * q4[3]) * C1_24;
+    using namespace amrex::literals;
+
+    constexpr Real C1_24 = 1.0_rt/24.0_rt;  // One twenty fourth [nondim]
+    p0 = (((6.0_rt * q4[0] + 26.0_rt * q4[1]) - 10.0_rt * q4[2]) + 2.0_rt * q4[3]) * C1_24;
 }
 
 ///
@@ -436,12 +454,13 @@ void weno_seven_reconstruction_0_point(Real const q4[4], Real& p0) noexcept
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param p1 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_reconstruction_1_point(Real const q4[4], Real& p1) noexcept
 {
-    constexpr Real C1_24 = 1.0/24.0;  // One twenty fourth [nondim]
-    p1 = (14.0 * (q4[1] + q4[2]) - 2.0 * (q4[0] + q4[3])) * C1_24;
+    using namespace amrex::literals;
+
+    constexpr Real C1_24 = 1.0_rt/24.0_rt;  // One twenty fourth [nondim]
+    p1 = (14.0_rt * (q4[1] + q4[2]) - 2.0_rt * (q4[0] + q4[3])) * C1_24;
 }
 
 ///
@@ -450,12 +469,13 @@ void weno_seven_reconstruction_1_point(Real const q4[4], Real& p1) noexcept
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param p2 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_reconstruction_2_point(Real const q4[4], Real& p2) noexcept
 {
-    constexpr Real C1_24 = 1.0/24.0;  // One twenty fourth [nondim]
-    p2 = (((2.0 * q4[0] - 10.0 * q4[1]) + 26.0 * q4[2]) + 6.0 * q4[3]) * C1_24;
+    using namespace amrex::literals;
+
+    constexpr Real C1_24 = 1.0_rt/24.0_rt;  // One twenty fourth [nondim]
+    p2 = (((2.0_rt * q4[0] - 10.0_rt * q4[1]) + 26.0_rt * q4[2]) + 6.0_rt * q4[3]) * C1_24;
 }
 
 ///
@@ -464,12 +484,13 @@ void weno_seven_reconstruction_2_point(Real const q4[4], Real& p2) noexcept
 /// @param q4 Tracer values on the four-point stencil [A ~> a]
 /// @param p3 Reconstruction of the quantity [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_reconstruction_3_point(Real const q4[4], Real& p3) noexcept
 {
-    constexpr Real C1_24 = 1.0/24.0;  // One twenty fourth [nondim]
-    p3 = (((-6.0 * q4[0] + 26.0 * q4[1]) - 46.0 * q4[2]) + 50.0 * q4[3]) * C1_24;
+    using namespace amrex::literals;
+
+    constexpr Real C1_24 = 1.0_rt/24.0_rt;  // One twenty fourth [nondim]
+    p3 = (((-6.0_rt * q4[0] + 26.0_rt * q4[1]) - 46.0_rt * q4[2]) + 50.0_rt * q4[3]) * C1_24;
 }
 
 ///
@@ -486,20 +507,21 @@ void weno_seven_reconstruction_3_point(Real const q4[4], Real& p3) noexcept
 ///               [L T-1 ~> m s-1] or [L2 T-1 ~> m2 s-1]
 /// @param qr     Reconstruction of tracer q on point i-1/2 [A ~> a]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void weno_seven_h_weight_reconstruction_point(Real const q8[8], Real const h8[8], Real const u8[8],
                                               Real const h_tiny, Real const u, Real& qr) noexcept
 {
-    constexpr Real C4_35 = 4.0/35.0;    // The ratio of 4/35 [nondim]
-    constexpr Real C18_35 = 18.0/35.0;  // The ratio of 18/35 [nondim]
-    constexpr Real C12_35 = 12.0/35.0;  // The ratio of 12/35 [nondim]
-    constexpr Real C1_35 = 1.0/35.0;    // The ratio of 1/35 [nondim]
+    using namespace amrex::literals;
+
+    constexpr Real C4_35 = 4.0_rt/35.0_rt;    // The ratio of 4/35 [nondim]
+    constexpr Real C18_35 = 18.0_rt/35.0_rt;  // The ratio of 18/35 [nondim]
+    constexpr Real C12_35 = 12.0_rt/35.0_rt;  // The ratio of 12/35 [nondim]
+    constexpr Real C1_35 = 1.0_rt/35.0_rt;    // The ratio of 1/35 [nondim]
     Real c0, c1, c2, c3;                // Intermediate reconstruction of hq [A ~> a]
     Real d0, d1, d2, d3;                // Intermediate reconstruction of h [L ~> m]
     Real b0, b1, b2, b3;                // Smoothness indicator [A ~> a]
 
-    if (u > 0.0) {
+    if (u > 0.0_rt) {
         weno_seven_reconstruction_0_point(&q8[3], c0); // Reconstruction in the fourth upwind stencil
         weno_seven_reconstruction_1_point(&q8[2], c1); // Reconstruction in the third upwind stencil
         weno_seven_reconstruction_2_point(&q8[1], c2); // Reconstruction in the second upwind stencil
@@ -541,13 +563,13 @@ void weno_seven_h_weight_reconstruction_point(Real const q8[8], Real const h8[8]
         weno_seven_weight_3_point(u85, b3);    // Smoothness indicator of the first upwind stencil
     }
 
-    Real const tau = amrex::Math::abs((b0 - b3) + 3.0 * (b1 - b2));  // Difference of smoothness indicators [A ~> a]
+    Real const tau = amrex::Math::abs((b0 - b3) + 3.0_rt * (b1 - b2));  // Difference of smoothness indicators [A ~> a]
     Real w0 = C4_35  * fac_fn_point(tau, b0);                        // Weights [nondim]
     Real w1 = C18_35 * fac_fn_point(tau, b1);
     Real w2 = C12_35 * fac_fn_point(tau, b2);
     Real w3 = C1_35  * fac_fn_point(tau, b3);
 
-    Real const s = 1. / ((w0 + w1) + (w2 + w3));
+    Real const s = 1._rt / ((w0 + w1) + (w2 + w3));
     w0 = w0 * s;   // Weights of the stencils
     w1 = w1 * s;
     w2 = w2 * s;

@@ -15,6 +15,7 @@
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 
 using namespace amrex;
+using namespace amrex::literals;
 
 namespace MOM {
 
@@ -36,7 +37,7 @@ void gradke(const Box& bxQ,
             const int KE_Scheme,
             const bool KE_use_limiter)
 {
-    constexpr Real C1_12 = 1.0/12.0;  // The ratio of 1/12 [nondim]
+    constexpr Real C1_12 = 1.0_rt/12.0_rt;  // The ratio of 1/12 [nondim]
 
     // bxQ grown by one point at the end in i and j, [IscB:IecB+1, JscB:JecB+1, ksc:kec]
     Box bxQ_pij = bxQ;
@@ -52,29 +53,29 @@ void gradke(const Box& bxQ,
             KE(i,j,k) = ( ( (areaCu(i  ,j,0)*(u(i  ,j,k)*u(i  ,j,k))) +
                             (areaCu(i-1,j,0)*(u(i-1,j,k)*u(i-1,j,k))) ) +
                           ( (areaCv(i,j  ,0)*(v(i,j  ,k)*v(i,j  ,k))) +
-                            (areaCv(i,j-1,0)*(v(i,j-1,k)*v(i,j-1,k))) ) )*0.25*IareaT(i,j,0);
+                            (areaCv(i,j-1,0)*(v(i,j-1,k)*v(i,j-1,k))) ) )*0.25_rt*IareaT(i,j,0);
         });
     } else if (KE_Scheme == KE_SIMPLE_GUDONOV) {
         // The following discretization of KE is based on the one-dimensional Gudonov
         // scheme which does not take into account any geometric factors
         ParallelFor(bxQ_pij, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            Real const up = 0.5*( u(i-1,j,k) + Math::abs( u(i-1,j,k) ) ); Real const up2 = up*up;
-            Real const um = 0.5*( u(i  ,j,k) - Math::abs( u(i  ,j,k) ) ); Real const um2 = um*um;
-            Real const vp = 0.5*( v(i,j-1,k) + Math::abs( v(i,j-1,k) ) ); Real const vp2 = vp*vp;
-            Real const vm = 0.5*( v(i,j  ,k) - Math::abs( v(i,j  ,k) ) ); Real const vm2 = vm*vm;
-            KE(i,j,k) = ( amrex::max(up2,um2) + amrex::max(vp2,vm2) ) *0.5;
+            Real const up = 0.5_rt*( u(i-1,j,k) + Math::abs( u(i-1,j,k) ) ); Real const up2 = up*up;
+            Real const um = 0.5_rt*( u(i  ,j,k) - Math::abs( u(i  ,j,k) ) ); Real const um2 = um*um;
+            Real const vp = 0.5_rt*( v(i,j-1,k) + Math::abs( v(i,j-1,k) ) ); Real const vp2 = vp*vp;
+            Real const vm = 0.5_rt*( v(i,j  ,k) - Math::abs( v(i,j  ,k) ) ); Real const vm2 = vm*vm;
+            KE(i,j,k) = ( amrex::max(up2,um2) + amrex::max(vp2,vm2) ) *0.5_rt;
         });
     } else if (KE_Scheme == KE_GUDONOV) {
         // The following discretization of KE is based on the one-dimensional Gudonov
         // scheme but has been adapted to take horizontal grid factors into account
         ParallelFor(bxQ_pij, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            Real const up = 0.5*( u(i-1,j,k) + Math::abs( u(i-1,j,k) ) ); Real const up2a = up*up*areaCu(i-1,j,0);
-            Real const um = 0.5*( u(i  ,j,k) - Math::abs( u(i  ,j,k) ) ); Real const um2a = um*um*areaCu(i  ,j,0);
-            Real const vp = 0.5*( v(i,j-1,k) + Math::abs( v(i,j-1,k) ) ); Real const vp2a = vp*vp*areaCv(i,j-1,0);
-            Real const vm = 0.5*( v(i,j  ,k) - Math::abs( v(i,j  ,k) ) ); Real const vm2a = vm*vm*areaCv(i,j  ,0);
-            KE(i,j,k) = ( amrex::max(um2a,up2a) + amrex::max(vm2a,vp2a) )*0.5*IareaT(i,j,0);
+            Real const up = 0.5_rt*( u(i-1,j,k) + Math::abs( u(i-1,j,k) ) ); Real const up2a = up*up*areaCu(i-1,j,0);
+            Real const um = 0.5_rt*( u(i  ,j,k) - Math::abs( u(i  ,j,k) ) ); Real const um2a = um*um*areaCu(i  ,j,0);
+            Real const vp = 0.5_rt*( v(i,j-1,k) + Math::abs( v(i,j-1,k) ) ); Real const vp2a = vp*vp*areaCv(i,j-1,0);
+            Real const vm = 0.5_rt*( v(i,j  ,k) - Math::abs( v(i,j  ,k) ) ); Real const vm2a = vm*vm*areaCv(i,j  ,0);
+            KE(i,j,k) = ( amrex::max(um2a,up2a) + amrex::max(vm2a,vp2a) )*0.5_rt*IareaT(i,j,0);
         });
     } else if (KE_Scheme == KE_UP3) {
         // The following discretization of KE is based on the one-dimensional third-order
@@ -88,15 +89,15 @@ void gradke(const Box& bxQ,
                 Real const third_order_u = (mask2dCu(i-2,j,0) * mask2dCu(i-1,j,0)*
                                             mask2dCu(i,j,0) * mask2dCu(i+1,j,0));
 
-                if (third_order_u == 1.0) {
-                    up = (7.0 * (u(i-1,j,k) + u(i,j,k)) - (u(i-2,j,k) + u(i+1,j,k))) * C1_12;
+                if (third_order_u == 1.0_rt) {
+                    up = (7.0_rt * (u(i-1,j,k) + u(i,j,k)) - (u(i-2,j,k) + u(i+1,j,k))) * C1_12;
                     Real const u4[4] = {u(i-2,j,k), u(i-1,j,k), u(i,j,k), u(i+1,j,k)};
                     up3_koren_limiter_reconstruction_point(u4, up, um);
                 } else {
-                    up = (u(i-1,j,k) + u(i,j,k))*0.5;
-                    if (up > 0.0) {
+                    up = (u(i-1,j,k) + u(i,j,k))*0.5_rt;
+                    if (up > 0.0_rt) {
                         um = u(i-1,j,k);
-                    } else if (up < 0.0) {
+                    } else if (up < 0.0_rt) {
                         um = u(i,j,k);
                     } else {
                         um = up;
@@ -105,22 +106,22 @@ void gradke(const Box& bxQ,
 
                 Real const third_order_v = (mask2dCv(i,j-2,0) * mask2dCv(i,j-1,0)*
                                             mask2dCv(i,j,0) * mask2dCv(i,j+1,0));
-                if (third_order_v == 1.0) {
-                    vp = (7.0 * (v(i,j-1,k) + v(i,j,k)) - (v(i,j-2,k) + v(i,j+1,k))) * C1_12;
+                if (third_order_v == 1.0_rt) {
+                    vp = (7.0_rt * (v(i,j-1,k) + v(i,j,k)) - (v(i,j-2,k) + v(i,j+1,k))) * C1_12;
                     Real const v4[4] = {v(i,j-2,k), v(i,j-1,k), v(i,j,k), v(i,j+1,k)};
                     up3_koren_limiter_reconstruction_point(v4, vp, vm);
                 } else {
-                    vp = (v(i,j-1,k) + v(i,j,k))*0.5;
-                    if (vp > 0.0) {
+                    vp = (v(i,j-1,k) + v(i,j,k))*0.5_rt;
+                    if (vp > 0.0_rt) {
                         vm = v(i,j-1,k);
-                    } else if (vp < 0.0) {
+                    } else if (vp < 0.0_rt) {
                         vm = v(i,j,k);
                     } else {
                         vm = vp;
                     }
                 }
 
-                KE(i,j,k) = ( (um*um) + (vm*vm) )*0.5;
+                KE(i,j,k) = ( (um*um) + (vm*vm) )*0.5_rt;
             });
         } else {
             ParallelFor(bxQ_pij, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -130,15 +131,15 @@ void gradke(const Box& bxQ,
                 Real const third_order_u = (mask2dCu(i-2,j,0) * mask2dCu(i-1,j,0)*
                                             mask2dCu(i,j,0) * mask2dCu(i+1,j,0));
 
-                if (third_order_u == 1.0) {
-                    up = (7.0 * (u(i-1,j,k) + u(i,j,k)) - (u(i-2,j,k) + u(i+1,j,k))) * C1_12;
+                if (third_order_u == 1.0_rt) {
+                    up = (7.0_rt * (u(i-1,j,k) + u(i,j,k)) - (u(i-2,j,k) + u(i+1,j,k))) * C1_12;
                     Real const u4[4] = {u(i-2,j,k), u(i-1,j,k), u(i,j,k), u(i+1,j,k)};
                     up3_reconstruction_point(u4, up, um);
                 } else {
-                    up = (u(i-1,j,k) + u(i,j,k))*0.5;
-                    if (up > 0.0) {
+                    up = (u(i-1,j,k) + u(i,j,k))*0.5_rt;
+                    if (up > 0.0_rt) {
                         um = u(i-1,j,k);
-                    } else if (up < 0.0) {
+                    } else if (up < 0.0_rt) {
                         um = u(i,j,k);
                     } else {
                         um = up;
@@ -147,22 +148,22 @@ void gradke(const Box& bxQ,
 
                 Real const third_order_v = (mask2dCv(i,j-2,0) * mask2dCv(i,j-1,0)*
                                             mask2dCv(i,j,0) * mask2dCv(i,j+1,0));
-                if (third_order_v == 1.0) {
-                    vp = (7.0 * (v(i,j-1,k) + v(i,j,k)) - (v(i,j-2,k) + v(i,j+1,k))) * C1_12;
+                if (third_order_v == 1.0_rt) {
+                    vp = (7.0_rt * (v(i,j-1,k) + v(i,j,k)) - (v(i,j-2,k) + v(i,j+1,k))) * C1_12;
                     Real const v4[4] = {v(i,j-2,k), v(i,j-1,k), v(i,j,k), v(i,j+1,k)};
                     up3_reconstruction_point(v4, vp, vm);
                 } else {
-                    vp = (v(i,j-1,k) + v(i,j,k))*0.5;
-                    if (vp > 0.0) {
+                    vp = (v(i,j-1,k) + v(i,j,k))*0.5_rt;
+                    if (vp > 0.0_rt) {
                         vm = v(i,j-1,k);
-                    } else if (vp < 0.0) {
+                    } else if (vp < 0.0_rt) {
                         vm = v(i,j,k);
                     } else {
                         vm = vp;
                     }
                 }
 
-                KE(i,j,k) = ( (um*um) + (vm*vm) )*0.5;
+                KE(i,j,k) = ( (um*um) + (vm*vm) )*0.5_rt;
             });
         }
     }
@@ -345,23 +346,23 @@ void coradv_setup(const Box& bxH,
 
     ParallelFor(bxQs_pi, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
-        hArea_v(i,j,k) = 0.5*((Area_h(i,j,0) * h(i,j,k)) + (Area_h(i,j+1,0) * h(i,j+1,k)));
+        hArea_v(i,j,k) = 0.5_rt*((Area_h(i,j,0) * h(i,j,k)) + (Area_h(i,j+1,0) * h(i,j+1,k)));
     });
 
     ParallelFor(bxQs_pj, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
-        hArea_u(i,j,k) = 0.5*((Area_h(i,j,0) * h(i,j,k)) + (Area_h(i+1,j,0) * h(i+1,j,k)));
+        hArea_u(i,j,k) = 0.5_rt*((Area_h(i,j,0) * h(i,j,k)) + (Area_h(i+1,j,0) * h(i+1,j,k)));
     });
 
     if (CS.Coriolis_scheme_CS.Coriolis_En_Dis) {
         ParallelFor(bxVx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            uh_center(i,j,k) = 0.5 * ((dy_Cu(i,j,0)*por_face_areaU(i,j,k)) * u(i,j,k)) * (h(i,j,k) + h(i+1,j,k));
+            uh_center(i,j,k) = 0.5_rt * ((dy_Cu(i,j,0)*por_face_areaU(i,j,k)) * u(i,j,k)) * (h(i,j,k) + h(i+1,j,k));
         });
 
         ParallelFor(bxUx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            vh_center(i,j,k) = 0.5 * ((dx_Cv(i,j,0)*por_face_areaV(i,j,k)) * v(i,j,k)) * (h(i,j,k) + h(i,j+1,k));
+            vh_center(i,j,k) = 0.5_rt * ((dx_Cv(i,j,0)*por_face_areaV(i,j,k)) * v(i,j,k)) * (h(i,j,k) + h(i,j+1,k));
         });
     }
 
@@ -395,22 +396,19 @@ void coradv_setup(const Box& bxH,
                 case OBC_VORTICITY_ZERO:
                     ParallelFor(bxI, [=] AMREX_GPU_DEVICE (int i, int, int k) noexcept
                     {
-                        dvdx(i,J,k) = 0.0; dudy(i,J,k) = 0.0;
+                        dvdx(i,J,k) = 0.0_rt; dudy(i,J,k) = 0.0_rt;
                     });
                     break;
                 case OBC_VORTICITY_FREESLIP:
-                    ParallelFor(bxI, [=] AMREX_GPU_DEVICE (int i, int, int k) noexcept
-                    {
-                        dudy(i,J,k) = 0.0;
-                    });
+                    FArrayBox(dudy).setVal<RunOn::Device>(0.0_rt, bxI);
                     break;
                 case OBC_VORTICITY_COMPUTED:
                     ParallelFor(bxI, [=] AMREX_GPU_DEVICE (int i, int, int k) noexcept
                     {
                         if (direction == OBC_DIRECTION_N) {
-                            dudy(i,J,k) = 2.0*(tangential_vel(i,J,k) - u(i,J,k))*dxCu(i,J,0);
+                            dudy(i,J,k) = 2.0_rt*(tangential_vel(i,J,k) - u(i,J,k))*dxCu(i,J,0);
                         } else { // (direction == OBC_DIRECTION_S)
-                            dudy(i,J,k) = 2.0*(u(i,J+1,k) - tangential_vel(i,J,k))*dxCu(i,J+1,0);
+                            dudy(i,J,k) = 2.0_rt*(u(i,J+1,k) - tangential_vel(i,J,k))*dxCu(i,J+1,0);
                         }
                     });
                     break;
@@ -433,9 +431,9 @@ void coradv_setup(const Box& bxH,
                     ParallelFor(bxh, [=] AMREX_GPU_DEVICE (int i, int, int k) noexcept
                     {
                         if (direction == OBC_DIRECTION_N) {
-                            hArea_v(i,J,k) = 0.5 * (Area_h(i,J,0) + Area_h(i,J+1,0)) * h(i,J,k);
+                            hArea_v(i,J,k) = 0.5_rt * (Area_h(i,J,0) + Area_h(i,J+1,0)) * h(i,J,k);
                         } else { // (direction == OBC_DIRECTION_S)
-                            hArea_v(i,J,k) = 0.5 * (Area_h(i,J,0) + Area_h(i,J+1,0)) * h(i,J+1,k);
+                            hArea_v(i,J,k) = 0.5_rt * (Area_h(i,J,0) + Area_h(i,J+1,0)) * h(i,J+1,k);
                         }
                     });
                 }
@@ -460,22 +458,19 @@ void coradv_setup(const Box& bxH,
                 case OBC_VORTICITY_ZERO:
                     ParallelFor(bxJ, [=] AMREX_GPU_DEVICE (int, int j, int k) noexcept
                     {
-                        dvdx(I,j,k) = 0.0; dudy(I,j,k) = 0.0;
+                        dvdx(I,j,k) = 0.0_rt; dudy(I,j,k) = 0.0_rt;
                     });
                     break;
                 case OBC_VORTICITY_FREESLIP:
-                    ParallelFor(bxJ, [=] AMREX_GPU_DEVICE (int, int j, int k) noexcept
-                    {
-                        dvdx(I,j,k) = 0.0;
-                    });
+                    FArrayBox(dvdx).setVal<RunOn::Device>(0.0_rt, bxJ);
                     break;
                 case OBC_VORTICITY_COMPUTED:
                     ParallelFor(bxJ, [=] AMREX_GPU_DEVICE (int, int j, int k) noexcept
                     {
                         if (direction == OBC_DIRECTION_E) {
-                            dvdx(I,j,k) = 2.0*(tangential_vel(I,j,k) - v(I,j,k))*dyCv(I,j,0);
+                            dvdx(I,j,k) = 2.0_rt*(tangential_vel(I,j,k) - v(I,j,k))*dyCv(I,j,0);
                         } else { // (direction == OBC_DIRECTION_W)
-                            dvdx(I,j,k) = 2.0*(v(I+1,j,k) - tangential_vel(I,j,k))*dyCv(I+1,j,0);
+                            dvdx(I,j,k) = 2.0_rt*(v(I+1,j,k) - tangential_vel(I,j,k))*dyCv(I+1,j,0);
                         }
                     });
                     break;
@@ -498,9 +493,9 @@ void coradv_setup(const Box& bxH,
                     ParallelFor(bxh, [=] AMREX_GPU_DEVICE (int, int j, int k) noexcept
                     {
                         if (direction == OBC_DIRECTION_E) {
-                            hArea_u(I,j,k) = 0.5*(Area_h(I,j,0) + Area_h(I+1,j,0)) * h(I,j,k);
+                            hArea_u(I,j,k) = 0.5_rt*(Area_h(I,j,0) + Area_h(I+1,j,0)) * h(I,j,k);
                         } else { // (direction == OBC_DIRECTION_W)
-                            hArea_u(I,j,k) = 0.5*(Area_h(I,j,0) + Area_h(I+1,j,0)) * h(I+1,j,k);
+                            hArea_u(I,j,k) = 0.5_rt*(Area_h(I,j,0) + Area_h(I+1,j,0)) * h(I+1,j,k);
                         }
                     });
                 }
@@ -539,15 +534,15 @@ void coradv_setup(const Box& bxH,
                     ParallelFor(bxI, [=] AMREX_GPU_DEVICE (int i, int, int k) noexcept
                     {
                         if (direction == OBC_DIRECTION_N) {
-                            if (Area_h(i,J,0) + Area_h(i+1,J,0) > 0.0) {
+                            if (Area_h(i,J,0) + Area_h(i+1,J,0) > 0.0_rt) {
                                 hArea_u(i,J+1,k) = hArea_u(i,J,k) * ((Area_h(i,J+1,0) + Area_h(i+1,J+1,0)) /
                                                                      (Area_h(i,J,0) + Area_h(i+1,J,0)));
-                            } else { hArea_u(i,J+1,k) = 0.0; }
+                            } else { hArea_u(i,J+1,k) = 0.0_rt; }
                         } else { // (direction == OBC_DIRECTION_S)
-                            if (Area_h(i,J+1,0) + Area_h(i+1,J+1,0) > 0.0) {
+                            if (Area_h(i,J+1,0) + Area_h(i+1,J+1,0) > 0.0_rt) {
                                 hArea_u(i,J,k) = hArea_u(i,J+1,k) * ((Area_h(i,J,0) + Area_h(i+1,J,0)) /
                                                                      (Area_h(i,J+1,0) + Area_h(i+1,J+1,0)));
-                            } else { hArea_u(i,J,k) = 0.0; }
+                            } else { hArea_u(i,J,k) = 0.0_rt; }
                         }
                     });
                 }
@@ -558,16 +553,16 @@ void coradv_setup(const Box& bxH,
                     ParallelFor(bxJ, [=] AMREX_GPU_DEVICE (int, int j, int k) noexcept
                     {
                         if (direction == OBC_DIRECTION_E) {
-                            if (Area_h(I,j,0) + Area_h(I,j+1,0) > 0.0) {
+                            if (Area_h(I,j,0) + Area_h(I,j+1,0) > 0.0_rt) {
                                 hArea_v(I+1,j,k) = hArea_v(I,j,k) * ((Area_h(I+1,j,0) + Area_h(I+1,j+1,0)) /
                                                                      (Area_h(I,j,0) + Area_h(I,j+1,0)));
-                            } else { hArea_v(I+1,j,k) = 0.0; }
+                            } else { hArea_v(I+1,j,k) = 0.0_rt; }
                         } else { // (direction == OBC_DIRECTION_W)
-                            hArea_v(I,j,k) = 0.5 * (Area_h(I,j,0) + Area_h(I,j+1,0)) * h(I,j+1,k);
-                            if (Area_h(I+1,j,0) + Area_h(I+1,j+1,0) > 0.0) {
+                            hArea_v(I,j,k) = 0.5_rt * (Area_h(I,j,0) + Area_h(I,j+1,0)) * h(I,j+1,k);
+                            if (Area_h(I+1,j,0) + Area_h(I+1,j+1,0) > 0.0_rt) {
                                 hArea_v(I,j,k) = hArea_v(I+1,j,k) * ((Area_h(I,j,0) + Area_h(I,j+1,0)) /
                                                                      (Area_h(I+1,j,0) + Area_h(I+1,j+1,0)));
-                            } else { hArea_v(I,j,k) = 0.0; }
+                            } else { hArea_v(I,j,k) = 0.0_rt; }
                         }
                     });
                 }
@@ -579,7 +574,7 @@ void coradv_setup(const Box& bxH,
     if (CS.no_slip) {
         ParallelFor(bxQs, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            rel_vort(i,j,k) = (2.0 - mask2dBu(i,j,0)) * (dvdx(i,j,k) - dudy(i,j,k)) * IareaBu(i,j,0);
+            rel_vort(i,j,k) = (2.0_rt - mask2dBu(i,j,0)) * (dvdx(i,j,k) - dudy(i,j,k)) * IareaBu(i,j,0);
         });
 
         if (Stokes_VF) {
@@ -587,7 +582,7 @@ void coradv_setup(const Box& bxH,
             if (CS.do_CAS_diag) {
                 ParallelFor(bxQ_gij, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    stk_vort(i,j,k) = (2.0 - mask2dBu(i,j,0)) * (dvSdx(i,j,k) - duSdy(i,j,k)) * IareaBu(i,j,0);
+                    stk_vort(i,j,k) = (2.0_rt - mask2dBu(i,j,0)) * (dvSdx(i,j,k) - duSdy(i,j,k)) * IareaBu(i,j,0);
                 });
             }
             */
@@ -603,7 +598,7 @@ void coradv_setup(const Box& bxH,
             if (CS.do_CAS_diag) {
                 ParallelFor(bxQ_gij, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    stk_vort(i,j,k) = (2.0 - mask2dBu(i,j,0)) * (dvSdx(i,j,k) - duSdy(i,j,k)) * IareaBu(i,j,0);
+                    stk_vort(i,j,k) = (2.0_rt - mask2dBu(i,j,0)) * (dvSdx(i,j,k) - duSdy(i,j,k)) * IareaBu(i,j,0);
                 });
             }
             */
@@ -693,7 +688,7 @@ void coradv_common_terms(const Box& bxU,
 {
     BL_PROFILE("coradv_common_terms");
 
-    constexpr Real C1_12 = 1.0 / 12.0;  // C1_12 = 1/12 [nondim]
+    constexpr Real C1_12 = 1.0_rt / 12.0_rt;  // C1_12 = 1/12 [nondim]
 
     const bool gradKEu_associated = (gradKEu.p != nullptr);
     const bool gradKEv_associated = (gradKEv.p != nullptr);
@@ -705,7 +700,7 @@ void coradv_common_terms(const Box& bxU,
             // Computing the diagnostic Stokes contribution to CAu
             ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                CAuS(i,j,k) = 0.25 *
+                CAuS(i,j,k) = 0.25_rt *
                       ((qS(i,j,k) * (vh(i+1,j,k) + vh(i,j,k))) +
                        (qS(i,j-1,k) * (vh(i,j-1,k) + vh(i+1,j-1,k)))) * IdxCu(i,j,0);
             });
@@ -748,7 +743,7 @@ void coradv_common_terms(const Box& bxU,
             // Computing the diagnostic Stokes contribution to CAv
             ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                CAvS(i,j,k) = 0.25 *
+                CAvS(i,j,k) = 0.25_rt *
                       ((qS(i,j,k) * (uh(i,j+1,k) + uh(i,j,k))) +
                        (qS(i-1,j,k) * (uh(i-1,j,k) + uh(i-1,j+1,k)))) * IdyCv(i,j,0);
             });
@@ -791,7 +786,7 @@ void coradv_common_terms(const Box& bxU,
             if (rv_x_u_associated) {
                 ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    rv_x_u(i,j,k) = - 0.25*
+                    rv_x_u(i,j,k) = - 0.25_rt*
                         ((q2(i-1,j,k)*(uh(i-1,j,k) + uh(i-1,j+1,k))) +
                          (q2(i,j,k)*(uh(i,j,k) + uh(i,j+1,k)))) * IdyCv(i,j,0);
                 });
@@ -800,7 +795,7 @@ void coradv_common_terms(const Box& bxU,
             if (rv_x_v_associated) {
                 ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    rv_x_v(i,j,k) = 0.25 *
+                    rv_x_v(i,j,k) = 0.25_rt *
                         ((q2(i,j,k) * (vh(i+1,j,k) + vh(i,j,k))) +
                          (q2(i,j-1,k) * (vh(i,j-1,k) + vh(i+1,j-1,k)))) * IdxCu(i,j,0);
                 });
@@ -850,8 +845,8 @@ void coradv_arakawa(const Box& bxH,
 {
     BL_PROFILE("coradv_arakawa");
 
-    constexpr Real C1_12 = 1.0 / 12.0;  // C1_12 = 1/12 [nondim]
-    constexpr Real C1_24 = 1.0 / 24.0;  // C1_24 = 1/24 [nondim]
+    constexpr Real C1_12 = 1.0_rt / 12.0_rt;  // C1_12 = 1/12 [nondim]
+    constexpr Real C1_24 = 1.0_rt / 24.0_rt;  // C1_24 = 1/24 [nondim]
 
     const int ksc = bxH.smallEnd(2);
     const int kec = bxH.bigEnd(2);
@@ -913,10 +908,10 @@ void coradv_arakawa(const Box& bxH,
     } else if (CS.Coriolis_Scheme == ARAKAWA_LAMB81) {
         ParallelFor(bxQ_pij, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            a(i-1,j,k) = (2.0*(q(i,j,k) + q(i-1,j-1,k)) + (q(i-1,j,k) + q(i,j-1,k))) * C1_24;
-            d(i-1,j,k) = ((q(i,j,k) + q(i-1,j-1,k)) + 2.0*(q(i-1,j,k) + q(i,j-1,k))) * C1_24;
-            b(i,j,k) =   ((q(i,j,k) + q(i-1,j-1,k)) + 2.0*(q(i-1,j,k) + q(i,j-1,k))) * C1_24;
-            c(i,j,k) =   (2.0*(q(i,j,k) + q(i-1,j-1,k)) + (q(i-1,j,k) + q(i,j-1,k))) * C1_24;
+            a(i-1,j,k) = (2.0_rt*(q(i,j,k) + q(i-1,j-1,k)) + (q(i-1,j,k) + q(i,j-1,k))) * C1_24;
+            d(i-1,j,k) = ((q(i,j,k) + q(i-1,j-1,k)) + 2.0_rt*(q(i-1,j,k) + q(i,j-1,k))) * C1_24;
+            b(i,j,k) =   ((q(i,j,k) + q(i-1,j-1,k)) + 2.0_rt*(q(i-1,j,k) + q(i,j-1,k))) * C1_24;
+            c(i,j,k) =   (2.0_rt*(q(i,j,k) + q(i-1,j-1,k)) + (q(i-1,j,k) + q(i,j-1,k))) * C1_24;
             ep_u(i,j,k) = ((q(i,j,k) - q(i-1,j-1,k)) + (q(i-1,j,k) - q(i,j-1,k))) * C1_24;
             ep_v(i,j,k) = (-(q(i,j,k) - q(i-1,j-1,k)) + (q(i-1,j,k) - q(i,j-1,k))) * C1_24;
         });
@@ -929,8 +924,8 @@ void coradv_arakawa(const Box& bxH,
             Real const max_Ihq = amrex::max(Ih_q(i-1,j-1,k), Ih_q(i,j-1,k), Ih_q(i-1,j,k), Ih_q(i,j,k));
             // The ratio of the maximum neighboring inverse thickness
             // to the minimum inverse thickness minus 1 [nondim]. rat_m1 >= 0.
-            Real rat_m1 = 1.0e15;
-            if (max_Ihq < 1.0e15*min_Ihq) rat_m1 = max_Ihq / min_Ihq - 1.0;
+            Real rat_m1 = 1.0e15_rt;
+            if (max_Ihq < 1.0e15_rt*min_Ihq) rat_m1 = max_Ihq / min_Ihq - 1.0_rt;
             // The weights used here are designed to keep the effective Coriolis
             // acceleration from any one point on its neighbors within a factor
             // of F_eff_max.  The minimum permitted value is 2 (the factor for
@@ -945,30 +940,30 @@ void coradv_arakawa(const Box& bxH,
             Real Sad_wt;
 
             // Determine the relative weights of Arakawa & Lamb vs. Arakawa and Hsu.
-            if (rat_m1 <= Fe_m2) { AL_wt = 1.0; }
-            else if (rat_m1 < 1.5*Fe_m2) { AL_wt = 3.0*Fe_m2 / rat_m1 - 2.0; }
-            else { AL_wt = 0.0; }
+            if (rat_m1 <= Fe_m2) { AL_wt = 1.0_rt; }
+            else if (rat_m1 < 1.5_rt*Fe_m2) { AL_wt = 3.0_rt*Fe_m2 / rat_m1 - 2.0_rt; }
+            else { AL_wt = 0.0_rt; }
 
             // Determine the relative weights of Sadourny Energy vs. the other two.
-            if (rat_m1 <= 1.5*Fe_m2) { Sad_wt = 0.0; }
+            if (rat_m1 <= 1.5_rt*Fe_m2) { Sad_wt = 0.0_rt; }
             else if (rat_m1 <= rat_lin) {
-                Sad_wt = 1.0 - (1.5*Fe_m2) / rat_m1;
-            } else if (rat_m1 < 2.0*rat_lin) {
-                Sad_wt = 1.0 - (wt_lin_blend / rat_lin) * (rat_m1 - 2.0*rat_lin);
-            } else { Sad_wt = 1.0; }
+                Sad_wt = 1.0_rt - (1.5_rt*Fe_m2) / rat_m1;
+            } else if (rat_m1 < 2.0_rt*rat_lin) {
+                Sad_wt = 1.0_rt - (wt_lin_blend / rat_lin) * (rat_m1 - 2.0_rt*rat_lin);
+            } else { Sad_wt = 1.0_rt; }
 
-            a(i-1,j,k) = Sad_wt * 0.25 * q(i-1,j,k) + (1.0 - Sad_wt) *
-                          ( ((2.0-AL_wt)* q(i-1,j,k) + AL_wt*q(i,j-1,k)) +
-                             2.0 * (q(i,j,k) + q(i-1,j-1,k)) ) * C1_24;
-            d(i-1,j,k) = Sad_wt * 0.25 * q(i-1,j-1,k) + (1.0 - Sad_wt) *
-                          ( ((2.0-AL_wt)* q(i-1,j-1,k) + AL_wt*q(i,j,k)) +
-                             2.0 * (q(i-1,j,k) + q(i,j-1,k)) ) * C1_24;
-            b(i,j,k) =   Sad_wt * 0.25 * q(i,j,k) + (1.0 - Sad_wt) *
-                          ( ((2.0-AL_wt)* q(i,j,k) + AL_wt*q(i-1,j-1,k)) +
-                             2.0 * (q(i-1,j,k) + q(i,j-1,k)) ) * C1_24;
-            c(i,j,k) =   Sad_wt * 0.25 * q(i,j-1,k) + (1.0 - Sad_wt) *
-                          ( ((2.0-AL_wt)* q(i,j-1,k) + AL_wt*q(i-1,j,k)) +
-                             2.0 * (q(i,j,k) + q(i-1,j-1,k)) ) * C1_24;
+            a(i-1,j,k) = Sad_wt * 0.25_rt * q(i-1,j,k) + (1.0_rt - Sad_wt) *
+                          ( ((2.0_rt-AL_wt)* q(i-1,j,k) + AL_wt*q(i,j-1,k)) +
+                             2.0_rt * (q(i,j,k) + q(i-1,j-1,k)) ) * C1_24;
+            d(i-1,j,k) = Sad_wt * 0.25_rt * q(i-1,j-1,k) + (1.0_rt - Sad_wt) *
+                          ( ((2.0_rt-AL_wt)* q(i-1,j-1,k) + AL_wt*q(i,j,k)) +
+                             2.0_rt * (q(i-1,j,k) + q(i,j-1,k)) ) * C1_24;
+            b(i,j,k) =   Sad_wt * 0.25_rt * q(i,j,k) + (1.0_rt - Sad_wt) *
+                          ( ((2.0_rt-AL_wt)* q(i,j,k) + AL_wt*q(i-1,j-1,k)) +
+                             2.0_rt * (q(i-1,j,k) + q(i,j-1,k)) ) * C1_24;
+            c(i,j,k) =   Sad_wt * 0.25_rt * q(i,j-1,k) + (1.0_rt - Sad_wt) *
+                          ( ((2.0_rt-AL_wt)* q(i,j-1,k) + AL_wt*q(i-1,j,k)) +
+                             2.0_rt * (q(i,j,k) + q(i-1,j-1,k)) ) * C1_24;
             ep_u(i,j,k) = AL_wt  * ((q(i,j,k) - q(i-1,j-1,k)) + (q(i-1,j,k) - q(i,j-1,k))) * C1_24;
             ep_v(i,j,k) = AL_wt * (-(q(i,j,k) - q(i-1,j-1,k)) + (q(i-1,j,k) - q(i,j-1,k))) * C1_24;
         });
@@ -1058,7 +1053,7 @@ void coradv_robust_enstro(const Box& bxU,
             Real Heff4 = amrex::Math::abs(vh(i+1,j-1,k) * IdxCv(i+1,j-1,0)) / (eps_vel+amrex::Math::abs(v(i+1,j-1,k)));
             Heff4 = amrex::max(Heff4, amrex::min(h(i+1,j-1,k),h(i+1,j,k)));
             Heff4 = amrex::min(Heff4, amrex::max(h(i+1,j-1,k),h(i+1,j,k)));
-            CAu(i,j,k) = 0.5*(abs_vort(i,j,k)+abs_vort(i,j-1,k)) *
+            CAu(i,j,k) = 0.5_rt*(abs_vort(i,j,k)+abs_vort(i,j-1,k)) *
                          ((vh(i,j,k) + vh(i+1,j-1,k)) + (vh(i,j-1,k) + vh(i+1,j,k)) ) /
                          (h_tiny + ((Heff1+Heff4) + (Heff2+Heff3)) ) * IdxCu(i,j,0);
         });
@@ -1081,7 +1076,7 @@ void coradv_robust_enstro(const Box& bxU,
             // More temporary variables [H L2 T-1 ~> m3 s-1 or kg s-1].
             Real const VHeff = ((vh(i,j,k) + vh(i+1,j-1,k)) + (vh(i,j-1,k) + vh(i+1,j,k)) );
             // More temporary variables [H L2 T-2 ~> m3 s-2 or kg s-2].
-            Real const QVHeff = 0.5*( ((abs_vort(i,j,k)+abs_vort(i,j-1,k))*VHeff)
+            Real const QVHeff = 0.5_rt*( ((abs_vort(i,j,k)+abs_vort(i,j-1,k))*VHeff)
                                     - ((abs_vort(i,j,k)-abs_vort(i,j-1,k))*amrex::Math::abs(VHeff)) );
             CAu(i,j,k) = (QVHeff / ( h_tiny + ((Heff1+Heff4) + (Heff2+Heff3)) ) ) * IdxCu(i,j,0);
         });
@@ -1109,7 +1104,7 @@ void coradv_robust_enstro(const Box& bxU,
             Real Heff4 = amrex::Math::abs(uh(i-1,j+1,k) * IdyCu(i-1,j+1,0)) / (eps_vel+amrex::Math::abs(u(i-1,j+1,k)));
             Heff4 = amrex::max(Heff4, amrex::min(h(i-1,j+1,k),h(i,j+1,k)));
             Heff4 = amrex::min(Heff4, amrex::max(h(i-1,j+1,k),h(i,j+1,k)));
-            CAv(i,j,k) = - 0.5*(abs_vort(i,j,k)+abs_vort(i-1,j,k)) *
+            CAv(i,j,k) = - 0.5_rt*(abs_vort(i,j,k)+abs_vort(i-1,j,k)) *
                            ((uh(i  ,j  ,k)+uh(i-1,j+1,k)) +
                             (uh(i-1,j  ,k)+uh(i  ,j+1,k)) ) /
                         (h_tiny + ((Heff1+Heff4) +(Heff2+Heff3)) ) * IdyCv(i,j,0);
@@ -1134,7 +1129,7 @@ void coradv_robust_enstro(const Box& bxU,
             Real const UHeff = ((uh(i  ,j  ,k)+uh(i-1,j+1,k)) +
                                 (uh(i-1,j  ,k)+uh(i  ,j+1,k)) );
             // More temporary variables [H L2 T-2 ~> m3 s-2 or kg s-2].
-            Real const QUHeff = 0.5*( ((abs_vort(i,j,k)+abs_vort(i-1,j,k))*UHeff)
+            Real const QUHeff = 0.5_rt*( ((abs_vort(i,j,k)+abs_vort(i-1,j,k))*UHeff)
                                     - ((abs_vort(i,j,k)-abs_vort(i-1,j,k))*amrex::Math::abs(UHeff)) );
             CAv(i,j,k) = - QUHeff /
                          (h_tiny + ((Heff1+Heff4) +(Heff2+Heff3)) ) * IdyCv(i,j,0);
@@ -1196,10 +1191,10 @@ void coradv_sadourny(const Box& bxH,
     if (CS.Coriolis_En_Dis) {
         //  c1 = 1.0-1.5*RANGE ; c2 = 1.0-RANGE ; c3 = 2.0 ; slope = 0.5
         // Nondimensional parameters for the Coriolis limiter scheme [nondim]
-        constexpr Real c1 = 1.0-1.5*0.5;
-        constexpr Real c2 = 1.0-0.5;
-        constexpr Real c3 = 2.0;
-        constexpr Real slope = 0.5;
+        constexpr Real c1 = 1.0_rt-1.5_rt*0.5_rt;
+        constexpr Real c2 = 1.0_rt-0.5_rt;
+        constexpr Real c3 = 2.0_rt;
+        constexpr Real slope = 0.5_rt;
 
         ParallelFor(bxVx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
@@ -1207,14 +1202,14 @@ void coradv_sadourny(const Box& bxH,
             Real uhc = uh_center(i,j,k);
             Real uhm = uh(i,j,k);
             // This sometimes matters with some types of open boundary conditions.
-            if (dy_Cu(i,j,0) == 0.0) uhc = uhm;
+            if (dy_Cu(i,j,0) == 0.0_rt) uhc = uhm;
 
-            if (amrex::Math::abs(uhc) < 0.1*amrex::Math::abs(uhm)) {
-                uhm = 10.0*uhc;
+            if (amrex::Math::abs(uhc) < 0.1_rt*amrex::Math::abs(uhm)) {
+                uhm = 10.0_rt*uhc;
             } else if (amrex::Math::abs(uhc) > c1*amrex::Math::abs(uhm)) {
-                if (amrex::Math::abs(uhc) < c2*amrex::Math::abs(uhm)) { uhc = (3.0*uhc+(1.0-c2*3.0)*uhm); }
+                if (amrex::Math::abs(uhc) < c2*amrex::Math::abs(uhm)) { uhc = (3.0_rt*uhc+(1.0_rt-c2*3.0_rt)*uhm); }
                 else if (amrex::Math::abs(uhc) <= c3*amrex::Math::abs(uhm)) { uhc = uhm; }
-                else { uhc = slope*uhc+(1.0-c3*slope)*uhm; }
+                else { uhc = slope*uhc+(1.0_rt-c3*slope)*uhm; }
             }
 
             if (uhc > uhm) {
@@ -1230,14 +1225,14 @@ void coradv_sadourny(const Box& bxH,
             Real vhc = vh_center(i,j,k);
             Real vhm = vh(i,j,k);
             // This sometimes matters with some types of open boundary conditions.
-            if (dx_Cv(i,j,0) == 0.0) vhc = vhm;
+            if (dx_Cv(i,j,0) == 0.0_rt) vhc = vhm;
 
-            if (amrex::Math::abs(vhc) < 0.1*amrex::Math::abs(vhm)) {
-                vhm = 10.0*vhc;
+            if (amrex::Math::abs(vhc) < 0.1_rt*amrex::Math::abs(vhm)) {
+                vhm = 10.0_rt*vhc;
             } else if (amrex::Math::abs(vhc) > c1*amrex::Math::abs(vhm)) {
-                if (amrex::Math::abs(vhc) < c2*amrex::Math::abs(vhm)) { vhc = (3.0*vhc+(1.0-c2*3.0)*vhm); }
+                if (amrex::Math::abs(vhc) < c2*amrex::Math::abs(vhm)) { vhc = (3.0_rt*vhc+(1.0_rt-c2*3.0_rt)*vhm); }
                 else if (amrex::Math::abs(vhc) <= c3*amrex::Math::abs(vhm)) { vhc = vhm; }
-                else { vhc = slope*vhc+(1.0-c3*slope)*vhm; }
+                else { vhc = slope*vhc+(1.0_rt-c3*slope)*vhm; }
             }
 
             if (vhc > vhm) {
@@ -1258,29 +1253,29 @@ void coradv_sadourny(const Box& bxH,
             {
                 // Temporary variables [L2 T-2 ~> m2 s-2].
                 Real temp1, temp2;
-                if (q(i,j,k)*u(i,j,k) == 0.0) {
+                if (q(i,j,k)*u(i,j,k) == 0.0_rt) {
                     temp1 = q(i,j,k) * ( (vh_max(i,j,k)+vh_max(i+1,j,k))
-                                       + (vh_min(i,j,k)+vh_min(i+1,j,k)) )*0.5;
-                } else if (q(i,j,k)*u(i,j,k) < 0.0) {
+                                       + (vh_min(i,j,k)+vh_min(i+1,j,k)) )*0.5_rt;
+                } else if (q(i,j,k)*u(i,j,k) < 0.0_rt) {
                     temp1 = q(i,j,k) * (vh_max(i,j,k)+vh_max(i+1,j,k));
                 } else {
                     temp1 = q(i,j,k) * (vh_min(i,j,k)+vh_min(i+1,j,k));
                 }
-                if (q(i,j-1,k)*u(i,j,k) == 0.0) {
+                if (q(i,j-1,k)*u(i,j,k) == 0.0_rt) {
                     temp2 = q(i,j-1,k) * ( (vh_max(i,j-1,k)+vh_max(i+1,j-1,k))
-                                         + (vh_min(i,j-1,k)+vh_min(i+1,j-1,k)) )*0.5;
-                } else if (q(i,j-1,k)*u(i,j,k) < 0.0) {
+                                         + (vh_min(i,j-1,k)+vh_min(i+1,j-1,k)) )*0.5_rt;
+                } else if (q(i,j-1,k)*u(i,j,k) < 0.0_rt) {
                     temp2 = q(i,j-1,k) * (vh_max(i,j-1,k)+vh_max(i+1,j-1,k));
                 } else {
                     temp2 = q(i,j-1,k) * (vh_min(i,j-1,k)+vh_min(i+1,j-1,k));
                 }
-                CAu(i,j,k) = 0.25 * IdxCu(i,j,0) * (temp1 + temp2);
+                CAu(i,j,k) = 0.25_rt * IdxCu(i,j,0) * (temp1 + temp2);
             });
         } else {
             // Energy conserving scheme, Sadourny 1975
             ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                CAu(i,j,k) = 0.25 *
+                CAu(i,j,k) = 0.25_rt *
                   ((q(i,j,k) * (vh(i+1,j,k) + vh(i,j,k))) +
                    (q(i,j-1,k) * (vh(i,j-1,k) + vh(i+1,j-1,k)))) * IdxCu(i,j,0);
             });
@@ -1288,7 +1283,7 @@ void coradv_sadourny(const Box& bxH,
     } else if (CS.Coriolis_Scheme == SADOURNY75_ENSTRO) {
         ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            CAu(i,j,k) = 0.125 * (IdxCu(i,j,0) * (q(i,j,k) + q(i,j-1,k))) *
+            CAu(i,j,k) = 0.125_rt * (IdxCu(i,j,0) * (q(i,j,k) + q(i,j-1,k))) *
                          ((vh(i+1,j,k) + vh(i,j,k)) + (vh(i,j-1,k) + vh(i+1,j-1,k)));
         });
     }
@@ -1303,29 +1298,29 @@ void coradv_sadourny(const Box& bxH,
             {
                 // Temporary variables [L2 T-2 ~> m2 s-2].
                 Real temp1, temp2;
-                if (q(i-1,j,k)*v(i,j,k) == 0.0) {
+                if (q(i-1,j,k)*v(i,j,k) == 0.0_rt) {
                     temp1 = q(i-1,j,k) * ( (uh_max(i-1,j,k)+uh_max(i-1,j+1,k))
-                                         + (uh_min(i-1,j,k)+uh_min(i-1,j+1,k)) )*0.5;
-                } else if (q(i-1,j,k)*v(i,j,k) > 0.0) {
+                                         + (uh_min(i-1,j,k)+uh_min(i-1,j+1,k)) )*0.5_rt;
+                } else if (q(i-1,j,k)*v(i,j,k) > 0.0_rt) {
                     temp1 = q(i-1,j,k) * (uh_max(i-1,j,k)+uh_max(i-1,j+1,k));
                 } else {
                     temp1 = q(i-1,j,k) * (uh_min(i-1,j,k)+uh_min(i-1,j+1,k));
                 }
-                if (q(i,j,k)*v(i,j,k) == 0.0) {
+                if (q(i,j,k)*v(i,j,k) == 0.0_rt) {
                     temp2 = q(i,j,k) * ( (uh_max(i,j,k)+uh_max(i,j+1,k))
-                                       + (uh_min(i,j,k)+uh_min(i,j+1,k)) )*0.5;
-                } else if (q(i,j,k)*v(i,j,k) > 0.0) {
+                                       + (uh_min(i,j,k)+uh_min(i,j+1,k)) )*0.5_rt;
+                } else if (q(i,j,k)*v(i,j,k) > 0.0_rt) {
                     temp2 = q(i,j,k) * (uh_max(i,j,k)+uh_max(i,j+1,k));
                 } else {
                     temp2 = q(i,j,k) * (uh_min(i,j,k)+uh_min(i,j+1,k));
                 }
-                CAv(i,j,k) = -0.25 * IdyCv(i,j,0) * (temp1 + temp2);
+                CAv(i,j,k) = -0.25_rt * IdyCv(i,j,0) * (temp1 + temp2);
             });
         } else {
             // Energy conserving scheme, Sadourny 1975
             ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                CAv(i,j,k) = - 0.25*
+                CAv(i,j,k) = - 0.25_rt*
                     ((q(i-1,j,k)*(uh(i-1,j,k) + uh(i-1,j+1,k))) +
                      (q(i,j,k)*(uh(i,j,k) + uh(i,j+1,k)))) * IdyCv(i,j,0);
             });
@@ -1333,7 +1328,7 @@ void coradv_sadourny(const Box& bxH,
     } else if (CS.Coriolis_Scheme == SADOURNY75_ENSTRO) {
         ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            CAv(i,j,k) = -0.125 * (IdyCv(i,j,0) * (q(i-1,j,k) + q(i,j,k))) *
+            CAv(i,j,k) = -0.125_rt * (IdyCv(i,j,0) * (q(i-1,j,k) + q(i,j,k))) *
                          ((uh(i-1,j,k) + uh(i-1,j+1,k)) + (uh(i,j,k) + uh(i,j+1,k)));
         });
     }
@@ -1344,8 +1339,7 @@ namespace {
 /// The zonal Coriolis and momentum advection acceleration at one u point with the WENO PV
 /// reconstruction of order up to MaxOrder (7, 5 or 3).
 template <int MaxOrder, bool VelocitySmoothing>
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void coradv_weno_cau_cell(int i, int j, int k,
                           Array4<const Real> const& u,
                           Array4<const Real> const& vh,
@@ -1358,7 +1352,7 @@ void coradv_weno_cau_cell(int i, int j, int k,
                           Array4<Real> const& CAu) noexcept
 {
     // v_u is the v velocity at u point [L T-1 ~> m s-1]
-    Real const v_u = 0.25*IdxCu(i,j,0)*((vh(i+1,j,k) + vh(i,j,k)) + (vh(i,j-1,k) + vh(i+1,j-1,k)));
+    Real const v_u = 0.25_rt*IdxCu(i,j,0)*((vh(i+1,j,k) + vh(i,j,k)) + (vh(i,j-1,k) + vh(i+1,j-1,k)));
     // PV at the u point [H-1 T-1 ~> m-1 s-1 or m2 kg-1 s-1]
     Real q_u;
     // Order of accuracy for the WENO calculations
@@ -1382,7 +1376,7 @@ void coradv_weno_cau_cell(int i, int j, int k,
         if constexpr (VelocitySmoothing) {
             // Eight-point zonal velocity at WENO stencils [L T-1 ~> m s-1]
             Real u_q8[8];
-            for (int n = 0; n < 8; ++n) { u_q8[n] = (u(i,j-4+n,k) + u(i,j-3+n,k)) * 0.5; }
+            for (int n = 0; n < 8; ++n) { u_q8[n] = (u(i,j-4+n,k) + u(i,j-3+n,k)) * 0.5_rt; }
             weno_seven_h_weight_reconstruction_point(q8, h8, u_q8, H_subroundoff, v_u, q_u);
         } else {
             weno_seven_h_weight_reconstruction_point(q8, h8, q8, H_subroundoff, v_u, q_u);
@@ -1396,7 +1390,7 @@ void coradv_weno_cau_cell(int i, int j, int k,
         if constexpr (VelocitySmoothing) {
             // Six-point zonal velocity at WENO stencils [L T-1 ~> m s-1]
             Real u_q6[6];
-            for (int n = 0; n < 6; ++n) { u_q6[n] = (u(i,j-3+n,k) + u(i,j-2+n,k)) * 0.5; }
+            for (int n = 0; n < 6; ++n) { u_q6[n] = (u(i,j-3+n,k) + u(i,j-2+n,k)) * 0.5_rt; }
             weno_five_h_weight_reconstruction_point(q6, h6, u_q6, H_subroundoff, v_u, q_u);
         } else {
             weno_five_h_weight_reconstruction_point(q6, h6, q6, H_subroundoff, v_u, q_u);
@@ -1410,7 +1404,7 @@ void coradv_weno_cau_cell(int i, int j, int k,
         if constexpr (VelocitySmoothing) {
             // Four-point zonal velocity at WENO stencils [L T-1 ~> m s-1]
             Real u_q4[4];
-            for (int n = 0; n < 4; ++n) { u_q4[n] = (u(i,j-2+n,k) + u(i,j-1+n,k)) * 0.5; }
+            for (int n = 0; n < 4; ++n) { u_q4[n] = (u(i,j-2+n,k) + u(i,j-1+n,k)) * 0.5_rt; }
             weno_three_h_weight_reconstruction_point(q4, h4, u_q4, H_subroundoff, v_u, q_u);
         } else {
             weno_three_h_weight_reconstruction_point(q4, h4, q4, H_subroundoff, v_u, q_u);
@@ -1418,7 +1412,7 @@ void coradv_weno_cau_cell(int i, int j, int k,
         CAu(i,j,k) = (q_u * v_u);
 
     } else { // Upwind first order
-        if (v_u > 0.0) {
+        if (v_u > 0.0_rt) {
             q_u = q(i,j-1,k);
         } else {
             q_u = q(i,j,k);
@@ -1430,8 +1424,7 @@ void coradv_weno_cau_cell(int i, int j, int k,
 /// The meridional Coriolis and momentum advection acceleration at one v point with the WENO PV
 /// reconstruction of order up to MaxOrder (7, 5 or 3).
 template <int MaxOrder, bool VelocitySmoothing>
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void coradv_weno_cav_cell(int i, int j, int k,
                           Array4<const Real> const& v,
                           Array4<const Real> const& uh,
@@ -1444,7 +1437,7 @@ void coradv_weno_cav_cell(int i, int j, int k,
                           Array4<Real> const& CAv) noexcept
 {
     // u_v is the u velocity at v point [L T-1 ~> m s-1]
-    Real const u_v = 0.25*IdyCv(i,j,0)*((uh(i-1,j,k) + uh(i-1,j+1,k)) + (uh(i,j,k) + uh(i,j+1,k)));
+    Real const u_v = 0.25_rt*IdyCv(i,j,0)*((uh(i-1,j,k) + uh(i-1,j+1,k)) + (uh(i,j,k) + uh(i,j+1,k)));
     // PV at the v point [H-1 T-1 ~> m-1 s-1 or m2 kg-1 s-1]
     Real q_v;
     // Order of accuracy for the WENO calculations
@@ -1468,7 +1461,7 @@ void coradv_weno_cav_cell(int i, int j, int k,
         if constexpr (VelocitySmoothing) {
             // Eight-point meridional velocity at WENO stencils [L T-1 ~> m s-1]
             Real v_q8[8];
-            for (int n = 0; n < 8; ++n) { v_q8[n] = (v(i-4+n,j,k) + v(i-3+n,j,k)) * 0.5; }
+            for (int n = 0; n < 8; ++n) { v_q8[n] = (v(i-4+n,j,k) + v(i-3+n,j,k)) * 0.5_rt; }
             weno_seven_h_weight_reconstruction_point(q8, h8, v_q8, H_subroundoff, u_v, q_v);
         } else {
             weno_seven_h_weight_reconstruction_point(q8, h8, q8, H_subroundoff, u_v, q_v);
@@ -1482,7 +1475,7 @@ void coradv_weno_cav_cell(int i, int j, int k,
         if constexpr (VelocitySmoothing) {
             // Six-point meridional velocity at WENO stencils [L T-1 ~> m s-1]
             Real v_q6[6];
-            for (int n = 0; n < 6; ++n) { v_q6[n] = (v(i-3+n,j,k) + v(i-2+n,j,k)) * 0.5; }
+            for (int n = 0; n < 6; ++n) { v_q6[n] = (v(i-3+n,j,k) + v(i-2+n,j,k)) * 0.5_rt; }
             weno_five_h_weight_reconstruction_point(q6, h6, v_q6, H_subroundoff, u_v, q_v);
         } else {
             weno_five_h_weight_reconstruction_point(q6, h6, q6, H_subroundoff, u_v, q_v);
@@ -1496,7 +1489,7 @@ void coradv_weno_cav_cell(int i, int j, int k,
         if constexpr (VelocitySmoothing) {
             // Four-point meridional velocity at WENO stencils [L T-1 ~> m s-1]
             Real v_q4[4];
-            for (int n = 0; n < 4; ++n) { v_q4[n] = (v(i-2+n,j,k) + v(i-1+n,j,k)) * 0.5; }
+            for (int n = 0; n < 4; ++n) { v_q4[n] = (v(i-2+n,j,k) + v(i-1+n,j,k)) * 0.5_rt; }
             weno_three_h_weight_reconstruction_point(q4, h4, v_q4, H_subroundoff, u_v, q_v);
         } else {
             weno_three_h_weight_reconstruction_point(q4, h4, q4, H_subroundoff, u_v, q_v);
@@ -1504,7 +1497,7 @@ void coradv_weno_cav_cell(int i, int j, int k,
         CAv(i,j,k) = - (q_v * u_v);
 
     } else { // Upwind first order!
-        if (u_v > 0.0) {
+        if (u_v > 0.0_rt) {
             q_v = q(i-1,j,k);
         } else {
             q_v = q(i,j,k);
@@ -1698,7 +1691,7 @@ void coradcalc_tr(const Box& bxH0,
     const int js = bxH0.smallEnd(1);
     const int je = bxH0.bigEnd(1);
     const int nkblock = (CS.nkblock == 0) ? nz : CS.nkblock;
-    const Real neglect_len = 1e-4 * m_to_L;
+    const Real neglect_len = 1e-4_rt * m_to_L;
     // A volume so small that is expected to be
     // lost in roundoff [H L2 ~> m3 or kg].
     const Real vol_neglect = H_subroundoff * (neglect_len*neglect_len);
@@ -1706,7 +1699,7 @@ void coradcalc_tr(const Box& bxH0,
     // lost in roundoff [L2 ~> m2].
     const Real area_neglect = (neglect_len*neglect_len);
     // A tiny, positive velocity [L T-1 ~> m s-1].
-    const Real eps_vel = 1.0e-10*m_s_to_L_T;
+    const Real eps_vel = 1.0e-10_rt*m_s_to_L_T;
     // A very small thickness [H ~> m or kg m-2].
     const Real h_tiny = Angstrom_H;  // Perhaps this should be set to h_neglect instead.
 
@@ -1800,11 +1793,11 @@ void coradcalc_tr(const Box& bxH0,
 
     // Hoist AL_BLEND k-independent scalars out of the tile loop.
     // Temporary variables associated with the ARAKAWA_LAMB_BLEND scheme [nondim]
-    Real Fe_m2 = 0.0, rat_lin = 0.0;
+    Real Fe_m2 = 0.0_rt, rat_lin = 0.0_rt;
     if (CS.Coriolis_scheme_CS.Coriolis_Scheme == AL_BLEND) {
-        Fe_m2 = CS.F_eff_max_blend - 2.0;
-        rat_lin = 1.5 * Fe_m2 / amrex::max(CS.wt_lin_blend, 1.0e-16);
-        if (CS.F_eff_max_blend <= 2.0) { Fe_m2 = -1.; rat_lin = -1.0; }
+        Fe_m2 = CS.F_eff_max_blend - 2.0_rt;
+        rat_lin = 1.5_rt * Fe_m2 / amrex::max(CS.wt_lin_blend, 1.0e-16_rt);
+        if (CS.F_eff_max_blend <= 2.0_rt) { Fe_m2 = -1._rt; rat_lin = -1.0_rt; }
     }
 
     // Loop over iteration tiles.  Each tile covers the whole horizontal compute domain and

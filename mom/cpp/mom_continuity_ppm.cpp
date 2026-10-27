@@ -1267,10 +1267,7 @@ void zonal_BT_mass_flux(
              IntVect(bxU.bigEnd(0),   bxU.bigEnd(1),   0));
 
     // Zero all of uhbt (halo included)
-    ParallelFor(Box(uhbt), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-    {
-        uhbt(i,j,k) = 0.0_rt;
-    });
+    FArrayBox(uhbt).setVal<amrex::RunOn::Device>(0.0_rt);
 
     ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
     {
@@ -1350,10 +1347,7 @@ void meridional_BT_mass_flux(
              IntVect(bxV.bigEnd(0),   bxV.bigEnd(1),   0));
 
     // Zero all of vhbt (halo included)
-    ParallelFor(Box(vhbt), [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-    {
-        vhbt(i,j,k) = 0.0_rt;
-    });
+    FArrayBox(vhbt).setVal<amrex::RunOn::Device>(0.0_rt);
 
     ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
     {

@@ -19,8 +19,7 @@ using amrex::Real;
  *  @param h       [in]  Layer thickness [H ~> m or kg m-2]
  *  @param h_to_z  [in]  Conversion factor H → Z [Z H-1]
  */
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void thickness_to_dz_3d_boussinesq_point(Real& dz,
                                          Real const h,
                                          Real const h_to_z) noexcept
@@ -38,8 +37,7 @@ void thickness_to_dz_3d_boussinesq_point(Real& dz,
  *  @param spv     [in]  Layer-mean specific volume [R-1 ~> m3 kg-1]
  *  @param h_to_rz [in]  Conversion factor H → R*Z [R Z H-1]
  */
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void thickness_to_dz_3d_nonboussinesq_point(Real& dz,
                                             Real const h,
                                             Real const spv,

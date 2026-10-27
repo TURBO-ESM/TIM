@@ -695,6 +695,31 @@ PR #8's ~30 commits surface the friction worth flagging:
     - **Where it slipped:** the CorAdCalc, vertvisc and interface-heights
       ports used bare literals because this list did not ask for `_rt`.
       `mom_hor_visc` was converted afterwards.
+20. **Plain fills and copies use the `BaseFab` member functions, not
+    hand-written loops.** Wrap the `Array4` in a non-owning
+    `FArrayBox(arr)` and call the AMReX member function. The wrapper
+    neither allocates nor copies; it just views the same memory.
+
+    | Instead of a `ParallelFor` that … | Write |
+    |---|---|
+    | sets every point of `arr` to `v` | `FArrayBox(arr).setVal<RunOn::Device>(v);` |
+    | sets the points of `bx` to `v` | `FArrayBox(arr).setVal<RunOn::Device>(v, bx);` |
+    | copies all of `src` into a scratch FAB on `Box(src)` | `dst_fab.copy<RunOn::Device>(FArrayBox(src));` |
+
+    - **Scope:** this is only for loops whose body is a single assignment of
+      one value, or a straight copy.
+    - **Keep the box:** pass the same box the loop would have iterated over,
+      so results are unchanged. That box must lie inside the array's extent.
+    - **Comments:** any Fortran comment on the original assignment goes on a
+      `///` line above the call.
+    - **When to keep the loop:** a loop that sets a value and then computes
+      in the same pass stays a `ParallelFor`, for example
+      `visc_bound_rem = 1.0_rt` followed by the bounding logic. So does a
+      copy between differently shaped boxes, such as one layer of a 3-D
+      block into a 2-D buffer.
+    - **Where it slipped:** `mom_hor_visc` first shipped 21 hand-written
+      zero-fill loops and a `copy_prev_field` helper. Both were converted
+      afterwards.
 
 ---
 

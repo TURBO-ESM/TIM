@@ -18,6 +18,7 @@
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 
 using namespace amrex;
+using namespace amrex::literals;
 
 namespace MOM {
 
@@ -57,7 +58,7 @@ void vertvisc_limit_vel(const Box& bxU0,
     const int nz = ke;
 
     /// A thickness below which not to report truncations [H ~> m or kg m-2]
-    const Real H_report = 3.0 * Angstrom_H;
+    const Real H_report = 3.0_rt * Angstrom_H;
 
     Box colU = bxU0;
     colU.setSmall(2, 0);
@@ -70,7 +71,7 @@ void vertvisc_limit_vel(const Box& bxU0,
         ParallelFor(colU, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
             dowrite_u(i,j,0) = 0;
-            vel_report_u(i,j,0) = 3.0e8 * m_s_to_L_T;
+            vel_report_u(i,j,0) = 3.0e8_rt * m_s_to_L_T;
         });
 
         ReduceOps<ReduceOpLogicalOr> reduce_op;
@@ -82,8 +83,8 @@ void vertvisc_limit_vel(const Box& bxU0,
             int trunc_any = 0;
             for (int k = 0; k < nz; ++k) {
                 Real CFL;  ///< The local CFL number [nondim]
-                if (Math::abs(u(i,j,k)) < vel_underflow) u(i,j,k) = 0.0;
-                if (u(i,j,k) < 0.0) {
+                if (Math::abs(u(i,j,k)) < vel_underflow) u(i,j,k) = 0.0_rt;
+                if (u(i,j,k) < 0.0_rt) {
                     CFL = (-u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i+1,j,0));
                 } else {
                     CFL = (u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i,j,0));
@@ -114,13 +115,14 @@ void vertvisc_limit_vel(const Box& bxU0,
 
             sum_op.eval(bxU0, sum_data, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept -> SumTuple
             {
+                /// Thread-safe truncation counter
                 int ntrunc = 0;
                 if ((u(i,j,k) * (dt * dy_Cu(i,j,0))) * IareaT(i+1,j,0) < -CFL_trunc) {
-                    u(i,j,k) = (-0.9*CFL_trunc) * (areaT(i+1,j,0) / (dt * dy_Cu(i,j,0)));
+                    u(i,j,k) = (-0.9_rt*CFL_trunc) * (areaT(i+1,j,0) / (dt * dy_Cu(i,j,0)));
                     if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                         (h_u(i,j,k) > H_report)) ntrunc = ntrunc + 1;
                 } else if ((u(i,j,k) * (dt * dy_Cu(i,j,0))) * IareaT(i,j,0) > CFL_trunc) {
-                    u(i,j,k) = (0.9*CFL_trunc) * (areaT(i,j,0) / (dt * dy_Cu(i,j,0)));
+                    u(i,j,k) = (0.9_rt*CFL_trunc) * (areaT(i,j,0) / (dt * dy_Cu(i,j,0)));
                     if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                         (h_u(i,j,k) > H_report)) ntrunc = ntrunc + 1;
                 }
@@ -136,15 +138,16 @@ void vertvisc_limit_vel(const Box& bxU0,
 
         sum_op.eval(bxU0, sum_data, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept -> SumTuple
         {
+            /// Thread-safe truncation counter
             int ntrunc = 0;
             if (Math::abs(u(i,j,k)) < vel_underflow) {
-                u(i,j,k) = 0.0;
+                u(i,j,k) = 0.0_rt;
             } else if ((u(i,j,k) * (dt * dy_Cu(i,j,0))) * IareaT(i+1,j,0) < -CFL_trunc) {
-                u(i,j,k) = (-0.9*CFL_trunc) * (areaT(i+1,j,0) / (dt * dy_Cu(i,j,0)));
+                u(i,j,k) = (-0.9_rt*CFL_trunc) * (areaT(i+1,j,0) / (dt * dy_Cu(i,j,0)));
                 if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                     (h_u(i,j,k) > H_report)) ntrunc = ntrunc + 1;
             } else if ((u(i,j,k) * (dt * dy_Cu(i,j,0))) * IareaT(i,j,0) > CFL_trunc) {
-                u(i,j,k) = (0.9*CFL_trunc) * (areaT(i,j,0) / (dt * dy_Cu(i,j,0)));
+                u(i,j,k) = (0.9_rt*CFL_trunc) * (areaT(i,j,0) / (dt * dy_Cu(i,j,0)));
                 if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                     (h_u(i,j,k) > H_report)) ntrunc = ntrunc + 1;
             }
@@ -157,7 +160,7 @@ void vertvisc_limit_vel(const Box& bxU0,
         ParallelFor(colV, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
             dowrite_v(i,j,0) = 0;
-            vel_report_v(i,j,0) = 3.0e8 * m_s_to_L_T;
+            vel_report_v(i,j,0) = 3.0e8_rt * m_s_to_L_T;
         });
 
         ReduceOps<ReduceOpLogicalOr> reduce_op;
@@ -169,8 +172,8 @@ void vertvisc_limit_vel(const Box& bxU0,
             int trunc_any = 0;
             for (int k = 0; k < nz; ++k) {
                 Real CFL;  ///< The local CFL number [nondim]
-                if (Math::abs(v(i,j,k)) < vel_underflow) v(i,j,k) = 0.0;
-                if (v(i,j,k) < 0.0) {
+                if (Math::abs(v(i,j,k)) < vel_underflow) v(i,j,k) = 0.0_rt;
+                if (v(i,j,k) < 0.0_rt) {
                     CFL = (-v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j+1,0));
                 } else {
                     CFL = (v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j,0));
@@ -201,13 +204,14 @@ void vertvisc_limit_vel(const Box& bxU0,
 
             sum_op.eval(bxV0, sum_data, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept -> SumTuple
             {
+                /// Thread-safe truncation counter
                 int ntrunc = 0;
                 if ((v(i,j,k) * (dt * dx_Cv(i,j,0))) * IareaT(i,j+1,0) < -CFL_trunc) {
-                    v(i,j,k) = (-0.9*CFL_trunc) * (areaT(i,j+1,0) / (dt * dx_Cv(i,j,0)));
+                    v(i,j,k) = (-0.9_rt*CFL_trunc) * (areaT(i,j+1,0) / (dt * dx_Cv(i,j,0)));
                     if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                         (h_v(i,j,k) > H_report)) ntrunc = ntrunc + 1;
                 } else if ((v(i,j,k) * (dt * dx_Cv(i,j,0))) * IareaT(i,j,0) > CFL_trunc) {
-                    v(i,j,k) = (0.9*CFL_trunc) * (areaT(i,j,0) / (dt * dx_Cv(i,j,0)));
+                    v(i,j,k) = (0.9_rt*CFL_trunc) * (areaT(i,j,0) / (dt * dx_Cv(i,j,0)));
                     if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                         (h_v(i,j,k) > H_report)) ntrunc = ntrunc + 1;
                 }
@@ -223,15 +227,16 @@ void vertvisc_limit_vel(const Box& bxU0,
 
         sum_op.eval(bxV0, sum_data, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept -> SumTuple
         {
+            /// Thread-safe truncation counter
             int ntrunc = 0;
             if (Math::abs(v(i,j,k)) < vel_underflow) {
-                v(i,j,k) = 0.0;
+                v(i,j,k) = 0.0_rt;
             } else if ((v(i,j,k) * (dt * dx_Cv(i,j,0))) * IareaT(i,j+1,0) < -CFL_trunc) {
-                v(i,j,k) = (-0.9*CFL_trunc) * (areaT(i,j+1,0) / (dt * dx_Cv(i,j,0)));
+                v(i,j,k) = (-0.9_rt*CFL_trunc) * (areaT(i,j+1,0) / (dt * dx_Cv(i,j,0)));
                 if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                     (h_v(i,j,k) > H_report)) ntrunc = ntrunc + 1;
             } else if ((v(i,j,k) * (dt * dx_Cv(i,j,0))) * IareaT(i,j,0) > CFL_trunc) {
-                v(i,j,k) = (0.9*CFL_trunc) * (areaT(i,j,0) / (dt * dx_Cv(i,j,0)));
+                v(i,j,k) = (0.9_rt*CFL_trunc) * (areaT(i,j,0) / (dt * dx_Cv(i,j,0)));
                 if (((i >= is) && (i <= ie) && (j >= js) && (j <= je)) &&
                     (h_v(i,j,k) > H_report)) ntrunc = ntrunc + 1;
             }
@@ -283,11 +288,15 @@ void vertvisc_remnant_tr(const Box& bxU0,
     if (Ray_u.p != nullptr) {
         ParallelFor(colU, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCu(i,j,0) > 0.0)) return;
+            if (!(mask2dCu(i,j,0) > 0.0_rt)) return;
+            /// Ray is the Rayleigh-drag velocity [H T-1 ~> m s-1 or Pa s m-1]
             Real Ray = Ray_u(i,j,0);
 
+            /// The first term in the denominator of b1 [H ~> m or kg m-2].
             Real b_denom_1 = h_u(i,j,0) + dt * (Ray + a_u(i,j,0));
-            Real b1 = 1.0 / (b_denom_1 + dt * a_u(i,j,1));
+            /// A variable used by the tridiagonal solver [H-1 ~> m-1 or m2 kg-1].
+            Real b1 = 1.0_rt / (b_denom_1 + dt * a_u(i,j,1));
+            /// d1=1-c1 is used by the tridiagonal solver [nondim].
             Real d1 = b_denom_1 * b1;
             visc_rem_u(i,j,0) = b1 * h_u(i,j,0);
 
@@ -296,7 +305,7 @@ void vertvisc_remnant_tr(const Box& bxU0,
 
                 c1U(i,j,k) = dt * a_u(i,j,k) * b1;
                 b_denom_1 = h_u(i,j,k) + dt * (Ray + a_u(i,j,k) * d1);
-                b1 = 1.0 / (b_denom_1 + dt * a_u(i,j,k+1));
+                b1 = 1.0_rt / (b_denom_1 + dt * a_u(i,j,k+1));
                 d1 = b_denom_1 * b1;
                 visc_rem_u(i,j,k) = (h_u(i,j,k) + dt * a_u(i,j,k) * visc_rem_u(i,j,k-1)) * b1;
 
@@ -312,18 +321,22 @@ void vertvisc_remnant_tr(const Box& bxU0,
     } else {
         ParallelFor(colU, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCu(i,j,0) > 0.0)) return;
-            const Real Ray = 0.0;
+            if (!(mask2dCu(i,j,0) > 0.0_rt)) return;
+            /// Ray is the Rayleigh-drag velocity [H T-1 ~> m s-1 or Pa s m-1]
+            const Real Ray = 0.0_rt;
 
+            /// The first term in the denominator of b1 [H ~> m or kg m-2].
             Real b_denom_1 = h_u(i,j,0) + dt * (Ray + a_u(i,j,0));
-            Real b1 = 1.0 / (b_denom_1 + dt * a_u(i,j,1));
+            /// A variable used by the tridiagonal solver [H-1 ~> m-1 or m2 kg-1].
+            Real b1 = 1.0_rt / (b_denom_1 + dt * a_u(i,j,1));
+            /// d1=1-c1 is used by the tridiagonal solver [nondim].
             Real d1 = b_denom_1 * b1;
             visc_rem_u(i,j,0) = b1 * h_u(i,j,0);
 
             for (int k = 1; k < nz; ++k) {
                 c1U(i,j,k) = dt * a_u(i,j,k) * b1;
                 b_denom_1 = h_u(i,j,k) + dt * (Ray + a_u(i,j,k) * d1);
-                b1 = 1.0 / (b_denom_1 + dt * a_u(i,j,k+1));
+                b1 = 1.0_rt / (b_denom_1 + dt * a_u(i,j,k+1));
                 d1 = b_denom_1 * b1;
                 visc_rem_u(i,j,k) = (h_u(i,j,k) + dt * a_u(i,j,k) * visc_rem_u(i,j,k-1)) * b1;
 
@@ -342,11 +355,15 @@ void vertvisc_remnant_tr(const Box& bxU0,
     if (Ray_v.p != nullptr) {
         ParallelFor(colV, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCv(i,j,0) > 0.0)) return;
+            if (!(mask2dCv(i,j,0) > 0.0_rt)) return;
+            /// Ray is the Rayleigh-drag velocity [H T-1 ~> m s-1 or Pa s m-1]
             Real Ray = Ray_v(i,j,0);
 
+            /// The first term in the denominator of b1 [H ~> m or kg m-2].
             Real b_denom_1 = h_v(i,j,0) + dt * (Ray + a_v(i,j,0));
-            Real b1 = 1.0 / (b_denom_1 + dt * a_v(i,j,1));
+            /// A variable used by the tridiagonal solver [H-1 ~> m-1 or m2 kg-1].
+            Real b1 = 1.0_rt / (b_denom_1 + dt * a_v(i,j,1));
+            /// d1=1-c1 is used by the tridiagonal solver [nondim].
             Real d1 = b_denom_1 * b1;
             visc_rem_v(i,j,0) = b1 * h_v(i,j,0);
 
@@ -355,7 +372,7 @@ void vertvisc_remnant_tr(const Box& bxU0,
 
                 c1V(i,j,k) = dt * a_v(i,j,k) * b1;
                 b_denom_1 = h_v(i,j,k) + dt * (Ray + a_v(i,j,k) * d1);
-                b1 = 1.0 / (b_denom_1 + dt * a_v(i,j,k+1));
+                b1 = 1.0_rt / (b_denom_1 + dt * a_v(i,j,k+1));
                 d1 = b_denom_1 * b1;
                 visc_rem_v(i,j,k) = (h_v(i,j,k) + dt * a_v(i,j,k) * visc_rem_v(i,j,k-1)) * b1;
 
@@ -371,18 +388,22 @@ void vertvisc_remnant_tr(const Box& bxU0,
     } else {
         ParallelFor(colV, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCv(i,j,0) > 0.0)) return;
-            const Real Ray = 0.0;
+            if (!(mask2dCv(i,j,0) > 0.0_rt)) return;
+            /// Ray is the Rayleigh-drag velocity [H T-1 ~> m s-1 or Pa s m-1]
+            const Real Ray = 0.0_rt;
 
+            /// The first term in the denominator of b1 [H ~> m or kg m-2].
             Real b_denom_1 = h_v(i,j,0) + dt * (Ray + a_v(i,j,0));
-            Real b1 = 1.0 / (b_denom_1 + dt * a_v(i,j,1));
+            /// A variable used by the tridiagonal solver [H-1 ~> m-1 or m2 kg-1].
+            Real b1 = 1.0_rt / (b_denom_1 + dt * a_v(i,j,1));
+            /// d1=1-c1 is used by the tridiagonal solver [nondim].
             Real d1 = b_denom_1 * b1;
             visc_rem_v(i,j,0) = b1 * h_v(i,j,0);
 
             for (int k = 1; k < nz; ++k) {
                 c1V(i,j,k) = dt * a_v(i,j,k) * b1;
                 b_denom_1 = h_v(i,j,k) + dt * (Ray + a_v(i,j,k) * d1);
-                b1 = 1.0 / (b_denom_1 + dt * a_v(i,j,k+1));
+                b1 = 1.0_rt / (b_denom_1 + dt * a_v(i,j,k+1));
                 d1 = b_denom_1 * b1;
                 visc_rem_v(i,j,k) = (h_v(i,j,k) + dt * a_v(i,j,k) * visc_rem_v(i,j,k-1)) * b1;
 
@@ -443,31 +464,31 @@ void vertfpmix_tr(const Box& bxU0,
         Real depth;          ///< Cumulative of thicknesses [H ~> m]
 
         taux_u  = taux(i,j,0) * Irho0;
-        if ( (mask2dCu(i,j,0) > 0.5) ) {
+        if ( (mask2dCu(i,j,0) > 0.5_rt) ) {
             /// h to u-pts
-            tmp_u  = amrex::max(1.0 ,(mask2dT(i,j,0) + mask2dT(i+1,j,0) ) );
+            tmp_u  = amrex::max(1.0_rt ,(mask2dT(i,j,0) + mask2dT(i+1,j,0) ) );
             hbl_u = ((mask2dT(i,j,0) * hbl_h(i,j,0)) + (mask2dT(i+1,j,0) * hbl_h(i+1,j,0))) / tmp_u;
-            depth   = 0.0;
-            Gat1  = 0.0;
+            depth   = 0.0_rt;
+            Gat1  = 0.0_rt;
             for (int k = klo; k <= khi; ++k) {
                 /// cell center
-                depth = depth + 0.5*h_u(i,j,k);
+                depth = depth + 0.5_rt*h_u(i,j,k);
                 uE_u(i,j,k) = ui(i,j,k) - Us_x(i,j,k);
                 if ( depth < hbl_u ) {
                     sigma = depth / hbl_u;
                     /// cell bottom
-                    depth = depth + 0.5*h_u(i,j,k);
+                    depth = depth + 0.5_rt*h_u(i,j,k);
                     fpmix_gshape_point(sigma, Gat1, Gsig, dGdsig);
                     /// nonlocal boundary-layer increment
                     uInc_u(i,j,k)  = dt * Cemp_NL * taux_u * dGdsig / hbl_u;
                     ui(i,j,k) = ui(i,j,k) + uInc_u(i,j,k);
                 } else {
-                    uInc_u(i,j,k) = 0.0;
+                    uInc_u(i,j,k) = 0.0_rt;
                 }
             }
         } else {
             for (int k = klo; k <= khi; ++k) {
-                uInc_u(i,j,k) = 0.0;
+                uInc_u(i,j,k) = 0.0_rt;
             }
         }
     });
@@ -483,31 +504,31 @@ void vertfpmix_tr(const Box& bxU0,
         Real depth;          ///< Cumulative of thicknesses [H ~> m]
 
         tauy_v  = tauy(i,j,0) * Irho0;
-        if ( (mask2dCv(i,j,0) > 0.5) ) {
+        if ( (mask2dCv(i,j,0) > 0.5_rt) ) {
             /// h to v-pts
-            tmp_v  = amrex::max( 1.0 ,(mask2dT(i,j,0) + mask2dT(i,j+1,0)));
+            tmp_v  = amrex::max( 1.0_rt ,(mask2dT(i,j,0) + mask2dT(i,j+1,0)));
             hbl_v = (mask2dT(i,j,0) * hbl_h(i,j,0) + mask2dT(i,j+1,0) * hbl_h(i,j+1,0)) / tmp_v;
-            depth = 0.0;
-            Gat1  = 0.0;
+            depth = 0.0_rt;
+            Gat1  = 0.0_rt;
             for (int k = klo; k <= khi; ++k) {
                 /// cell center
-                depth = depth + 0.5* h_v(i,j,k);
+                depth = depth + 0.5_rt* h_v(i,j,k);
                 vE_v(i,j,k) = vi(i,j,k) - Us_y(i,j,k);
                 if ( depth < hbl_v ) {
                     sigma = depth / hbl_v;
                     /// cell bottom
-                    depth = depth + 0.5* h_v(i,j,k);
+                    depth = depth + 0.5_rt* h_v(i,j,k);
                     fpmix_gshape_point(sigma, Gat1, Gsig, dGdsig);
                     /// nonlocal boundary-layer increment
                     vInc_v(i,j,k) = dt * Cemp_NL * tauy_v * dGdsig / hbl_v;
                     vi(i,j,k) = vi(i,j,k) + vInc_v(i,j,k);
                 } else {
-                    vInc_v(i,j,k)  = 0.0;
+                    vInc_v(i,j,k)  = 0.0_rt;
                 }
             }
         } else {
             for (int k = klo; k <= khi; ++k) {
-                vInc_v(i,j,k)  = 0.0;
+                vInc_v(i,j,k)  = 0.0_rt;
             }
         }
     });
@@ -597,11 +618,11 @@ void vertvisc_coef_tr(const Box& bxU0,
     const Real dz_neglect = dZ_subroundoff;
     /// The maximum drag coefficient across interfaces, set so that it will be representable as a
     /// 32-bit float in MKS units [H T-1 ~> m s-1 or Pa s m-1]
-    const Real a_cpl_max = 1.0e37 * m_to_H * T_to_s;
+    const Real a_cpl_max = 1.0e37_rt * m_to_H * T_to_s;
     /// The inverse of a scaling factor determining when water is still within the boundary layer,
     /// as determined by the sum of the harmonic mean thicknesses [nondim].
-    Real I_valBL = 0.0;
-    if (harm_BL_val > 0.0) I_valBL = 1.0 / harm_BL_val;
+    Real I_valBL = 0.0_rt;
+    if (harm_BL_val > 0.0_rt) I_valBL = 1.0_rt / harm_BL_val;
 
     /// First do u-points
     {
@@ -611,15 +632,30 @@ void vertvisc_coef_tr(const Box& bxU0,
         Box sbx = bxU0;
         sbx.setSmall(2, 0);
         sbx.setBig(2, nz);
+        /// hvel is the thickness used at a velocity grid point [H ~> m or kg m-2].
         FArrayBox hvel_fab        (sbx, 1, The_Async_Arena());
+        /// Harmonic mean of the vertical distances around a velocity grid point, given by 2*(h+ * h-)/(h+ + h-)
+        /// [Z ~> m].
         FArrayBox dz_harm_fab     (sbx, 1, The_Async_Arena());
+        /// The vertical distance between interfaces used at a velocity grid point [Z ~> m].
         FArrayBox dz_vel_fab      (sbx, 1, The_Async_Arena());
+        /// The equivalent of hvel under shelves [H ~> m or kg m-2].
         FArrayBox hvel_shelf_fab  (sbx, 1, The_Async_Arena());
+        /// The equivalent of dz_vel under shelves [Z ~> m].
         FArrayBox dz_vel_shelf_fab(sbx, 1, The_Async_Arena());
+        /// An estimate of each interface's height above the bottom, normalized by the bottom boundary layer thickness
+        /// [nondim]
         FArrayBox z_i_fab         (sbx, 1, The_Async_Arena());
+        /// An estimate of each interface's height above the bottom, normalized by the GL90 bottom boundary layer
+        /// thickness [nondim]
         FArrayBox z_i_gl90_fab    (sbx, 1, The_Async_Arena());
+        /// The drag coefficients across interfaces [H T-1 ~> m s-1 or Pa s m-1].  a_cpl times the velocity difference
+        /// gives the stress across an interface.
         FArrayBox a_cpl_fab       (sbx, 1, The_Async_Arena());
+        /// The drag coefficients across interfaces associated with GL90 [H T-1 ~> m s-1 or Pa s m-1]. a_cpl_gl90 times
+        /// the velocity difference gives the GL90 stress across an interface. a_cpl_gl90 is part of a_cpl.
         FArrayBox a_cpl_gl90_fab  (sbx, 1, The_Async_Arena());
+        /// The drag coefficients across interfaces in water columns under ice shelves [H T-1 ~> m s-1 or Pa s m-1].
         FArrayBox a_shelf_fab     (sbx, 1, The_Async_Arena());
         auto const& hvel         = hvel_fab.array();
         auto const& dz_harm      = dz_harm_fab.array();
@@ -634,23 +670,62 @@ void vertvisc_coef_tr(const Box& bxU0,
 
         ParallelFor(colU, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCu(i,j,0) > 0.0)) return;
+            if (!(mask2dCu(i,j,0) > 0.0_rt)) return;
 
-            Real I_Hbbl, I_Hbbl_gl90 = 0.0, kv_bbl = 0.0, bbl_thick = 0.0, Dmin, zh = 0.0;
-            Real zcol = 0.0, zcol_p1 = 0.0, h_harm, h_arith, h_delta, dz_arith, z2, botfn;
-            Real z_clear, z2_wt, h_ml, I_HTbl = 0.0, Ztop_min = 0.0, topfn;
+            /// The inverse of the bottom boundary layer thickness [Z-1 ~> m-1].
+            Real I_Hbbl;
+            /// The inverse of the bottom boundary layer thickness used for the GL90 scheme [Z-1 ~> m-1].
+            Real I_Hbbl_gl90 = 0.0_rt;
+            /// The bottom boundary layer viscosity [H Z T-1 ~> m2 s-1 or Pa s].
+            Real kv_bbl = 0.0_rt;
+            /// The bottom boundary layer thickness [Z ~> m].
+            Real bbl_thick = 0.0_rt;
+            /// The shallower of the two adjacent bottom depths [Z ~> m].
+            Real Dmin;
+            /// An estimate of the interface's distance from the bottom based on harmonic mean thicknesses [Z ~> m].
+            Real zh = 0.0_rt;
+            /// The height of an interface at h-points [Z ~> m].
+            Real zcol = 0.0_rt;
+            /// An adjacent east/north h-point interface height [Z ~> m].
+            Real zcol_p1 = 0.0_rt;
+            /// Harmonic mean of the thicknesses around a velocity grid point, given by 2*(h+ * h-)/(h+ + h-)
+            /// [H ~> m or kg m-2].
+            Real h_harm;
+            /// The arithmetic mean thickness [H ~> m or kg m-2].
+            Real h_arith;
+            /// The lateral difference of thickness [H ~> m or kg m-2].
+            Real h_delta;
+            /// The arithmetic mean of the vertical distances around a velocity grid point [Z ~> m]
+            Real dz_arith;
+            /// The distance from the bottom, normalized by Hbbl [nondim]
+            Real z2;
+            /// A function which goes from 1 at the bottom to 0 much more than Hbbl into the interior [nondim].
+            Real botfn;
+            /// The clearance of an interface above the surrounding topography [Z ~> m].
+            Real z_clear;
+            /// A nondimensional (0-1) weight used when calculating z2 [nondim].
+            Real z2_wt;
+            /// The mixed layer depth [Z ~> m].
+            Real h_ml;
+            /// The inverse of the top boundary layer thickness [Z-1 ~> m-1].
+            Real I_HTbl = 0.0_rt;
+            /// The deeper of the two adjacent surface heights [Z ~> m].
+            Real Ztop_min = 0.0_rt;
+            /// A function which goes from 1 at the top to 0 much more than Htbl into the interior [nondim].
+            Real topfn;
+            /// A ternary logical indicating which thickness to use for finding z_clear.
             int  zi_dir;
             bool do_any_shelf;
 
-            I_Hbbl = 1.0 / (Hbbl + dz_neglect);
+            I_Hbbl = 1.0_rt / (Hbbl + dz_neglect);
             if (use_GL90_in_SSW) {
-                I_Hbbl_gl90 = 1.0 / (Hbbl_gl90 + dz_neglect);
+                I_Hbbl_gl90 = 1.0_rt / (Hbbl_gl90 + dz_neglect);
             }
 
             if (cpl.bottomdraglaw) {
                 kv_bbl = Kv_bbl_u(i,j,0);
                 bbl_thick = bbl_thick_u(i,j,0) + dz_neglect;
-                I_Hbbl = 1.0 / bbl_thick;
+                I_Hbbl = 1.0_rt / bbl_thick;
             }
 
             Dmin = amrex::min(bathyT(i,j,0), bathyT(i+1,j,0));
@@ -680,24 +755,24 @@ void vertvisc_coef_tr(const Box& bxU0,
             /// gradients at the bottom where nearly massless layers layers ride over the
             /// topography.
 
-            z_i(i,j,nz) = 0.0;
+            z_i(i,j,nz) = 0.0_rt;
 
             if (!harmonic_visc) {
-                zh = 0.0;
+                zh = 0.0_rt;
                 zcol = -bathyT(i,j,0);
                 zcol_p1 = -bathyT(i+1,j,0);
             }
 
             if (use_GL90_in_SSW) {
-                z_i_gl90(i,j,nz) = 0.0;
+                z_i_gl90(i,j,nz) = 0.0_rt;
             }
 
             for (int k = nz-1; k >= 0; --k) {
-                h_harm = 2.0 * h(i,j,k) * h(i+1,j,k) / (h(i,j,k) + h(i+1,j,k) + h_neglect);
-                h_arith = 0.5 * (h(i+1,j,k) + h(i,j,k));
+                h_harm = 2.0_rt * h(i,j,k) * h(i+1,j,k) / (h(i,j,k) + h(i+1,j,k) + h_neglect);
+                h_arith = 0.5_rt * (h(i+1,j,k) + h(i,j,k));
                 h_delta = h(i+1,j,k) - h(i,j,k);
-                dz_harm(i,j,k) = 2.0 * dz(i,j,k) * dz(i+1,j,k) / (dz(i,j,k) + dz(i+1,j,k) + dz_neglect);
-                dz_arith = 0.5 * (dz(i+1,j,k) + dz(i,j,k));
+                dz_harm(i,j,k) = 2.0_rt * dz(i,j,k) * dz(i+1,j,k) / (dz(i,j,k) + dz(i+1,j,k) + dz_neglect);
+                dz_arith = 0.5_rt * (dz(i+1,j,k) + dz(i,j,k));
 
                 /// Project thickness outward across OBCs using a zero-gradient condition.
                 /*
@@ -706,7 +781,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                         if (OBC->segnum_u(i,j,0) > 0) {
                             h_harm = h(i,j,k);
                             h_arith = h(i,j,k);
-                            h_delta = 0.0;
+                            h_delta = 0.0_rt;
                             dz_harm(i,j,k) = dz(i,j,k);
                             dz_arith = dz(i,j,k);
                         }
@@ -715,7 +790,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                         if (OBC->segnum_u(i,j,0) < 0) {
                             h_harm = h(i+1,j,k);
                             h_arith = h(i+1,j,k);
-                            h_delta = 0.0;
+                            h_delta = 0.0_rt;
                             dz_harm(i,j,k) = dz(i+1,j,k);
                             dz_arith = dz(i+1,j,k);
                         }
@@ -735,10 +810,10 @@ void vertvisc_coef_tr(const Box& bxU0,
 
                     if (u(i,j,k) * h_delta < 0) {
                         z2 = z_i(i,j,k+1);
-                        botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+                        botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
-                        hvel(i,j,k) = (1.0 - botfn) * h_harm + botfn * h_arith;
-                        dz_vel(i,j,k) = (1.0 - botfn) * dz_harm(i,j,k) + botfn * dz_arith;
+                        hvel(i,j,k) = (1.0_rt - botfn) * h_harm + botfn * h_arith;
+                        dz_vel(i,j,k) = (1.0_rt - botfn) * dz_harm(i,j,k) + botfn * dz_arith;
                     }
 
                     z_i(i,j,k) =  z_i(i,j,k+1) + dz_harm(i,j,k) * I_Hbbl;
@@ -757,20 +832,20 @@ void vertvisc_coef_tr(const Box& bxU0,
                     hvel(i,j,k) = h_arith;
                     dz_vel(i,j,k) = dz_arith;
 
-                    if (u(i,j,k) * h_delta > 0.0) {
+                    if (u(i,j,k) * h_delta > 0.0_rt) {
                         if (zh * I_Hbbl < harm_BL_val) {
                             hvel(i,j,k) = h_harm;
                             dz_vel(i,j,k) = dz_harm(i,j,k);
                         } else {
-                            z2_wt = 1.0;
-                            if (zh * I_Hbbl < 2.0 * harm_BL_val)
-                                z2_wt = amrex::max(0.0, amrex::min(1.0, zh * I_Hbbl * I_valBL - 1.0));
+                            z2_wt = 1.0_rt;
+                            if (zh * I_Hbbl < 2.0_rt * harm_BL_val)
+                                z2_wt = amrex::max(0.0_rt, amrex::min(1.0_rt, zh * I_Hbbl * I_valBL - 1.0_rt));
 
                             z2 = z2_wt * (amrex::max(zh, z_clear) * I_Hbbl);
-                            botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+                            botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
-                            hvel(i,j,k) = (1.0 - botfn) * h_arith + botfn * h_harm;
-                            dz_vel(i,j,k) = (1.0 - botfn) * dz_arith + botfn * dz_harm(i,j,k);
+                            hvel(i,j,k) = (1.0_rt - botfn) * h_arith + botfn * h_harm;
+                            dz_vel(i,j,k) = (1.0_rt - botfn) * dz_arith + botfn * dz_harm(i,j,k);
                         }
                     }
                 }
@@ -804,14 +879,14 @@ void vertvisc_coef_tr(const Box& bxU0,
 
             do_any_shelf = false;
             if (frac_shelf_u.p != nullptr) {
-                a1_shelf_u(i,j,0) = 0.0;
-                do_any_shelf = frac_shelf_u(i,j,0) > 0.0;
+                a1_shelf_u(i,j,0) = 0.0_rt;
+                do_any_shelf = frac_shelf_u(i,j,0) > 0.0_rt;
 
                 if (do_any_shelf) {
                     if (!harmonic_visc) {
-                        zh = 0.0;
+                        zh = 0.0_rt;
                         Ztop_min = amrex::min(zcol, zcol_p1);
-                        I_HTbl = 1.0 / (tbl_thick_shelf_u(i,j,0) + dz_neglect);
+                        I_HTbl = 1.0_rt / (tbl_thick_shelf_u(i,j,0) + dz_neglect);
                     }
 
                     for (int k = 0; k < nz; ++k) {
@@ -822,11 +897,11 @@ void vertvisc_coef_tr(const Box& bxU0,
                             /// Find upwind-biased thickness near the surface.
                             /// (Perhaps this needs to be done more carefully, via find_eta.)
 
-                            h_harm = 2.0 * h(i,j,k) * h(i+1,j,k)
+                            h_harm = 2.0_rt * h(i,j,k) * h(i+1,j,k)
                                 / (h(i,j,k) + h(i+1,j,k) + h_neglect);
-                            h_arith = 0.5 * (h(i+1,j,k) + h(i,j,k));
+                            h_arith = 0.5_rt * (h(i+1,j,k) + h(i,j,k));
                             h_delta = h(i+1,j,k) - h(i,j,k);
-                            dz_arith = 0.5 * (dz(i+1,j,k) + dz(i,j,k));
+                            dz_arith = 0.5_rt * (dz(i+1,j,k) + dz(i,j,k));
 
                             /*
                             if (OBC != nullptr) {
@@ -834,7 +909,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                                     if (OBC->segnum_u(i,j,0) > 0) {
                                         h_harm = h(i,j,k);
                                         h_arith = h(i,j,k);
-                                        h_delta = 0.0;
+                                        h_delta = 0.0_rt;
                                         dz_arith = dz(i,j,k);
                                     }
                                 }
@@ -842,7 +917,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                                     if (OBC->segnum_u(i,j,0) < 0) {
                                         h_harm = h(i+1,j,k);
                                         h_arith = h(i+1,j,k);
-                                        h_delta = 0.0;
+                                        h_delta = 0.0_rt;
                                         dz_arith = dz(i+1,j,k);
                                     }
                                 }
@@ -857,23 +932,23 @@ void vertvisc_coef_tr(const Box& bxU0,
                             hvel_shelf(i,j,k) = hvel(i,j,k);
                             dz_vel_shelf(i,j,k) = dz_vel(i,j,k);
 
-                            if (u(i,j,k) * h_delta > 0.0) {
+                            if (u(i,j,k) * h_delta > 0.0_rt) {
                                 if (zh * I_HTbl < harm_BL_val) {
                                     hvel_shelf(i,j,k) = amrex::min(hvel(i,j,k), h_harm);
                                     dz_vel_shelf(i,j,k) = amrex::min(dz_vel(i,j,k), dz_harm(i,j,k));
                                 } else {
-                                    z2_wt = 1.0;
-                                    if (zh * I_HTbl < 2.0 * harm_BL_val) {
-                                        z2_wt = amrex::max(0.0, amrex::min(1.0, zh * I_HTbl * I_valBL - 1.0));
+                                    z2_wt = 1.0_rt;
+                                    if (zh * I_HTbl < 2.0_rt * harm_BL_val) {
+                                        z2_wt = amrex::max(0.0_rt, amrex::min(1.0_rt, zh * I_HTbl * I_valBL - 1.0_rt));
                                     }
 
                                     z2 = z2_wt * (amrex::max(zh, Ztop_min - amrex::min(zcol, zcol_p1)) * I_HTbl);
                                     /// TODO: replace **6 with multiply
                                     Real const z2_3 = (z2 * z2) * z2;
-                                    topfn = 1.0 / (1.0 + 0.09 * (z2_3 * z2_3));
+                                    topfn = 1.0_rt / (1.0_rt + 0.09_rt * (z2_3 * z2_3));
 
-                                    hvel_shelf(i,j,k) = amrex::min(hvel(i,j,k), (1.0 - topfn) * h_arith + topfn * h_harm);
-                                    dz_vel_shelf(i,j,k) = amrex::min(dz_vel(i,j,k), (1.0 - topfn) * dz_arith + topfn * dz_harm(i,j,k));
+                                    hvel_shelf(i,j,k) = amrex::min(hvel(i,j,k), (1.0_rt - topfn) * h_arith + topfn * h_harm);
+                                    dz_vel_shelf(i,j,k) = amrex::min(dz_vel(i,j,k), (1.0_rt - topfn) * dz_arith + topfn * dz_harm(i,j,k));
                                 }
                             }
                         }
@@ -892,7 +967,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                 if (use_GL90_in_SSW) {
                     for (int k = 0; k <= nz; ++k) {
                         a_u(i,j,k) = amrex::min(a_cpl_max, (frac_shelf_u(i,j,0) * a_shelf(i,j,k) +
-                                                            (1.0 - frac_shelf_u(i,j,0)) * a_cpl(i,j,k)) + a_cpl_gl90(i,j,k));
+                                                            (1.0_rt - frac_shelf_u(i,j,0)) * a_cpl(i,j,k)) + a_cpl_gl90(i,j,k));
 
                         /// This is Alistair's suggestion, but it destabilizes the model. I do not know why. RWH
                         /// CS%a_u(I,j,K) = min(a_cpl_max, forces%frac_shelf_u(I,j) * max(a_shelf(K), a_cpl(K)) + &
@@ -903,7 +978,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                 } else {
                     for (int k = 0; k <= nz; ++k) {
                         a_u(i,j,k) = amrex::min(a_cpl_max, (frac_shelf_u(i,j,0) * a_shelf(i,j,k) +
-                                                            (1.0 - frac_shelf_u(i,j,0)) * a_cpl(i,j,k)));
+                                                            (1.0_rt - frac_shelf_u(i,j,0)) * a_cpl(i,j,k)));
                         /// This is Alistair's suggestion, but it destabilizes the model. I do not know why. RWH
                         /// CS%a_u(I,j,K) = min(a_cpl_max, forces%frac_shelf_u(I,j) * max(a_shelf(K), a_cpl(K)) + &
                         ///                                (1. - forces%frac_shelf_u(I,j)) * a_cpl(K))
@@ -913,7 +988,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                 for (int k = 0; k < nz; ++k) {
                     /// Should we instead take the inverse of the average of the inverses?
                     h_u(i,j,k) = frac_shelf_u(i,j,0) * hvel_shelf(i,j,k)
-                        + (1.0 - frac_shelf_u(i,j,0)) * hvel(i,j,k) + h_neglect;
+                        + (1.0_rt - frac_shelf_u(i,j,0)) * hvel(i,j,k) + h_neglect;
                 }
             } else {
                 if (use_GL90_in_SSW) {
@@ -938,14 +1013,14 @@ void vertvisc_coef_tr(const Box& bxU0,
             /// Diagnose total Kv at u-points
             if (Kv_u.p != nullptr) {
                 for (int k = 0; k < nz; ++k) {
-                    Kv_u(i,j,k) = 0.5 * (a_u(i,j,k) + a_u(i,j,k+1)) * h_u(i,j,k);
+                    Kv_u(i,j,k) = 0.5_rt * (a_u(i,j,k) + a_u(i,j,k+1)) * h_u(i,j,k);
                 }
             }
 
             /// Diagnose GL90 Kv at u-points
             if (Kv_gl90_u.p != nullptr) {
                 for (int k = 0; k < nz; ++k) {
-                    Kv_gl90_u(i,j,k) = 0.5 * (a_u_gl90(i,j,k) + a_u_gl90(i,j,k+1)) * h_u(i,j,k);
+                    Kv_gl90_u(i,j,k) = 0.5_rt * (a_u_gl90(i,j,k) + a_u_gl90(i,j,k+1)) * h_u(i,j,k);
                 }
             }
         });
@@ -959,15 +1034,30 @@ void vertvisc_coef_tr(const Box& bxU0,
         Box sbx = bxV0;
         sbx.setSmall(2, 0);
         sbx.setBig(2, nz);
+        /// hvel is the thickness used at a velocity grid point [H ~> m or kg m-2].
         FArrayBox hvel_fab        (sbx, 1, The_Async_Arena());
+        /// Harmonic mean of the vertical distances around a velocity grid point, given by 2*(h+ * h-)/(h+ + h-)
+        /// [Z ~> m].
         FArrayBox dz_harm_fab     (sbx, 1, The_Async_Arena());
+        /// The vertical distance between interfaces used at a velocity grid point [Z ~> m].
         FArrayBox dz_vel_fab      (sbx, 1, The_Async_Arena());
+        /// The equivalent of hvel under shelves [H ~> m or kg m-2].
         FArrayBox hvel_shelf_fab  (sbx, 1, The_Async_Arena());
+        /// The equivalent of dz_vel under shelves [Z ~> m].
         FArrayBox dz_vel_shelf_fab(sbx, 1, The_Async_Arena());
+        /// An estimate of each interface's height above the bottom, normalized by the bottom boundary layer thickness
+        /// [nondim]
         FArrayBox z_i_fab         (sbx, 1, The_Async_Arena());
+        /// An estimate of each interface's height above the bottom, normalized by the GL90 bottom boundary layer
+        /// thickness [nondim]
         FArrayBox z_i_gl90_fab    (sbx, 1, The_Async_Arena());
+        /// The drag coefficients across interfaces [H T-1 ~> m s-1 or Pa s m-1].  a_cpl times the velocity difference
+        /// gives the stress across an interface.
         FArrayBox a_cpl_fab       (sbx, 1, The_Async_Arena());
+        /// The drag coefficients across interfaces associated with GL90 [H T-1 ~> m s-1 or Pa s m-1]. a_cpl_gl90 times
+        /// the velocity difference gives the GL90 stress across an interface. a_cpl_gl90 is part of a_cpl.
         FArrayBox a_cpl_gl90_fab  (sbx, 1, The_Async_Arena());
+        /// The drag coefficients across interfaces in water columns under ice shelves [H T-1 ~> m s-1 or Pa s m-1].
         FArrayBox a_shelf_fab     (sbx, 1, The_Async_Arena());
         auto const& hvel         = hvel_fab.array();
         auto const& dz_harm      = dz_harm_fab.array();
@@ -982,23 +1072,62 @@ void vertvisc_coef_tr(const Box& bxU0,
 
         ParallelFor(colV, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCv(i,j,0) > 0.0)) return;
+            if (!(mask2dCv(i,j,0) > 0.0_rt)) return;
 
-            Real I_Hbbl, I_Hbbl_gl90 = 0.0, kv_bbl = 0.0, bbl_thick = 0.0, Dmin, zh = 0.0;
-            Real zcol = 0.0, zcol_p1 = 0.0, h_harm, h_arith, h_delta, dz_arith, z2, botfn;
-            Real z_clear, z2_wt, h_ml, I_HTbl = 0.0, Ztop_min = 0.0, topfn;
+            /// The inverse of the bottom boundary layer thickness [Z-1 ~> m-1].
+            Real I_Hbbl;
+            /// The inverse of the bottom boundary layer thickness used for the GL90 scheme [Z-1 ~> m-1].
+            Real I_Hbbl_gl90 = 0.0_rt;
+            /// The bottom boundary layer viscosity [H Z T-1 ~> m2 s-1 or Pa s].
+            Real kv_bbl = 0.0_rt;
+            /// The bottom boundary layer thickness [Z ~> m].
+            Real bbl_thick = 0.0_rt;
+            /// The shallower of the two adjacent bottom depths [Z ~> m].
+            Real Dmin;
+            /// An estimate of the interface's distance from the bottom based on harmonic mean thicknesses [Z ~> m].
+            Real zh = 0.0_rt;
+            /// The height of an interface at h-points [Z ~> m].
+            Real zcol = 0.0_rt;
+            /// An adjacent east/north h-point interface height [Z ~> m].
+            Real zcol_p1 = 0.0_rt;
+            /// Harmonic mean of the thicknesses around a velocity grid point, given by 2*(h+ * h-)/(h+ + h-)
+            /// [H ~> m or kg m-2].
+            Real h_harm;
+            /// The arithmetic mean thickness [H ~> m or kg m-2].
+            Real h_arith;
+            /// The lateral difference of thickness [H ~> m or kg m-2].
+            Real h_delta;
+            /// The arithmetic mean of the vertical distances around a velocity grid point [Z ~> m]
+            Real dz_arith;
+            /// The distance from the bottom, normalized by Hbbl [nondim]
+            Real z2;
+            /// A function which goes from 1 at the bottom to 0 much more than Hbbl into the interior [nondim].
+            Real botfn;
+            /// The clearance of an interface above the surrounding topography [Z ~> m].
+            Real z_clear;
+            /// A nondimensional (0-1) weight used when calculating z2 [nondim].
+            Real z2_wt;
+            /// The mixed layer depth [Z ~> m].
+            Real h_ml;
+            /// The inverse of the top boundary layer thickness [Z-1 ~> m-1].
+            Real I_HTbl = 0.0_rt;
+            /// The deeper of the two adjacent surface heights [Z ~> m].
+            Real Ztop_min = 0.0_rt;
+            /// A function which goes from 1 at the top to 0 much more than Htbl into the interior [nondim].
+            Real topfn;
+            /// A ternary logical indicating which thickness to use for finding z_clear.
             int  zi_dir;
             bool do_any_shelf;
 
-            I_Hbbl = 1.0 / (Hbbl + dz_neglect);
+            I_Hbbl = 1.0_rt / (Hbbl + dz_neglect);
             if (use_GL90_in_SSW) {
-                I_Hbbl_gl90 = 1.0 / (Hbbl_gl90 + dz_neglect);
+                I_Hbbl_gl90 = 1.0_rt / (Hbbl_gl90 + dz_neglect);
             }
 
             if (cpl.bottomdraglaw) {
                 kv_bbl = Kv_bbl_v(i,j,0);
                 bbl_thick = bbl_thick_v(i,j,0) + dz_neglect;
-                I_Hbbl = 1.0 / bbl_thick;
+                I_Hbbl = 1.0_rt / bbl_thick;
             }
 
             Dmin = amrex::min(bathyT(i,j,0), bathyT(i,j+1,0));
@@ -1028,24 +1157,24 @@ void vertvisc_coef_tr(const Box& bxU0,
             /// gradients at the bottom where nearly massless layers layers ride over the
             /// topography.
 
-            z_i(i,j,nz) = 0.0;
+            z_i(i,j,nz) = 0.0_rt;
 
             if (!harmonic_visc) {
-                zh = 0.0;
+                zh = 0.0_rt;
                 zcol = -bathyT(i,j,0);
                 zcol_p1 = -bathyT(i,j+1,0);
             }
 
             if (use_GL90_in_SSW) {
-                z_i_gl90(i,j,nz) = 0.0;
+                z_i_gl90(i,j,nz) = 0.0_rt;
             }
 
             for (int k = nz-1; k >= 0; --k) {
-                h_harm = 2.0 * h(i,j,k) * h(i,j+1,k) / (h(i,j,k) + h(i,j+1,k) + h_neglect);
-                h_arith = 0.5 * (h(i,j+1,k) + h(i,j,k));
+                h_harm = 2.0_rt * h(i,j,k) * h(i,j+1,k) / (h(i,j,k) + h(i,j+1,k) + h_neglect);
+                h_arith = 0.5_rt * (h(i,j+1,k) + h(i,j,k));
                 h_delta = h(i,j+1,k) - h(i,j,k);
-                dz_harm(i,j,k) = 2.0 * dz(i,j,k) * dz(i,j+1,k) / (dz(i,j,k) + dz(i,j+1,k) + dz_neglect);
-                dz_arith = 0.5 * (dz(i,j+1,k) + dz(i,j,k));
+                dz_harm(i,j,k) = 2.0_rt * dz(i,j,k) * dz(i,j+1,k) / (dz(i,j,k) + dz(i,j+1,k) + dz_neglect);
+                dz_arith = 0.5_rt * (dz(i,j+1,k) + dz(i,j,k));
 
                 /// Project thickness outward across OBCs using a zero-gradient condition.
                 /*
@@ -1054,7 +1183,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                         if (OBC->segnum_v(i,j,0) > 0) {
                             h_harm = h(i,j,k);
                             h_arith = h(i,j,k);
-                            h_delta = 0.0;
+                            h_delta = 0.0_rt;
                             dz_harm(i,j,k) = dz(i,j,k);
                             dz_arith = dz(i,j,k);
                         }
@@ -1063,7 +1192,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                         if (OBC->segnum_v(i,j,0) < 0) {
                             h_harm = h(i,j+1,k);
                             h_arith = h(i,j+1,k);
-                            h_delta = 0.0;
+                            h_delta = 0.0_rt;
                             dz_harm(i,j,k) = dz(i,j+1,k);
                             dz_arith = dz(i,j+1,k);
                         }
@@ -1083,10 +1212,10 @@ void vertvisc_coef_tr(const Box& bxU0,
 
                     if (v(i,j,k) * h_delta < 0) {
                         z2 = z_i(i,j,k+1);
-                        botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+                        botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
-                        hvel(i,j,k) = (1.0 - botfn) * h_harm + botfn * h_arith;
-                        dz_vel(i,j,k) = (1.0 - botfn) * dz_harm(i,j,k) + botfn * dz_arith;
+                        hvel(i,j,k) = (1.0_rt - botfn) * h_harm + botfn * h_arith;
+                        dz_vel(i,j,k) = (1.0_rt - botfn) * dz_harm(i,j,k) + botfn * dz_arith;
                     }
 
                     z_i(i,j,k) = z_i(i,j,k+1) + dz_harm(i,j,k) * I_Hbbl;
@@ -1110,16 +1239,16 @@ void vertvisc_coef_tr(const Box& bxU0,
                             hvel(i,j,k) = h_harm;
                             dz_vel(i,j,k) = dz_harm(i,j,k);
                         } else {
-                            z2_wt = 1.0;
-                            if (zh * I_Hbbl < 2.0 * harm_BL_val)
-                                z2_wt = amrex::max(0.0, amrex::min(1.0, zh * I_Hbbl * I_valBL - 1.0));
+                            z2_wt = 1.0_rt;
+                            if (zh * I_Hbbl < 2.0_rt * harm_BL_val)
+                                z2_wt = amrex::max(0.0_rt, amrex::min(1.0_rt, zh * I_Hbbl * I_valBL - 1.0_rt));
 
                             /// TODO: should z_clear be used here?
                             z2 = z2_wt * (amrex::max(zh, amrex::max(zcol, zcol_p1) + Dmin) * I_Hbbl);
-                            botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+                            botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
-                            hvel(i,j,k) = (1.0 - botfn) * h_arith + botfn * h_harm;
-                            dz_vel(i,j,k) = (1.0 - botfn) * dz_arith + botfn * dz_harm(i,j,k);
+                            hvel(i,j,k) = (1.0_rt - botfn) * h_arith + botfn * h_harm;
+                            dz_vel(i,j,k) = (1.0_rt - botfn) * dz_arith + botfn * dz_harm(i,j,k);
                         }
                     }
                 }
@@ -1153,15 +1282,15 @@ void vertvisc_coef_tr(const Box& bxU0,
 
             do_any_shelf = false;
             if (frac_shelf_v.p != nullptr) {
-                a1_shelf_v(i,j,0) = 0.0;
-                do_any_shelf = frac_shelf_v(i,j,0) > 0.0;
+                a1_shelf_v(i,j,0) = 0.0_rt;
+                do_any_shelf = frac_shelf_v(i,j,0) > 0.0_rt;
 
                 if (do_any_shelf) {
                     /// Initialize non-harmonic depths
                     if (!harmonic_visc) {
-                        zh = 0.0;
+                        zh = 0.0_rt;
                         Ztop_min = amrex::min(zcol, zcol_p1);
-                        I_HTbl = 1.0 / (tbl_thick_shelf_v(i,j,0) + dz_neglect);
+                        I_HTbl = 1.0_rt / (tbl_thick_shelf_v(i,j,0) + dz_neglect);
                     }
 
                     for (int k = 0; k < nz; ++k) {
@@ -1171,11 +1300,11 @@ void vertvisc_coef_tr(const Box& bxU0,
                         } else {
                             /// Find upwind-biased thickness near the surface.
                             /// Perhaps this needs to be done more carefully, via find_eta.
-                            h_harm = 2.0 * h(i,j,k) * h(i,j+1,k)
+                            h_harm = 2.0_rt * h(i,j,k) * h(i,j+1,k)
                                 / (h(i,j,k) + h(i,j+1,k) + h_neglect);
-                            h_arith = 0.5 * (h(i,j+1,k) + h(i,j,k));
+                            h_arith = 0.5_rt * (h(i,j+1,k) + h(i,j,k));
                             h_delta = h(i,j+1,k) - h(i,j,k);
-                            dz_arith = 0.5 * (dz(i,j+1,k) + dz(i,j,k));
+                            dz_arith = 0.5_rt * (dz(i,j+1,k) + dz(i,j,k));
 
                             /// Project thickness outward across OBCs using a zero-gradient condition.
                             /*
@@ -1184,7 +1313,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                                     if (OBC->segnum_v(i,j,0) > 0) {
                                         h_harm = h(i,j,k);
                                         h_arith = h(i,j,k);
-                                        h_delta = 0.0;
+                                        h_delta = 0.0_rt;
                                         dz_arith = dz(i,j,k);
                                     }
                                 }
@@ -1192,7 +1321,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                                     if (OBC->segnum_v(i,j,0) < 0) {
                                         h_harm = h(i,j+1,k);
                                         h_arith = h(i,j+1,k);
-                                        h_delta = 0.0;
+                                        h_delta = 0.0_rt;
                                         dz_arith = dz(i,j+1,k);
                                     }
                                 }
@@ -1207,23 +1336,23 @@ void vertvisc_coef_tr(const Box& bxU0,
                             hvel_shelf(i,j,k) = hvel(i,j,k);
                             dz_vel_shelf(i,j,k) = dz_vel(i,j,k);
 
-                            if (v(i,j,k) * h_delta > 0.0) {
+                            if (v(i,j,k) * h_delta > 0.0_rt) {
                                 if (zh * I_HTbl < harm_BL_val) {
                                     hvel_shelf(i,j,k) = amrex::min(hvel(i,j,k), h_harm);
                                     dz_vel_shelf(i,j,k) = amrex::min(dz_vel(i,j,k), dz_harm(i,j,k));
                                 } else {
-                                    z2_wt = 1.0;
-                                    if (zh * I_HTbl < 2.0 * harm_BL_val) {
-                                        z2_wt = amrex::max(0.0, amrex::min(1.0, zh * I_HTbl * I_valBL - 1.0));
+                                    z2_wt = 1.0_rt;
+                                    if (zh * I_HTbl < 2.0_rt * harm_BL_val) {
+                                        z2_wt = amrex::max(0.0_rt, amrex::min(1.0_rt, zh * I_HTbl * I_valBL - 1.0_rt));
                                     }
 
                                     z2 = z2_wt * (amrex::max(zh, Ztop_min - amrex::min(zcol, zcol_p1)) * I_HTbl);
                                     /// TODO: Replace **6
                                     Real const z2_3 = (z2 * z2) * z2;
-                                    topfn = 1.0 / (1.0 + 0.09 * (z2_3 * z2_3));
+                                    topfn = 1.0_rt / (1.0_rt + 0.09_rt * (z2_3 * z2_3));
 
-                                    hvel_shelf(i,j,k) = amrex::min(hvel(i,j,k), (1.0 - topfn) * h_arith + topfn * h_harm);
-                                    dz_vel_shelf(i,j,k) = amrex::min(dz_vel(i,j,k), (1.0 - topfn) * dz_arith + topfn * dz_harm(i,j,k));
+                                    hvel_shelf(i,j,k) = amrex::min(hvel(i,j,k), (1.0_rt - topfn) * h_arith + topfn * h_harm);
+                                    dz_vel_shelf(i,j,k) = amrex::min(dz_vel(i,j,k), (1.0_rt - topfn) * dz_arith + topfn * dz_harm(i,j,k));
                                 }
                             }
                         }
@@ -1242,7 +1371,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                 if (use_GL90_in_SSW) {
                     for (int k = 0; k <= nz; ++k) {
                         a_v(i,j,k) = amrex::min(a_cpl_max, (frac_shelf_v(i,j,0) * a_shelf(i,j,k) +
-                                                            (1.0 - frac_shelf_v(i,j,0)) * a_cpl(i,j,k)) + a_cpl_gl90(i,j,k));
+                                                            (1.0_rt - frac_shelf_v(i,j,0)) * a_cpl(i,j,k)) + a_cpl_gl90(i,j,k));
 
                         /// This is Alistair's suggestion, but it destabilizes the model. I do not know why. RWH
                         /// CS%a_v(I,j,K) = min(a_cpl_max, forces%frac_shelf_v(I,j) * max(a_shelf(K), a_cpl(K)) + &
@@ -1253,7 +1382,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                 } else {
                     for (int k = 0; k <= nz; ++k) {
                         a_v(i,j,k) = amrex::min(a_cpl_max, (frac_shelf_v(i,j,0) * a_shelf(i,j,k) +
-                                                            (1.0 - frac_shelf_v(i,j,0)) * a_cpl(i,j,k)));
+                                                            (1.0_rt - frac_shelf_v(i,j,0)) * a_cpl(i,j,k)));
                         /// This is Alistair's suggestion, but it destabilizes the model. I do not know why. RWH
                         /// CS%a_v(I,j,K) = min(a_cpl_max, forces%frac_shelf_v(I,j) * max(a_shelf(K), a_cpl(K)) + &
                         ///                                (1. - forces%frac_shelf_v(I,j)) * a_cpl(K))
@@ -1263,7 +1392,7 @@ void vertvisc_coef_tr(const Box& bxU0,
                 for (int k = 0; k < nz; ++k) {
                     /// Should we instead take the inverse of the average of the inverses?
                     h_v(i,j,k) = frac_shelf_v(i,j,0) * hvel_shelf(i,j,k)
-                        + (1.0 - frac_shelf_v(i,j,0)) * hvel(i,j,k) + h_neglect;
+                        + (1.0_rt - frac_shelf_v(i,j,0)) * hvel(i,j,k) + h_neglect;
                 }
             } else {
                 if (use_GL90_in_SSW) {
@@ -1288,14 +1417,14 @@ void vertvisc_coef_tr(const Box& bxU0,
             /// Diagnose total Kv at v-points
             if (Kv_v.p != nullptr) {
                 for (int k = 0; k < nz; ++k) {
-                    Kv_v(i,j,k) = 0.5 * (a_v(i,j,k) + a_v(i,j,k+1)) * h_v(i,j,k);
+                    Kv_v(i,j,k) = 0.5_rt * (a_v(i,j,k) + a_v(i,j,k+1)) * h_v(i,j,k);
                 }
             }
 
             /// Diagnose GL90 Kv at v-points
             if (Kv_gl90_v.p != nullptr) {
                 for (int k = 0; k < nz; ++k) {
-                    Kv_gl90_v(i,j,k) = 0.5 * (a_v_gl90(i,j,k) + a_v_gl90(i,j,k+1)) * h_v(i,j,k);
+                    Kv_gl90_v(i,j,k) = 0.5_rt * (a_v_gl90(i,j,k) + a_v_gl90(i,j,k+1)) * h_v(i,j,k);
                 }
             }
         });
@@ -1341,18 +1470,18 @@ void vertvisc_tridiag(const Box& col,
 {
     ParallelFor(col, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
     {
-        if (!(mask(i,j,0) > 0.0)) return;
+        if (!(mask(i,j,0) > 0.0_rt)) return;
 
         Real b1;         ///< A variable used by the tridiagonal solver [H-1 ~> m-1 or m2 kg-1].
         Real d1;         ///< d1=1-c1 is used by the tridiagonal solver [nondim].
         Real Ray_k;      ///< Ray is the Rayleigh-drag velocity [H T-1 ~> m s-1 or Pa s m-1]
         Real b_denom_1;  ///< The first term in the denominator of b1 [H ~> m or kg m-2].
 
-        Ray_k = 0.0;
+        Ray_k = 0.0_rt;
         if constexpr (has_Ray) Ray_k = Ray(i,j,0);
 
         b_denom_1 = h_vel(i,j,0) + dt * (Ray_k + a_vel(i,j,0));
-        b1 = 1.0 / (b_denom_1 + dt * a_vel(i,j,1));
+        b1 = 1.0_rt / (b_denom_1 + dt * a_vel(i,j,1));
         d1 = b_denom_1 * b1;
         vel(i,j,0) = b1 * (h_vel(i,j,0) * vel(i,j,0) + surface_stress(i,j,0));
 
@@ -1365,7 +1494,7 @@ void vertvisc_tridiag(const Box& col,
 
             c1(i,j,k) = dt * a_vel(i,j,k) * b1;
             b_denom_1 = h_vel(i,j,k) + dt * (Ray_k + a_vel(i,j,k) * d1);
-            b1 = 1.0 / (b_denom_1 + dt * a_vel(i,j,k+1));
+            b1 = 1.0_rt / (b_denom_1 + dt * a_vel(i,j,k+1));
             d1 = b_denom_1 * b1;
             vel(i,j,k) = (h_vel(i,j,k) * vel(i,j,k) + dt * a_vel(i,j,k) * vel(i,j,k-1)) * b1;
 
@@ -1381,7 +1510,7 @@ void vertvisc_tridiag(const Box& col,
 
         if constexpr (has_str) {
             if (Math::abs(d_dt_str(i,j,nz-1)) < accel_underflow)
-                d_dt_str(i,j,nz-1) = 0.0;
+                d_dt_str(i,j,nz-1) = 0.0_rt;
         }
 
         for (int k = nz-2; k >= 0; --k) {
@@ -1391,7 +1520,7 @@ void vertvisc_tridiag(const Box& col,
                 d_dt_str(i,j,k) = d_dt_str(i,j,k) + c1(i,j,k+1) * d_dt_str(i,j,k+1);
 
                 if (Math::abs(d_dt_str(i,j,k)) < accel_underflow)
-                    d_dt_str(i,j,k) = 0.0;
+                    d_dt_str(i,j,k) = 0.0_rt;
             }
         }
     });
@@ -1461,13 +1590,13 @@ void vertvisc_tr(const Box& bxU0,
 
     const int nz = ke;
 
-    Real Hmix = 0.0;    ///< The mixed layer thickness over which stress
+    Real Hmix = 0.0_rt;    ///< The mixed layer thickness over which stress
                         ///< is applied with direct_stress [H ~> m or kg m-2].
-    Real I_Hmix = 0.0;  ///< The inverse of Hmix [H-1 ~> m-1 or m2 kg-1].
+    Real I_Hmix = 0.0_rt;  ///< The inverse of Hmix [H-1 ~> m-1 or m2 kg-1].
 
     if (CS.direct_stress) {
         Hmix = CS.Hmix_stress;
-        I_Hmix = 1.0 / Hmix;
+        I_Hmix = 1.0_rt / Hmix;
     }
     /// The time step divided by the mean density [T H Z-1 R-1 ~> s m3 kg-1 or s].
     const Real dt_Rho0 = dt / H_to_RZ;
@@ -1475,7 +1604,7 @@ void vertvisc_tr(const Box& bxU0,
     /// [H ~> m or kg m-2].
     const Real h_neglect = H_subroundoff;
     /// The inverse of the time step [T-1 ~> s-1].
-    const Real Idt = 1.0 / dt;
+    const Real Idt = 1.0_rt / dt;
 
     /// An acceleration magnitude that is so small that values that are less than this are
     /// diagnosed as 0 [L T-2 ~> m s-2].
@@ -1518,14 +1647,14 @@ void vertvisc_tr(const Box& bxU0,
     if (DoStokesMixing) {
         ParallelFor(bxU0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCu(i,j,0) > 0.0) u(i,j,k) = u(i,j,k) + Us_x(i,j,k);
+            if (mask2dCu(i,j,0) > 0.0_rt) u(i,j,k) = u(i,j,k) + Us_x(i,j,k);
         });
     }
 
     if (lfpmix) {
         ParallelFor(bxU0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCu(i,j,0) > 0.0) u(i,j,k) = u(i,j,k) - Us_x(i,j,k);
+            if (mask2dCu(i,j,0) > 0.0_rt) u(i,j,k) = u(i,j,k) - Us_x(i,j,k);
         });
     }
 
@@ -1544,10 +1673,7 @@ void vertvisc_tr(const Box& bxU0,
     }
 
     if (du_dt_str.p != nullptr) {
-        ParallelFor(bxU0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            du_dt_str(i,j,k) = 0.0;
-        });
+        FArrayBox(du_dt_str).setVal<RunOn::Device>(0.0_rt, bxU0);
     }
 
     ///   One option is to have the wind stress applied as a body force
@@ -1556,18 +1682,18 @@ void vertvisc_tr(const Box& bxU0,
     if (CS.direct_stress) {
         ParallelFor(colU, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCu(i,j,0) > 0.0)) return;
+            if (!(mask2dCu(i,j,0) > 0.0_rt)) return;
             Real zDS, h_avg;  ///< Temporary thickness variables used with direct_stress
                               ///< [H ~> m or kg m-2]
             Real hfr;         ///< Temporary ratio of thicknesses used with direct_stress [nondim]
             Real stress;      ///<   The surface stress times the time step, divided
                               ///< by the density [H L T-1 ~> m2 s-1 or kg m-1 s-1].
-            surface_stress_u(i,j,0) = 0.0;
-            zDS = 0.0;
+            surface_stress_u(i,j,0) = 0.0_rt;
+            zDS = 0.0_rt;
             stress = dt_Rho0 * taux(i,j,0);
             for (int k = 0; k < nz; ++k) {
-                h_avg = 0.5 * (h(i,j,k) + h(i+1,j,k)) + h_neglect;
-                hfr = 1.0; if ((zDS+h_avg) > Hmix) hfr = (Hmix - zDS) / h_avg;
+                h_avg = 0.5_rt * (h(i,j,k) + h(i+1,j,k)) + h_neglect;
+                hfr = 1.0_rt; if ((zDS+h_avg) > Hmix) hfr = (Hmix - zDS) / h_avg;
                 u(i,j,k) = u(i,j,k) + I_Hmix * hfr * stress;
                 if (du_dt_str.p != nullptr) du_dt_str(i,j,k) = (I_Hmix * hfr * stress) * Idt;
                 zDS = zDS + h_avg; if (zDS >= Hmix) break;
@@ -1632,11 +1758,16 @@ void vertvisc_tr(const Box& bxU0,
             const bool do_GLwork = CS.do_GLwork;
             ParallelFor(colU, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
             {
-                if (!(mask2dCu(i,j,0) > 0.0)) return;
-                Real b1, d1, b_denom_1;
+                if (!(mask2dCu(i,j,0) > 0.0_rt)) return;
+                /// A variable used by the tridiagonal solver [H-1 ~> m-1 or m2 kg-1].
+                Real b1;
+                /// d1=1-c1 is used by the tridiagonal solver [nondim].
+                Real d1;
+                /// The first term in the denominator of b1 [H ~> m or kg m-2].
+                Real b_denom_1;
 
                 b_denom_1 = h_u(i,j,0);  /// CS%a_u_gl90(I,j,1) is zero
-                b1 = 1.0 / (b_denom_1 + dt * a_u_gl90(i,j,1));
+                b1 = 1.0_rt / (b_denom_1 + dt * a_u_gl90(i,j,1));
                 d1 = b_denom_1 * b1;
 
                 du_dt_visc_gl90(i,j,0) = b1 * (h_u(i,j,0) * du_dt_visc_gl90(i,j,0));
@@ -1644,7 +1775,7 @@ void vertvisc_tr(const Box& bxU0,
                 for (int k = 1; k < nz; ++k) {
                     c1U(i,j,k) = dt * a_u_gl90(i,j,k) * b1;
                     b_denom_1 = h_u(i,j,k) + dt * (a_u_gl90(i,j,k)*d1);
-                    b1 = 1.0 / (b_denom_1 + dt * a_u_gl90(i,j,k+1));
+                    b1 = 1.0_rt / (b_denom_1 + dt * a_u_gl90(i,j,k+1));
                     d1 = b_denom_1 * b1;
 
                     du_dt_visc_gl90(i,j,k) = (h_u(i,j,k) * du_dt_visc_gl90(i,j,k)
@@ -1665,7 +1796,7 @@ void vertvisc_tr(const Box& bxU0,
                         (du_dt_visc_gl90(i,j,k) - du_dt_visc(i,j,k)) * Idt;
 
                     if (Math::abs(du_dt_visc_gl90(i,j,k)) < accel_underflow) {
-                        du_dt_visc_gl90(i,j,k) = 0.0;
+                        du_dt_visc_gl90(i,j,k) = 0.0_rt;
                     }
                 }
 
@@ -1688,7 +1819,7 @@ void vertvisc_tr(const Box& bxU0,
                 du_dt_visc(i,j,k) = (u(i,j,k) - du_dt_visc(i,j,k)) * Idt;
 
                 if (Math::abs(du_dt_visc(i,j,k)) < accel_underflow)
-                    du_dt_visc(i,j,k) = 0.0;
+                    du_dt_visc(i,j,k) = 0.0_rt;
             }
         });
     }
@@ -1720,14 +1851,14 @@ void vertvisc_tr(const Box& bxU0,
     if (DoStokesMixing) {
         ParallelFor(bxU0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCu(i,j,0) > 0.0) u(i,j,k) = u(i,j,k) - Us_x(i,j,k);
+            if (mask2dCu(i,j,0) > 0.0_rt) u(i,j,k) = u(i,j,k) - Us_x(i,j,k);
         });
     }
 
     if (lfpmix) {
         ParallelFor(bxU0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCu(i,j,0) > 0.0) u(i,j,k) = u(i,j,k) + Us_x(i,j,k);
+            if (mask2dCu(i,j,0) > 0.0_rt) u(i,j,k) = u(i,j,k) + Us_x(i,j,k);
         });
     }
 
@@ -1737,14 +1868,14 @@ void vertvisc_tr(const Box& bxU0,
     if (DoStokesMixing) {
         ParallelFor(bxV0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCv(i,j,0) > 0.0) v(i,j,k) = v(i,j,k) + Us_y(i,j,k);
+            if (mask2dCv(i,j,0) > 0.0_rt) v(i,j,k) = v(i,j,k) + Us_y(i,j,k);
         });
     }
 
     if (lfpmix) {
         ParallelFor(bxV0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCv(i,j,0) > 0.0) v(i,j,k) = v(i,j,k) - Us_y(i,j,k);
+            if (mask2dCv(i,j,0) > 0.0_rt) v(i,j,k) = v(i,j,k) - Us_y(i,j,k);
         });
     }
 
@@ -1763,10 +1894,7 @@ void vertvisc_tr(const Box& bxU0,
     }
 
     if (dv_dt_str.p != nullptr) {
-        ParallelFor(bxV0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            dv_dt_str(i,j,k) = 0.0;
-        });
+        FArrayBox(dv_dt_str).setVal<RunOn::Device>(0.0_rt, bxV0);
     }
 
     ///   One option is to have the wind stress applied as a body force
@@ -1775,18 +1903,18 @@ void vertvisc_tr(const Box& bxU0,
     if (CS.direct_stress) {
         ParallelFor(colV, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
         {
-            if (!(mask2dCv(i,j,0) > 0.0)) return;
+            if (!(mask2dCv(i,j,0) > 0.0_rt)) return;
             Real zDS, h_avg;  ///< Temporary thickness variables used with direct_stress
                               ///< [H ~> m or kg m-2]
             Real hfr;         ///< Temporary ratio of thicknesses used with direct_stress [nondim]
             Real stress;      ///<   The surface stress times the time step, divided
                               ///< by the density [H L T-1 ~> m2 s-1 or kg m-1 s-1].
-            surface_stress_v(i,j,0) = 0.0;
-            zDS = 0.0;
+            surface_stress_v(i,j,0) = 0.0_rt;
+            zDS = 0.0_rt;
             stress = dt_Rho0 * tauy(i,j,0);
             for (int k = 0; k < nz; ++k) {
-                h_avg = 0.5 * (h(i,j,k) + h(i,j+1,k)) + h_neglect;
-                hfr = 1.0; if ((zDS+h_avg) > Hmix) hfr = (Hmix - zDS) / h_avg;
+                h_avg = 0.5_rt * (h(i,j,k) + h(i,j+1,k)) + h_neglect;
+                hfr = 1.0_rt; if ((zDS+h_avg) > Hmix) hfr = (Hmix - zDS) / h_avg;
                 v(i,j,k) = v(i,j,k) + I_Hmix * hfr * stress;
                 if (dv_dt_str.p != nullptr) dv_dt_str(i,j,k) = (I_Hmix * hfr * stress) * Idt;
                 zDS = zDS + h_avg; if (zDS >= Hmix) break;
@@ -1824,18 +1952,23 @@ void vertvisc_tr(const Box& bxU0,
         if (dv_dt_visc_gl90.p != nullptr) {
             ParallelFor(colV, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
             {
-                if (!(mask2dCv(i,j,0) > 0.0)) return;
-                Real b1, d1, b_denom_1;
+                if (!(mask2dCv(i,j,0) > 0.0_rt)) return;
+                /// A variable used by the tridiagonal solver [H-1 ~> m-1 or m2 kg-1].
+                Real b1;
+                /// d1=1-c1 is used by the tridiagonal solver [nondim].
+                Real d1;
+                /// The first term in the denominator of b1 [H ~> m or kg m-2].
+                Real b_denom_1;
 
                 b_denom_1 = h_v(i,j,0);  /// CS%a_v_gl90(i,J,1) is zero
-                b1 = 1.0 / (b_denom_1 + dt*a_v_gl90(i,j,1));
+                b1 = 1.0_rt / (b_denom_1 + dt*a_v_gl90(i,j,1));
                 d1 = b_denom_1 * b1;
                 dv_dt_visc_gl90(i,j,0) = b1 * (h_v(i,j,0) * dv_dt_visc_gl90(i,j,0));
 
                 for (int k = 1; k < nz; ++k) {
                     c1V(i,j,k) = dt * a_v_gl90(i,j,k) * b1;
                     b_denom_1 = h_v(i,j,k) + dt * (a_v_gl90(i,j,k) * d1);
-                    b1 = 1.0 / (b_denom_1 + dt * a_v_gl90(i,j,k+1));
+                    b1 = 1.0_rt / (b_denom_1 + dt * a_v_gl90(i,j,k+1));
                     d1 = b_denom_1 * b1;
                     dv_dt_visc_gl90(i,j,k) = (h_v(i,j,k) * dv_dt_visc_gl90(i,j,k)
                         + dt * a_v_gl90(i,j,k) * dv_dt_visc_gl90(i,j,k-1)) * b1;
@@ -1849,14 +1982,14 @@ void vertvisc_tr(const Box& bxU0,
 
             ParallelFor(bxV0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                if (!(mask2dCv(i,j,0) > 0.0)) return;
+                if (!(mask2dCv(i,j,0) > 0.0_rt)) return;
                 /// now fill ADp%dv_dt_visc_gl90(i,J,k) with actual velocity tendency due to GL90;
                 /// note that on RHS: ADp%dv_dt_visc(i,J,k) holds the original velocity value v(i,J,k)
                 /// and ADp%dv_dt_visc_gl90(i,J,k) the updated velocity due to GL90
                 dv_dt_visc_gl90(i,j,k) = (dv_dt_visc_gl90(i,j,k) - dv_dt_visc(i,j,k)) * Idt;
 
                 if (Math::abs(dv_dt_visc_gl90(i,j,k)) < accel_underflow)
-                    dv_dt_visc_gl90(i,j,k) = 0.0;
+                    dv_dt_visc_gl90(i,j,k) = 0.0_rt;
             });
 
             /// to compute energetics, we need to multiply by v*h, where u is original velocity before
@@ -1864,7 +1997,7 @@ void vertvisc_tr(const Box& bxU0,
             if (CS.do_GLwork) {
                 ParallelFor(bxV0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    if (!(mask2dCv(i,j,0) > 0.0)) return;
+                    if (!(mask2dCv(i,j,0) > 0.0_rt)) return;
                     /// note that on RHS: ADp%dv_dt_visc(I,j,k) holds the original velocity value v(I,j,k)
                     KE_v(i,j,k) = dv_dt_visc(i,j,k) * h_v(i,j,k) * areaCv(i,j,0) *
                                   dv_dt_visc_gl90(i,j,k);
@@ -1878,7 +2011,7 @@ void vertvisc_tr(const Box& bxU0,
         {
             for (int k = 0; k < nz; ++k) {
                 dv_dt_visc(i,j,k) = (v(i,j,k) - dv_dt_visc(i,j,k))*Idt;
-                if (Math::abs(dv_dt_visc(i,j,k)) < accel_underflow) dv_dt_visc(i,j,k) = 0.0;
+                if (Math::abs(dv_dt_visc(i,j,k)) < accel_underflow) dv_dt_visc(i,j,k) = 0.0_rt;
             }
         });
     }
@@ -1911,14 +2044,14 @@ void vertvisc_tr(const Box& bxU0,
     if (DoStokesMixing) {
         ParallelFor(bxV0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCv(i,j,0) > 0.0) v(i,j,k) = v(i,j,k) - Us_y(i,j,k);
+            if (mask2dCv(i,j,0) > 0.0_rt) v(i,j,k) = v(i,j,k) - Us_y(i,j,k);
         });
     }
 
     if (lfpmix) {
         ParallelFor(bxV0, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (mask2dCv(i,j,0) > 0.0) v(i,j,k) = v(i,j,k) + Us_y(i,j,k);
+            if (mask2dCv(i,j,0) > 0.0_rt) v(i,j,k) = v(i,j,k) + Us_y(i,j,k);
         });
     }
 

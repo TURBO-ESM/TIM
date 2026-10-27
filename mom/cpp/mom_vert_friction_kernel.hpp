@@ -72,30 +72,31 @@ using amrex::Array4;
 /// @param Gsig   The shape function at sigma [nondim]
 /// @param dGdsig The derivative of the shape function with sigma [nondim]
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void fpmix_gshape_point(Real const sigma, Real const Gat1, Real& Gsig, Real& dGdsig) noexcept
 {
+    using namespace amrex::literals;
+
     /// Shape parameters [nondim]
-    constexpr Real a2Gsig = -2.1637;
-    constexpr Real a3Gsig =  0.5831;
-    constexpr Real sig_m  =  0.35;
-    constexpr Real G_m    =  0.11;
+    constexpr Real a2Gsig = -2.1637_rt;
+    constexpr Real a3Gsig =  0.5831_rt;
+    constexpr Real sig_m  =  0.35_rt;
+    constexpr Real G_m    =  0.11_rt;
 
     /// Intermediate shape values [nondim]
     Real bGsig, G_1, sig;
 
-    G_1    =  amrex::max( 0.0  ,  amrex::min( Gat1 , G_m ) );
+    G_1    =  amrex::max( 0.0_rt  ,  amrex::min( Gat1 , G_m ) );
 
     if (sigma < sig_m) {
-        sig    = amrex::max( sigma , 0.0 );
+        sig    = amrex::max( sigma , 0.0_rt );
         Gsig   = sig + sig * sig * (a2Gsig + a3Gsig * sig);
-        dGdsig = 1.0 + sig * (2.0 * a2Gsig + 3.0 * a3Gsig * sig);
+        dGdsig = 1.0_rt + sig * (2.0_rt * a2Gsig + 3.0_rt * a3Gsig * sig);
     } else {
-        bGsig  =  (G_m-G_1) / ((1.0-sig_m) * (1.0-sig_m));
-        sig    = amrex::min( sigma , 1.0 );
-        Gsig   = G_1 + bGsig * (1.0 - sig) * (1.0 - sig);
-        dGdsig = bGsig * 2.0 * (sig - 1.0);
+        bGsig  =  (G_m-G_1) / ((1.0_rt-sig_m) * (1.0_rt-sig_m));
+        sig    = amrex::min( sigma , 1.0_rt );
+        Gsig   = G_1 + bGsig * (1.0_rt - sig) * (1.0_rt - sig);
+        dGdsig = bGsig * 2.0_rt * (sig - 1.0_rt);
     }
 }
 
@@ -148,8 +149,7 @@ void fpmix_gshape_point(Real const sigma, Real const Gat1, Real& Gsig, Real& dGd
 ///                        may be unallocated; pass a default-constructed Array4 when unallocated
 ///
 template <bool work_on_u>
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void find_coupling_coef_gl90_point(int i, int j,
                                    Array4<Real>       const& a_cpl_gl90,
                                    Array4<const Real> const& hvel,
@@ -165,6 +165,8 @@ void find_coupling_coef_gl90_point(int i, int j,
                                    Array4<const Real> const& kappa_gl90_2d,
                                    Array4<const Real> const& kdgl90_struct) noexcept
 {
+    using namespace amrex::literals;
+
     bool kdgl90_use_vert_struct;  ///< use vertical structure for GL90 coefficient
     Real f2;                      ///< Squared Coriolis parameter at a velocity grid point [T-2 ~> s-2].
     Real h_neglect;               ///< A vertical distance that is so small it is usually lost in
@@ -178,56 +180,56 @@ void find_coupling_coef_gl90_point(int i, int j,
 
     kdgl90_use_vert_struct = (kdgl90_struct.p != nullptr);
 
-    for (int k = 0; k <= nz; ++k) a_cpl_gl90(i,j,k) = 0.0;
+    for (int k = 0; k <= nz; ++k) a_cpl_gl90(i,j,k) = 0.0_rt;
 
     for (int k = 1; k < nz; ++k) {
         if constexpr (work_on_u) {
             /// compute coupling coefficient at u-points
             Real const fsum = (CoriolisBu(i,j-1,0) + CoriolisBu(i,j,0));
-            f2 = 0.25 * (fsum * fsum);
+            f2 = 0.25_rt * (fsum * fsum);
             if (use_GL90_N2) {
-                a_cpl_gl90(i,j,k) = 2.0 * f2 * alpha_gl90 / (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
+                a_cpl_gl90(i,j,k) = 2.0_rt * f2 * alpha_gl90 / (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
             } else {
                 if (read_kappa_gl90) {
-                    a_cpl_gl90(i,j,k) = f2 * 0.5 * (kappa_gl90_2d(i,j,0) + kappa_gl90_2d(i+1,j,0)) / g_prime(k,0,0);
+                    a_cpl_gl90(i,j,k) = f2 * 0.5_rt * (kappa_gl90_2d(i,j,0) + kappa_gl90_2d(i+1,j,0)) / g_prime(k,0,0);
                 } else {
                     a_cpl_gl90(i,j,k) = f2 * kappa_gl90 / g_prime(k,0,0);
                 }
                 if (kdgl90_use_vert_struct) {
-                    a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * 0.5
+                    a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * 0.5_rt
                         * (kdgl90_struct(i,j,k-1) + kdgl90_struct(i+1,j,k-1));
                 }
             }
             /// botfn determines when a point is within the influence of the GL90 bottom boundary
             /// layer, going from 1 at the bottom to 0 in the interior.
             z2 = z_i(i,j,k);
-            botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+            botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
-            a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * (1.0 - botfn);
+            a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * (1.0_rt - botfn);
         } else {
             /// compute viscosities at v-points
             Real const fsum = (CoriolisBu(i-1,j,0) + CoriolisBu(i,j,0));
-            f2 = 0.25 * (fsum * fsum);
+            f2 = 0.25_rt * (fsum * fsum);
 
             if (use_GL90_N2) {
-                a_cpl_gl90(i,j,k) = 2.0 * f2 * alpha_gl90 / (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
+                a_cpl_gl90(i,j,k) = 2.0_rt * f2 * alpha_gl90 / (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
             } else {
                 if (read_kappa_gl90) {
-                    a_cpl_gl90(i,j,k) = f2 * 0.5 * (kappa_gl90_2d(i,j,0) + kappa_gl90_2d(i,j+1,0)) / g_prime(k,0,0);
+                    a_cpl_gl90(i,j,k) = f2 * 0.5_rt * (kappa_gl90_2d(i,j,0) + kappa_gl90_2d(i,j+1,0)) / g_prime(k,0,0);
                 } else {
                     a_cpl_gl90(i,j,k) = f2 * kappa_gl90 / g_prime(k,0,0);
                 }
                 if (kdgl90_use_vert_struct) {
-                    a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * 0.5
+                    a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * 0.5_rt
                         * (kdgl90_struct(i,j,k-1) + kdgl90_struct(i,j+1,k-1));
                 }
             }
             /// botfn determines when a point is within the influence of the GL90 bottom boundary
             /// layer, going from 1 at the bottom to 0 in the interior.
             z2 = z_i(i,j,k);
-            botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+            botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
-            a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * (1.0 - botfn);
+            a_cpl_gl90(i,j,k) = a_cpl_gl90(i,j,k) * (1.0_rt - botfn);
         }
     }
 }
@@ -293,8 +295,7 @@ void find_coupling_coef_gl90_point(int i, int j,
 ///                         may be unallocated; pass a default-constructed Array4 when unallocated
 ///
 template <bool work_on_u, bool do_shelf>
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void find_coupling_coef_point(int i, int j,
                               Array4<Real>       const& a_cpl,
                               Array4<const Real> const& hvel,
@@ -324,12 +325,14 @@ void find_coupling_coef_point(int i, int j,
                               Array4<const Real> const& Ustar_2d,
                               Array4<const Real> const& SpV_avg) noexcept
 {
-    Real u_star = 0.0;   ///< ustar at a velocity point [Z T-1 ~> m s-1]
-    Real tau_mag = 0.0;  ///< The magnitude of the wind stress at a velocity point including
+    using namespace amrex::literals;
+
+    Real u_star = 0.0_rt;   ///< ustar at a velocity point [Z T-1 ~> m s-1]
+    Real tau_mag = 0.0_rt;  ///< The magnitude of the wind stress at a velocity point including
                          ///< gustiness [H Z T-2 ~> m2 s-2 or Pa]
-    Real absf = 0.0;     ///< The average of the neighboring absolute values of f [T-1 ~> s-1].
+    Real absf = 0.0_rt;     ///< The average of the neighboring absolute values of f [T-1 ~> s-1].
     Real rho_av1;        ///< The harmonic mean surface layer density at velocity points [R ~> kg m-3]
-    Real z_t = 0.0;      ///< The distance from the top, sometimes normalized
+    Real z_t = 0.0_rt;      ///< The distance from the top, sometimes normalized
                          ///< by Hmix, [Z ~> m] or [nondim].
     Real kv_TBL;         ///< The viscosity in a top boundary layer under ice [H Z T-1 ~> m2 s-1 or Pa s]
     Real tbl_thick;      ///< The thickness of the top boundary layer [Z ~> m]
@@ -339,7 +342,7 @@ void find_coupling_coef_point(int i, int j,
     Real h_shear;        ///< The distance over which shears occur [Z ~> m].
     Real dhc;            ///< The distance between the center of adjacent layers [Z ~> m].
     Real visc_ml;        ///< The mixed layer viscosity [H Z T-1 ~> m2 s-1 or Pa s].
-    Real I_Hmix = 0.0;   ///< The inverse of the mixed layer thickness [Z-1 ~> m-1].
+    Real I_Hmix = 0.0_rt;   ///< The inverse of the mixed layer thickness [Z-1 ~> m-1].
     Real a_ml;           ///< The layer coupling coefficient across an interface in
                          ///< the mixed layer [H T-1 ~> m s-1 or Pa s m-1].
     Real a_floor;        ///< A lower bound on the layer coupling coefficient across an interface in
@@ -365,9 +368,9 @@ void find_coupling_coef_point(int i, int j,
         ///   The maximum coupling coefficient was originally introduced to avoid
         /// truncation error problems in the tridiagonal solver. Effectively, the 1e-10
         /// sets the maximum coupling coefficient increment to 1e10 m per timestep.
-        I_amax = (1.0e-10*H_to_m) * dt;
+        I_amax = (1.0e-10_rt*H_to_m) * dt;
     } else {
-        I_amax = 0.0;
+        I_amax = 0.0_rt;
     }
 
     do_OBCs = false;
@@ -381,25 +384,25 @@ void find_coupling_coef_point(int i, int j,
     }
     */
 
-    for (int k = 0; k <= nz; ++k) a_cpl(i,j,k) = 0.0;
-    h_ml = 0.0;
+    for (int k = 0; k <= nz; ++k) a_cpl(i,j,k) = 0.0_rt;
+    h_ml = 0.0_rt;
 
-    if (CS.Kvml_invZ2 > 0.0 && !do_shelf) {
-        I_Hmix = 1.0 / (CS.Hmix + h_neglect);
+    if (CS.Kvml_invZ2 > 0.0_rt && !do_shelf) {
+        I_Hmix = 1.0_rt / (CS.Hmix + h_neglect);
         z_t = h_neglect * I_Hmix;
     }
 
     for (int k = 1; k < nz; ++k) {
         Kv_tot = CS.Kv;
 
-        if (CS.Kvml_invZ2 > 0.0 && !do_shelf) {
+        if (CS.Kvml_invZ2 > 0.0_rt && !do_shelf) {
             /// This is an older (vintage ~1997) way to prevent wind stresses from driving very
             /// large flows in nearly massless near-surface layers when there is not a physically-
             /// based surface boundary layer parameterization.  It does not have a plausible
             /// physical basis, and probably should not be used.
             z_t = z_t + h_harm(i,j,k-1) * I_Hmix;
             Kv_tot = CS.Kv + CS.Kvml_invZ2 / ((z_t * z_t) *
-                     (1.0 + 0.09 * z_t * z_t * z_t * z_t * z_t * z_t));
+                     (1.0_rt + 0.09_rt * z_t * z_t * z_t * z_t * z_t * z_t));
         }
 
         if (Kv_shear.p != nullptr) {
@@ -410,7 +413,7 @@ void find_coupling_coef_point(int i, int j,
             /// respond to the evolving layer thicknesses or the surface wind stresses are added
             /// later.
             if constexpr (work_on_u) {
-                Kv_add = 0.5 * (Kv_shear(i,j,k) + Kv_shear(i+1,j,k));
+                Kv_add = 0.5_rt * (Kv_shear(i,j,k) + Kv_shear(i+1,j,k));
                 /*
                 if (do_OBCs) {
                     if (OBC->u_E_OBCs_on_PE) {
@@ -423,7 +426,7 @@ void find_coupling_coef_point(int i, int j,
                 */
                 Kv_tot = Kv_tot + Kv_add;
             } else {
-                Kv_add = 0.5 * (Kv_shear(i,j,k) + Kv_shear(i,j+1,k));
+                Kv_add = 0.5_rt * (Kv_shear(i,j,k) + Kv_shear(i,j+1,k));
                 /*
                 if (do_OBCs) {
                     if (OBC->v_N_OBCs_on_PE) {
@@ -443,9 +446,9 @@ void find_coupling_coef_point(int i, int j,
             /// corner (vorticity) points.  Because OBCs run through the faces and corners there
             /// is no need to further modify these viscosities here to take OBCs into account.
             if constexpr (work_on_u) {
-                Kv_tot = Kv_tot + 0.5 * (Kv_shear_Bu(i,j-1,k) + Kv_shear_Bu(i,j,k));
+                Kv_tot = Kv_tot + 0.5_rt * (Kv_shear_Bu(i,j-1,k) + Kv_shear_Bu(i,j,k));
             } else {
-                Kv_tot = Kv_tot + 0.5 * (Kv_shear_Bu(i-1,j,k) + Kv_shear_Bu(i,j,k));
+                Kv_tot = Kv_tot + 0.5_rt * (Kv_shear_Bu(i-1,j,k) + Kv_shear_Bu(i,j,k));
             }
         }
 
@@ -455,19 +458,19 @@ void find_coupling_coef_point(int i, int j,
             ///    botfn determines when a point is within the influence of the bottom
             ///  boundary layer, going from 1 at the bottom to 0 in the interior.
             z2 = z_i(i,j,k);
-            botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+            botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
             Kv_tot = Kv_tot + (kv_bbl - CS.Kv) * botfn;
-            dhc = 0.5 * (hvel(i,j,k) + hvel(i,j,k-1));
+            dhc = 0.5_rt * (hvel(i,j,k) + hvel(i,j,k-1));
             if (dhc > bbl_thick) {
-                h_shear = ((1.0 - botfn) * dhc + botfn * bbl_thick) + h_neglect;
+                h_shear = ((1.0_rt - botfn) * dhc + botfn * bbl_thick) + h_neglect;
             } else {
                 h_shear = dhc + h_neglect;
             }
 
             /// Calculate the coupling coefficients from the viscosities.
             a_cpl(i,j,k) = Kv_tot / (h_shear + (I_amax * Kv_tot));
-        } else if (amrex::Math::abs(CS.Kv_extra_bbl) > 0.0) {
+        } else if (amrex::Math::abs(CS.Kv_extra_bbl) > 0.0_rt) {
             /// There is a simple enhancement of the near-bottom viscosities, but no
             /// adjustment of the viscous coupling length scales to give a particular
             /// bottom stress.
@@ -475,10 +478,10 @@ void find_coupling_coef_point(int i, int j,
             ///    botfn determines when a point is within the influence of the bottom
             ///  boundary layer, going from 1 at the bottom to 0 in the interior.
             z2 = z_i(i,j,k);
-            botfn = 1.0 / (1.0 + 0.09 * z2 * z2 * z2 * z2 * z2 * z2);
+            botfn = 1.0_rt / (1.0_rt + 0.09_rt * z2 * z2 * z2 * z2 * z2 * z2);
 
             Kv_tot = Kv_tot + CS.Kv_extra_bbl * botfn;
-            h_shear = 0.5 * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
+            h_shear = 0.5_rt * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
 
             /// Calculate the coupling coefficients from the viscosities.
             a_cpl(i,j,k) = Kv_tot / (h_shear + I_amax * Kv_tot);
@@ -487,7 +490,7 @@ void find_coupling_coef_point(int i, int j,
             /// Kv_tot, and there is no adjustment of the viscous coupling length
             /// scales to give a particular bottom stress.
 
-            h_shear = 0.5 * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
+            h_shear = 0.5_rt * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect);
             /// Calculate the coupling coefficients from the viscosities.
             a_cpl(i,j,k) = Kv_tot / (h_shear + I_amax * Kv_tot);
         }
@@ -495,13 +498,13 @@ void find_coupling_coef_point(int i, int j,
 
     /// Assign the bottom coupling coefficients
     if (CS.bottomdraglaw) {
-        dhc = hvel(i,j,nz-1) * 0.5;
+        dhc = hvel(i,j,nz-1) * 0.5_rt;
         a_cpl(i,j,nz) = kv_bbl / ((amrex::min(dhc, bbl_thick) + h_neglect) + I_amax * kv_bbl);
-    } else if (amrex::Math::abs(CS.Kv_extra_bbl) > 0.0) {
+    } else if (amrex::Math::abs(CS.Kv_extra_bbl) > 0.0_rt) {
         a_cpl(i,j,nz) = (CS.Kv + CS.Kv_extra_bbl)
-            / ((0.5 * hvel(i,j,nz-1) + h_neglect) + I_amax * (CS.Kv + CS.Kv_extra_bbl));
+            / ((0.5_rt * hvel(i,j,nz-1) + h_neglect) + I_amax * (CS.Kv + CS.Kv_extra_bbl));
     } else {
-        a_cpl(i,j,nz) = CS.Kv / ((0.5 * hvel(i,j,nz-1) + h_neglect) + I_amax * CS.Kv);
+        a_cpl(i,j,nz) = CS.Kv / ((0.5_rt * hvel(i,j,nz-1) + h_neglect) + I_amax * CS.Kv);
     }
 
     /// Add surface intensified viscous coupling, either as a no-slip boundary condition under a
@@ -516,23 +519,23 @@ void find_coupling_coef_point(int i, int j,
             kv_TBL = Kv_tbl_shelf_v(i,j,0);
             tbl_thick = tbl_thick_shelf_v(i,j,0) + h_neglect;
         }
-        z_t = 0.0;
+        z_t = 0.0_rt;
 
         /// If a_cpl(1) were not already 0, it would be added here.
-        if (0.5 * hvel(i,j,0) > tbl_thick) {
+        if (0.5_rt * hvel(i,j,0) > tbl_thick) {
             a_cpl(i,j,0) = kv_TBL / (tbl_thick + I_amax * kv_TBL);
         } else {
-            a_cpl(i,j,0) = kv_TBL / ((0.5 * hvel(i,j,0) + h_neglect) + I_amax * kv_TBL);
+            a_cpl(i,j,0) = kv_TBL / ((0.5_rt * hvel(i,j,0) + h_neglect) + I_amax * kv_TBL);
         }
 
         for (int k = 1; k < nz; ++k) {
             z_t = z_t + hvel(i,j,k-1) / tbl_thick;
             Real const z_t3 = (z_t * z_t) * z_t;
-            topfn = 1.0 / (1.0 + 0.09 * (z_t3 * z_t3));
+            topfn = 1.0_rt / (1.0_rt + 0.09_rt * (z_t3 * z_t3));
 
-            dhc = 0.5 * (hvel(i,j,k) + hvel(i,j,k-1));
+            dhc = 0.5_rt * (hvel(i,j,k) + hvel(i,j,k-1));
             if (dhc > tbl_thick) {
-                h_shear = ((1.0 - topfn) * dhc + topfn * tbl_thick) + h_neglect;
+                h_shear = ((1.0_rt - topfn) * dhc + topfn * tbl_thick) + h_neglect;
             } else {
                 h_shear = dhc + h_neglect;
             }
@@ -544,48 +547,48 @@ void find_coupling_coef_point(int i, int j,
 
         /// Find the friction velocity and the absolute value of the Coriolis parameter at this
         /// point.  Zero out the friction velocity on land points.
-        u_star = 0.0;
-        tau_mag = 0.0;
+        u_star = 0.0_rt;
+        tau_mag = 0.0_rt;
 
         if (SpV_avg.p != nullptr) {
-            rho_av1 = 0.0;
+            rho_av1 = 0.0_rt;
 
             if constexpr (work_on_u) {
-                u_star = 0.5 * (Ustar_2d(i,j,0) + Ustar_2d(i+1,j,0));
-                rho_av1 = 2.0 / (SpV_avg(i,j,0) + SpV_avg(i+1,j,0));
-                absf = 0.5 * (amrex::Math::abs(CoriolisBu(i,j-1,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
+                u_star = 0.5_rt * (Ustar_2d(i,j,0) + Ustar_2d(i+1,j,0));
+                rho_av1 = 2.0_rt / (SpV_avg(i,j,0) + SpV_avg(i+1,j,0));
+                absf = 0.5_rt * (amrex::Math::abs(CoriolisBu(i,j-1,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
                 /*
                 if (do_OBCs) {
                     if (OBC->u_E_OBCs_on_PE) {
                         if (OBC->segnum_u(i,j,0) > 0) {
                             u_star = Ustar_2d(i,j,0);
-                            rho_av1 = 1.0 / SpV_avg(i,j,0);
+                            rho_av1 = 1.0_rt / SpV_avg(i,j,0);
                         }
                     }
                     if (OBC->u_W_OBCs_on_PE) {
                         if (OBC->segnum_u(i,j,0) < 0) {
                             u_star = Ustar_2d(i+1,j,0);
-                            rho_av1 = 1.0 / SpV_avg(i+1,j,0);
+                            rho_av1 = 1.0_rt / SpV_avg(i+1,j,0);
                         }
                     }
                 }
                 */
             } else {
-                u_star = 0.5 * (Ustar_2d(i,j,0) + Ustar_2d(i,j+1,0));
-                rho_av1 = 2.0 / (SpV_avg(i,j,0) + SpV_avg(i,j+1,0));
-                absf = 0.5 * (amrex::Math::abs(CoriolisBu(i-1,j,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
+                u_star = 0.5_rt * (Ustar_2d(i,j,0) + Ustar_2d(i,j+1,0));
+                rho_av1 = 2.0_rt / (SpV_avg(i,j,0) + SpV_avg(i,j+1,0));
+                absf = 0.5_rt * (amrex::Math::abs(CoriolisBu(i-1,j,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
                 /*
                 if (do_OBCs) {
                     if (OBC->v_N_OBCs_on_PE) {
                         if (OBC->segnum_v(i,j,0) > 0) {
                             u_star = Ustar_2d(i,j,0);
-                            rho_av1 = 1.0 / SpV_avg(i,j,0);
+                            rho_av1 = 1.0_rt / SpV_avg(i,j,0);
                         }
                     }
                     if (OBC->v_S_OBCs_on_PE) {
                         if (OBC->segnum_v(i,j,0) < 0) {
                             u_star = Ustar_2d(i,j+1,0);
-                            rho_av1 = 1.0 / SpV_avg(i,j+1,0);
+                            rho_av1 = 1.0_rt / SpV_avg(i,j+1,0);
                         }
                     }
                 }
@@ -595,8 +598,8 @@ void find_coupling_coef_point(int i, int j,
             tau_mag = RZ_to_H * rho_av1 * (u_star * u_star);
         } else {  /// (.not.allocated(tv%SpV_avg))
             if constexpr (work_on_u) {
-                u_star = 0.5 * (Ustar_2d(i,j,0) + Ustar_2d(i+1,j,0));
-                absf = 0.5 * (amrex::Math::abs(CoriolisBu(i,j-1,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
+                u_star = 0.5_rt * (Ustar_2d(i,j,0) + Ustar_2d(i+1,j,0));
+                absf = 0.5_rt * (amrex::Math::abs(CoriolisBu(i,j-1,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
                 /*
                 if (do_OBCs) {
                     if (OBC->u_E_OBCs_on_PE) {
@@ -608,8 +611,8 @@ void find_coupling_coef_point(int i, int j,
                 }
                 */
             } else {
-                u_star = 0.5 * (Ustar_2d(i,j,0) + Ustar_2d(i,j+1,0));
-                absf = 0.5 * (amrex::Math::abs(CoriolisBu(i-1,j,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
+                u_star = 0.5_rt * (Ustar_2d(i,j,0) + Ustar_2d(i,j+1,0));
+                absf = 0.5_rt * (amrex::Math::abs(CoriolisBu(i-1,j,0)) + amrex::Math::abs(CoriolisBu(i,j,0)));
                 /*
                 if (do_OBCs) {
                     if (OBC->v_N_OBCs_on_PE) {
@@ -642,8 +645,8 @@ void find_coupling_coef_point(int i, int j,
                 for (int k = 0; k < max_nk; ++k) {
                     if ((k+1) <= nkml_visc_u(i,j,0)) {  /// This layer is all in the ML.
                         h_ml = h_ml + hvel(i,j,k);
-                    } else if ((k+1) < nkml_visc_u(i,j,0) + 1.0) {  /// Part of this layer is in the ML.
-                        h_ml = h_ml + ((nkml_visc_u(i,j,0) + 1.0) - (k+1)) * hvel(i,j,k);
+                    } else if ((k+1) < nkml_visc_u(i,j,0) + 1.0_rt) {  /// Part of this layer is in the ML.
+                        h_ml = h_ml + ((nkml_visc_u(i,j,0) + 1.0_rt) - (k+1)) * hvel(i,j,k);
                     }
                 }
             } else {
@@ -653,8 +656,8 @@ void find_coupling_coef_point(int i, int j,
                 for (int k = 0; k < max_nk; ++k) {
                     if ((k+1) <= nkml_visc_v(i,j,0)) {  /// This layer is all in the ML.
                         h_ml = h_ml + hvel(i,j,k);
-                    } else if ((k+1) < nkml_visc_v(i,j,0) + 1.0) {  /// Part of this layer is in the ML.
-                        h_ml = h_ml + ((nkml_visc_v(i,j,0) + 1.0) - (k+1)) * hvel(i,j,k);
+                    } else if ((k+1) < nkml_visc_v(i,j,0) + 1.0_rt) {  /// Part of this layer is in the ML.
+                        h_ml = h_ml + ((nkml_visc_v(i,j,0) + 1.0_rt) - (k+1)) * hvel(i,j,k);
                     }
                 }
             }
@@ -671,7 +674,7 @@ void find_coupling_coef_point(int i, int j,
         } else if (CS.fixed_LOTW_ML || CS.apply_LOTW_floor) {
             /// Determine which interfaces are within CS%Hmix of the surface, and set the viscous
             /// boundary layer thickness to the the smaller of CS%Hmix and the depth of the ocean.
-            h_ml = 0.0;
+            h_ml = 0.0_rt;
             for (int k = 0; k < nz; ++k) {
                 can_exit = true;
                 if (h_ml < CS.Hmix) {
@@ -694,11 +697,11 @@ void find_coupling_coef_point(int i, int j,
         }
 
         /// Avoid working on land or on columns where the viscous coupling could not be increased.
-        if (u_star <= 0.0) nk_in_ml = 0;
+        if (u_star <= 0.0_rt) nk_in_ml = 0;
 
         /// Set the viscous coupling at the interfaces as the larger of what was previously
         /// set and the contributions from the surface boundary layer.
-        z_t = 0.0;
+        z_t = 0.0_rt;
         if (CS.apply_LOTW_floor &&
             (CS.dynamic_viscous_ML || nkml > 0 || CS.fixed_LOTW_ML)) {
             for (int k = 1; k < max_nk; ++k) {
@@ -721,7 +724,7 @@ void find_coupling_coef_point(int i, int j,
                     /// Set the viscous coupling based on the model's vertical resolution.  The
                     /// omission of the I_amax factor here is consistent with answer dates above
                     /// 20190101.
-                    a_ml = visc_ml / (0.25 * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect));
+                    a_ml = visc_ml / (0.25_rt * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect));
 
                     /// As a floor on the viscous coupling, assume that the length scale in the
                     /// denominator can not be larger than the distance from the surface,
@@ -770,7 +773,7 @@ void find_coupling_coef_point(int i, int j,
                         visc_ml = CS.vonKar * (temp1 * tau_mag)
                             / (absf * temp1 + (h_ml + h_neglect) * u_star);
                     }
-                    a_ml = visc_ml / (0.25 * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect) + 0.5 * I_amax * visc_ml);
+                    a_ml = visc_ml / (0.25_rt * (hvel(i,j,k) + hvel(i,j,k-1) + h_neglect) + 0.5_rt * I_amax * visc_ml);
 
                     /// Choose the largest estimate of a_cpl, but these could be changed to be
                     /// additive.

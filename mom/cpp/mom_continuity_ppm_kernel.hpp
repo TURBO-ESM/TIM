@@ -11,7 +11,6 @@
 
 namespace MOM {
 using amrex::Real;
-using namespace amrex::literals;
 ///
 /// @brief Piecewise parabolic limiter
 ///  This function limits the left/right edge values of the PPM reconstruction
@@ -29,14 +28,15 @@ using namespace amrex::literals;
 ///              parabolic fit [H ~> m or kg m-2]
 /// @note On return, @p h_L and @p h_R hold the modified thickness values.
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void ppm_limit_pos_point(Real& h_L,
                          Real& h_R,
                          Real const h_in,
                          Real const h_min 
                          ) noexcept
 {
+    using namespace amrex::literals;
+
     /// This limiter prevents undershooting minima within the domain with
     /// values less than h_min.
     /// The grid-normalized curvature of the three thicknesses  [H ~> m or kg m-2]
@@ -77,13 +77,14 @@ void ppm_limit_pos_point(Real& h_L,
 ///
 ///  @note On return, @p h_L and @p h_R hold the modified thickness values.
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void ppm_limit_cw84_point(Real& h_L,
                           Real& h_R,
                           Real const h_in
 			  ) noexcept
 {
+    using namespace amrex::literals;
+
     /// This limiter monotonizes the parabola following
     /// Colella and Woodward, 1984, Eq. 1.10
     Real h_i = h_in;  ///< A copy of the cell-average layer thickness
@@ -111,8 +112,7 @@ void ppm_limit_cw84_point(Real& h_L,
 ///
 /// @note On return, @p h_L and @p h_R are both set to @p h_in.
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void edge_thickness_upwind_point(Real& h_L, Real& h_R, Real const h_in) noexcept
 {
     h_L = h_in;
@@ -144,8 +144,7 @@ void edge_thickness_upwind_point(Real& h_L, Real& h_R, Real const h_in) noexcept
  *
  *  @note On return, @p uh and @p duhdu hold the computed transport and derivative.
  */
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void flux_elem_point(Real const u,
                      Real const h,
                      Real const h_p1,
@@ -165,6 +164,8 @@ void flux_elem_point(Real const u,
                      bool const vol_CFL,
                      Real const por_face_area) noexcept
 {
+    using namespace amrex::literals;
+
     Real const tmp = G_dy_Cu * por_face_area;
     Real CFL, curv_3, h_marg, dh;
 
@@ -203,8 +204,7 @@ void flux_elem_point(Real const u,
  *  @param maxrat Maximum value of ratio [A B-1].
  *  @return       a/b, capped at maxrat in magnitude [A B-1].
  */
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 Real ratio_max_point(Real const a, Real const b, Real const maxrat) noexcept
 {
     if (amrex::Math::abs(a) > amrex::Math::abs(maxrat * b)) {
@@ -232,8 +232,7 @@ Real ratio_max_point(Real const a, Real const b, Real const maxrat) noexcept
 /// @param h_min    The minimum layer thickness [H ~> m or kg m-2].
 /// @return         The updated layer thickness, floored at @p h_min [H ~> m or kg m-2].
 ///
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 Real continuity_convergence_point(Real const h_prev, Real const flux_out, Real const flux_in,
                                   Real const dt, Real const IareaT, Real const h_min) noexcept
 {

@@ -2,7 +2,10 @@ module turbotmp_bridge_c_types
   use iso_c_binding, only : c_ptr, c_int
   implicit none
   private
-  public :: RealArray_C, IntArray_C, LogicalArray_C
+  public :: RealArray_C, IntArray_C, LogicalArray_C, Box_C
+
+  ! Each type must match its struct in tim/cpp/turbotmp_bridge_c_types.h.
+  ! bind(C) matches components by position, not by name (Fortran rank = C dim).
 
   !< Type IntArray_C struct for C++ bridge layer
   type, bind(C) :: IntArray_C
@@ -30,5 +33,11 @@ module turbotmp_bridge_c_types
      type(c_ptr) :: ub                 !< Upper bounds
      integer(c_int) :: rank            !< The number of dimensions
   end type LogicalArray_C
+
+  !< Box struct for C bridge
+  type, bind(C) :: Box_C
+     type(c_ptr) :: idxS               !< Start index of a box
+     type(c_ptr) :: idxE               !< End index of a box
+  end type Box_C
 
 end module turbotmp_bridge_c_types

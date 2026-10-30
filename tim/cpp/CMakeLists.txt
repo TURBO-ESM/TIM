@@ -36,15 +36,6 @@ target_include_directories(tim PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include/tim>)
 
-# tim_coms_infra_C_API.cpp (and the installed tim_coms_infra_C_API.h it
-# implements) includes turbotmp_bridge_c_types.h, which lives in mom/cpp
-# rather than tim/cpp's own include path. BUILD_INTERFACE only: mom/cpp is
-# not always configured alongside tim (e.g. test_tim's standalone build),
-# and an installed tim package gets the header from a mom_bridge install
-# instead, once TIM_ENABLE_MOM_BRIDGE is on.
-target_include_directories(tim PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../mom/cpp>)
-
 # tim's C++ object files and AMReX::amrex reference the C++ standard
 # library (e.g. __cxa_call_terminate). Position the runtime *after*
 # AMReX::amrex so it lands after libamrex_3d.a in the consumer's link
@@ -69,10 +60,13 @@ if(TIM_CPP_INSTALL)
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
+  # turbotmp_bridge_c_types.h is included by tim_coms_infra_C_API.h, so it
+  # installs alongside it -- consumers of an installed TIM::tim need both.
   install(FILES
       tim_coms_infra.hpp
       tim_coms_infra_C_API.h
       tim_profile.hpp
+      turbotmp_bridge_c_types.h
       DESTINATION include/tim)
   install(FILES
       core/tim_abort.hpp

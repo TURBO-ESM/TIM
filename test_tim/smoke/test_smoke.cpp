@@ -1,7 +1,8 @@
 // PIO linking test for the TIM C++ I/O and diagnostics implementation 
 //
 //   * Initialize AMReX via the custom main (see test_tim_main.cpp), so the
-//     harness can build AMReX-backed fixtures the way test_mom does.
+//     harness can build AMReX-backed fixtures the way protoMOMxx's
+//     tests/test_mom does.
 //   * Confirm that the ParallelIO C library links and its header resolves, so the
 //     io/ layer can #include <pio.h> and call libpioc.
 

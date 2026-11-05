@@ -6,6 +6,8 @@ set(r4_flags "")
 # LLVM Flang
 # flang has no -fcray-pointer, -ffree-line-length-none or -fno-range-check:
 # its defaults already behave the way those flags make gfortran behave.
+# It has no -fbacktrace either, and nothing like it: a runtime error reports only
+# its file and line, and a crash (SIGSEGV) prints nothing.
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fconvert=big-endian")
 # GNU's Release level; flang has no -funroll-all-loops or -finline-functions.
 set(CMAKE_Fortran_FLAGS_RELEASE "-O3")

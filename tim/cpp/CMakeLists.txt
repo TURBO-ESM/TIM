@@ -45,7 +45,8 @@ target_include_directories(tim PUBLIC
 #
 # Which runtime depends on the platform as well as the compiler: clang (Apple's
 # or upstream) defaults to libc++ on macOS only. On Linux it uses libstdc++,
-# like GNU and IntelLLVM.
+# like GNU and IntelLLVM. A Linux clang told to use libc++ (-stdlib=libc++) would
+# still get stdc++ here; no supported toolchain does that, so it isn't handled.
 set(_tim_libcxx    "$<AND:$<CXX_COMPILER_ID:Clang,AppleClang>,$<PLATFORM_ID:Darwin>>")
 set(_tim_libstdcxx "$<AND:$<CXX_COMPILER_ID:GNU,IntelLLVM,Clang>,$<NOT:${_tim_libcxx}>>")
 target_link_libraries(tim PUBLIC AMReX::amrex MPI::MPI_CXX

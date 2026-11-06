@@ -15,8 +15,11 @@
 #   --build-dir DIR Override build directory (default: $TIM_ROOT/build)
 #   --prefix DIR    Install prefix (default: $build_dir/install)
 #   --parallel N    Build with N parallel jobs
-#   --tests         Build the C++ unit tests (test_tim) and run ctest. Requires
-#                   AMReX and PIO to be on CMAKE_PREFIX_PATH.
+#   --tests         Build the C++ unit tests (test_tim) and run ctest: every
+#                   case serially (label unit) plus whole executables on 2 MPI
+#                   ranks (label mpi2), so mpiexec must work in the calling
+#                   shell (on Derecho: a compute node). Requires AMReX and PIO
+#                   to be on CMAKE_PREFIX_PATH.
 
 set -eo pipefail
 

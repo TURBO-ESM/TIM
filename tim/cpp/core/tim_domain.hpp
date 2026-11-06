@@ -21,6 +21,21 @@
 
 namespace TIM {
 
+/// @brief The AMReX nodality of a staggering: 0 corresponds to cell centers
+/// while 1 corresponds to points sitting on cell boundaries (nodes).
+/// Horizontal staggering only: the k-component is always 0.
+/// @param stagger The staggering.
+/// @return The nodal flag vector (consumable by amrex::convert).
+inline amrex::IntVect nodality(const Stagger stagger) {
+    switch (stagger) {
+        case Stagger::XFace: return amrex::IntVect(1, 0, 0);
+        case Stagger::YFace: return amrex::IntVect(0, 1, 0);
+        case Stagger::Node:  return amrex::IntVect(1, 1, 0);
+        case Stagger::Cell:  break;
+    }
+    return amrex::IntVect(0, 0, 0);
+}
+
 /// @brief The construction specification of a Domain.
 struct DomainSpec {
     int ni_global = 0;   ///< Global number of cells in the i-direction (x).

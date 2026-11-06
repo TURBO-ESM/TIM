@@ -9,12 +9,14 @@
 # Imported targets provided:
 #  * TIM::tim_r4     - real32 library target (if built with 32BIT=ON)
 #  * TIM::tim_r8     - real64 library target (if built with 64BIT=ON)
-#  * TIM::tim        - C++ infrastructure layer (always)
+#  * TIM::tim        - C++ AMReX core
+#  * TIM::tim_base   - C++ base layer (abort, Time, Stagger; no AMReX)
+#  * TIM::tim_io     - C++ I/O layer on PIO (no AMReX; if built with TIM_ENABLE_IO=ON)
 
 include(CMakeFindDependencyMacro)
 
 # Resolve transitive deps BEFORE include(tim-targets.cmake): the exported
-# targets reference NetCDF::, MPI::, AMReX::amrex by name, and cmake errors
+# targets reference NetCDF::, MPI::, AMReX::amrex, PIO:: by name, and cmake errors
 # out at include() if those imported targets are not yet defined.
 find_dependency(MPI COMPONENTS C Fortran)
 # Save and restore CMAKE_MODULE_PATH so a pre-existing matching entry is
@@ -27,6 +29,12 @@ unset(_tim_saved_module_path)
 # TIM links against AMReX's Fortran interface; consumers need the same
 # component to satisfy transitive symbols at link time.
 find_dependency(AMReX COMPONENTS FORTRAN)
+# The io targets link PIO's C library. A PIO built by TIM's FetchContent fallback
+# installs its PIOConfig.cmake under this same prefix; hint that first so an
+# installed TIM resolves the PIO it was built against before any module PIO.
+if(@TIM_ENABLE_IO@)
+  find_dependency(PIO COMPONENTS C HINTS "${PACKAGE_PREFIX_DIR}" $ENV{PIO})
+endif()
 
 if(@OPENMP@)
   find_dependency(OpenMP COMPONENTS C Fortran)

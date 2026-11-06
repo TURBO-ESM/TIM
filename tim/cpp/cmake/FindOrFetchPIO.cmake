@@ -1,8 +1,16 @@
-# ParallelIO (PIO2) dependency. Prefer a prebuilt install (e.g. the
-# Derecho parallelio module, which ships PIOConfig.cmake on CMAKE_PREFIX_PATH
+# ParallelIO (PIO2) dependency of the io targets. Prefer a prebuilt install (e.g.
+# the Derecho parallelio module, which ships PIOConfig.cmake on CMAKE_PREFIX_PATH
 # and defines the imported target PIO::PIO_C). The PIO env variable is also
 # honored as a hint (set by the parallelio module and the CI container image).
-# When none is found, fall back to building libpioc from source via FetchContent.
+# When none is found, fall back to building libpioc from source via FetchContent;
+# its install rules then put PIOConfig.cmake next to TIMConfig.cmake, so an
+# installed TIM resolves PIO::PIO_C either way.
+#
+# A no-op when PIO::PIO_C already exists, e.g. defined by an embedding project.
+
+if(TARGET PIO::PIO_C)
+  return()
+endif()
 
 find_package(PIO QUIET COMPONENTS C HINTS $ENV{PIO})
 
@@ -23,6 +31,8 @@ if(NOT PIO_FOUND)
     set(PIO_ENABLE_TESTS   OFF CACHE BOOL "" FORCE)
     set(WITH_PNETCDF       OFF CACHE BOOL "" FORCE)
     find_package(MPI REQUIRED COMPONENTS C)
+    # PIO's CMake calls include(FindNetCDF) but ships no such module; lend it TIM's.
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../cmake")
     FetchContent_MakeAvailable(parallelio)
     # Two embedded-build fixups, scoped to pioc:
     #  - pio.h includes mpi.h, but PIO's CMake assumes an MPI compiler wrapper and
@@ -34,7 +44,11 @@ if(NOT PIO_FOUND)
     target_include_directories(pioc SYSTEM PRIVATE ${MPI_C_INCLUDE_DIRS})
     target_include_directories(pioc PRIVATE ${parallelio_BINARY_DIR})
     add_library(PIO::PIO_C ALIAS pioc)
-    set(PIO_FOUND TRUE)
+    # PIO installs pioc in its own export set (PIOCTargets, namespace PIO::);
+    # export that set for the build tree too, so TIM's build-tree export of the
+    # io targets can name it.
+    export(EXPORT PIOCTargets NAMESPACE PIO::
+      FILE "${parallelio_BINARY_DIR}/PIOCTargets.cmake")
   else()
     message(FATAL_ERROR
       "PIO not found. Load the parallelio module / add a PIO install to "

@@ -80,6 +80,24 @@ add_library(TIM::tim ALIAS tim)
 target_link_libraries(tim PUBLIC tim_base AMReX::amrex ${_tim_cxx_runtime})
 set_target_properties(tim PROPERTIES CXX_EXTENSIONS OFF)
 
+# --- layering ------------------------------------------------------------------
+# Enforce the layering in the target table above: fail the configure if a TIM
+# target directly links a layer it must not. Checking each TIM target's own links
+# covers the chain, since tim_io reaches AMReX only through tim_base or PIO.
+# Deferred to the end of this directory so links added later still count.
+function(tim_assert_no_direct_link target regex)
+  get_target_property(deps ${target} INTERFACE_LINK_LIBRARIES)
+  if(deps MATCHES "${regex}")
+    message(FATAL_ERROR "${target} must not link ${CMAKE_MATCH_0} (links: ${deps})")
+  endif()
+endfunction()
+
+cmake_language(DEFER CALL tim_assert_no_direct_link tim_base "AMReX::|libamrex|PIO::|libpioc")
+cmake_language(DEFER CALL tim_assert_no_direct_link tim "PIO::|libpioc")
+if(TIM_ENABLE_IO)
+  cmake_language(DEFER CALL tim_assert_no_direct_link tim_io "AMReX::|libamrex")
+endif()
+
 # Install/export rules: ON for full TIM builds (the top level sets
 # TIM_CPP_INSTALL before add_subdirectory) and for direct configures of
 # this directory; OFF by default when a consumer embeds this directory

@@ -5,21 +5,22 @@
 # or with raw CMake:
 #   cmake -S . -B build -DTIM_ADD_TEST_TARGETS=ON \
 #         -DCMAKE_PREFIX_PATH="<amrex-install>;$NCAR_ROOT_PARALLELIO"
-#   cmake --build build --target test_tim_smoke
+#   cmake --build build
 #   ctest --test-dir build -L unit --output-on-failure
 # or standalone -- just tim/cpp and its tests, without the full TIM/FMS build
 #   cmake -S test_tim -B build -DCMAKE_PREFIX_PATH=<amrex-install>
 #   cmake --build build && ctest --test-dir build -L unit
+#
+# Labels: `unit` runs every test case serially, one ctest entry per case;
+# `mpi<N>` runs whole test executables on N MPI ranks (e.g. ctest -L mpi2).
 
 # Standalone configuration: provide what the top-level build provides
-# otherwise. AMReX comes from CMAKE_PREFIX_PATH. PIO comes from an install
-# on CMAKE_PREFIX_PATH / $PIO, or a libpioc source build (FindOrFetchPIO).
+# otherwise. AMReX comes from CMAKE_PREFIX_PATH. tim/cpp resolves PIO for the
+# io targets: an install on CMAKE_PREFIX_PATH / $PIO, or a libpioc source build.
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   cmake_minimum_required(VERSION 3.24)
   project(TIM_cpp_tests LANGUAGES C CXX)
-  option(TIM_FETCH_DEPS "Fetch missing dependencies (GoogleTest, PIO)" ON)
-  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
-  include(FindOrFetchPIO)
+  set(TIM_ENABLE_IO ON)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../tim/cpp" tim_cpp)
 endif()
 
@@ -42,6 +43,19 @@ if(NOT GTest_FOUND)
 endif()
 enable_testing()
 
+# tim_add_mpi_test(<target> RANKS <n>...)
+#   Run the whole test executable under the MPI launcher once per rank count,
+#   as ctest entry <target>_np<n> with label mpi<n>.
+function(tim_add_mpi_test target)
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "RANKS")
+  foreach(n IN LISTS arg_RANKS)
+    add_test(NAME ${target}_np${n}
+      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${n} ${MPIEXEC_PREFLAGS}
+              $<TARGET_FILE:${target}> ${MPIEXEC_POSTFLAGS})
+    set_tests_properties(${target}_np${n} PROPERTIES LABELS "mpi${n}" PROCESSORS ${n})
+  endforeach()
+endfunction()
+
 if(AMReX_GPU_BACKEND STREQUAL "CUDA")
   enable_language(CUDA)
   set_source_files_properties(
@@ -58,6 +72,10 @@ endif()
 add_executable(test_tim_smoke
   test_tim_main.cpp
   smoke/test_smoke.cpp
+)
+
+add_executable(test_tim_io_smoke
+  io/test_tim_io_smoke.cpp
 )
 
 add_executable(test_tim_runtime_owner
@@ -85,7 +103,13 @@ add_executable(test_tim_checksum
 target_link_libraries(test_tim_smoke
   GTest::gtest
   tim
-  PIO::PIO_C
+)
+
+# The AMReX-free layers link nothing above them: test_tim_io_smoke and
+# test_tim_time are built without AMReX on their link or include lines.
+target_link_libraries(test_tim_io_smoke
+  GTest::gtest
+  tim_io
 )
 
 foreach(tim_test test_tim_runtime_owner test_tim_runtime_guest test_tim_domain)
@@ -97,7 +121,7 @@ endforeach()
 
 target_link_libraries(test_tim_time
   GTest::gtest_main
-  tim
+  tim_base
 )
 
 target_link_libraries(test_tim_checksum
@@ -108,6 +132,10 @@ target_link_libraries(test_tim_checksum
 include(GoogleTest)
 
 gtest_discover_tests(test_tim_smoke
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES LABELS "unit")
+
+gtest_discover_tests(test_tim_io_smoke
   DISCOVERY_MODE PRE_TEST
   PROPERTIES LABELS "unit")
 
@@ -130,3 +158,8 @@ gtest_discover_tests(test_tim_time
 gtest_discover_tests(test_tim_checksum
   DISCOVERY_MODE PRE_TEST
   PROPERTIES LABELS "unit")
+
+foreach(tim_test test_tim_io_smoke test_tim_runtime_owner test_tim_runtime_guest
+                 test_tim_domain)
+  tim_add_mpi_test(${tim_test} RANKS 2)
+endforeach()

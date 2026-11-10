@@ -85,8 +85,6 @@ find_package(MPI REQUIRED COMPONENTS C CXX Fortran)
 find_package(NetCDF REQUIRED COMPONENTS C Fortran)
 find_package(AMReX REQUIRED)
 
-include(FindOrFetchPIO) # find_package(PIO) or FetchContent pio2_6_8 -> PIO::PIO_C
-
 # Check for the OpenMP library and set the required compile flags
 if (OPENMP)
   find_package(OpenMP REQUIRED COMPONENTS C Fortran)
@@ -231,8 +229,10 @@ endif()
 # Obtain compiler-specific flags
 include(fms_compiler_flags)
 
-# TIM C++ infrastructure layer
-set(TIM_CPP_INSTALL ON) # full TIM builds install/export the tim target
+# TIM C++ infrastructure layer. tim/cpp resolves PIO for the io targets
+# (find_package(PIO), or a FetchContent build when TIM_FETCH_DEPS is on).
+set(TIM_CPP_INSTALL ON) # full TIM builds install/export the tim targets
+set(TIM_ENABLE_IO ON)
 add_subdirectory(tim/cpp)
 
 foreach(kind ${kinds})
@@ -368,7 +368,7 @@ install(EXPORT TIMExports
   FILE tim-targets.cmake
   DESTINATION ${CONFIG_INSTALL_DESTINATION})
 
-# C++ unit tests (reuses the AMReX/PIO/tim targets defined above).
+# C++ unit tests (reuse the AMReX and TIM targets defined above).
 if(TIM_ADD_TEST_TARGETS)
   enable_testing()
   add_subdirectory(test_tim)

@@ -2,9 +2,9 @@ name: TIM C++ Tests
 
 # Build tim/cpp and its unit tests standalone (test_tim's standalone
 # configuration -- no full TIM/FMS build) and run them serially and on
-# 2 MPI ranks. AMReX is built from source once and cached; GTest and
-# libpioc are fetched and built by the configuration itself
-# (TIM_FETCH_DEPS, on by default in standalone mode).
+# 2 MPI ranks (ctest labels unit and mpi2). AMReX is built from source
+# once and cached; GTest and libpioc are fetched and built by the
+# configuration itself (TIM_FETCH_DEPS, on by default in standalone mode).
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ on:
     paths:
       - 'tim/cpp/**'
       - 'test_tim/**'
-      - 'cmake/FindOrFetchPIO.cmake'
+      - 'cmake/FindNetCDF.cmake'
       - '.github/workflows/tim_cpp_tests.yml'
 
 env:
@@ -65,8 +65,5 @@ jobs:
       - name: Run unit tests (serial)
         run: ctest --test-dir build -L unit --output-on-failure
 
-      - name: Run runtime and domain tests on 2 MPI ranks
-        run: |
-          mpiexec -n 2 ./build/test_tim_runtime_owner
-          mpiexec -n 2 ./build/test_tim_runtime_guest
-          mpiexec -n 2 ./build/test_tim_domain
+      - name: Run unit tests on 2 MPI ranks
+        run: ctest --test-dir build -L mpi2 --output-on-failure

@@ -75,8 +75,12 @@ function MPP_CHKSUM_INT_RMASK_( var, pelist, mask_val )
 !! We've done something dangerous
   else
      i8tmp = TRANSFER(mask_val , i8tmp )
-     i4tmp = TRANSFER(mask_val , i4tmp )
-     r4tmp = TRANSFER(mask_val , r4tmp )
+     ! A 4-byte mask_val TRANSFERs to one element, not two, so fill only the
+     ! elements it covers; assigning it to the whole array does not conform.
+     i4tmp = 0
+     i4tmp(1:SIZE(TRANSFER(mask_val , i4tmp ))) = TRANSFER(mask_val , i4tmp )
+     r4tmp = 0
+     r4tmp(1:SIZE(TRANSFER(mask_val , r4tmp ))) = TRANSFER(mask_val , r4tmp )
      if ( i8tmp == MPP_FILL_INT ) then
         ! we've packed an MPP_FILL_
         imask_val = MPP_FILL_INT

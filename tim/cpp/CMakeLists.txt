@@ -38,9 +38,16 @@ endif()
 # AMReX::amrex reference it (e.g. __cxa_call_terminate), and GNU ld with
 # --as-needed (default on some Linux distros, incl. NCAR Derecho) drops it if it
 # comes before the archives that need it. Fortran-linked consumers rely on this.
+#
+# Which runtime depends on the platform as well as the compiler: clang (Apple's
+# or upstream) defaults to libc++ on macOS only. On Linux it uses libstdc++,
+# like GNU and IntelLLVM. A Linux clang told to use libc++ (-stdlib=libc++) would
+# still get stdc++ here; no supported toolchain does that, so it isn't handled.
+set(_tim_libcxx    "$<AND:$<CXX_COMPILER_ID:Clang,AppleClang>,$<PLATFORM_ID:Darwin>>")
+set(_tim_libstdcxx "$<AND:$<CXX_COMPILER_ID:GNU,IntelLLVM,Clang>,$<NOT:${_tim_libcxx}>>")
 set(_tim_cxx_runtime
-    $<$<CXX_COMPILER_ID:GNU,IntelLLVM>:stdc++>
-    $<$<CXX_COMPILER_ID:Clang,AppleClang>:c++>)
+    $<${_tim_libstdcxx}:stdc++>
+    $<${_tim_libcxx}:c++>)
 
 # --- tim_base ------------------------------------------------------------------
 add_library(tim_base STATIC

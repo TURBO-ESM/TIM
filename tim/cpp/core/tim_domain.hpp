@@ -110,21 +110,23 @@ struct FieldSpec {
 ///   FillBoundary fills ghost cells from valid ones and leaves disagreeing
 ///   valid copies alone, so agreement is the producer's obligation; halo
 ///   exchanges do not restore it.
-/// - todo: this class is the intended producer of TIM::IoDecomp values
-///   ("Decomp2D produced from AMReX distribution maps"); an io_decomp()
-///   method will be added here once TIM's parallel IO layer merges. Its
-///   initial precondition is the default one-box-per-rank decomposition
-///   (IoDecomp describes one window per rank); supporting many boxes per
-///   rank (GPU tiling, makeSFC/makeKnapSack load balancing) requires
-///   generalizing the I/O DofMap generation to a list of windows per rank.
+/// - todo: TIM::IoDecomp values (io/tim_io_decomp.hpp) are to be derived
+///   from this class by a free function in an adapter library that links
+///   both. Neither side can hold it: the I/O library is AMReX-free, so it
+///   cannot take a Domain, and this library does not depend on the I/O
+///   library, so programs that use only this library need no PIO. An
+///   IoDecomp takes any number of tiles per compute rank, so the function
+///   needs no one-box-per-rank precondition. It should pass each compute
+///   rank's tiles in local box order, so that IoDecomp's local tile b is the
+///   compute rank's b-th local box.
 /// - todo: land-block elimination (the FMS mask_table analogue, e.g.
 ///   cesm_t232's masked 25x40 layout) is a planned Domain feature: drop
-///   all-land boxes from the BoxArray before distribution. The I/O layer's
-///   write-edge ownership is already mask-aware. This class would supply the
-///   tile-liveness mask. At that point the tile layout is recorded at
-///   decomposition time rather than derived from surviving box corners (the
-///   constructor's derived-origin consistency checks assume an unmasked
-///   grid).
+///   all-land boxes from the BoxArray before distribution. IoDecomp already
+///   takes a list of eliminated tiles and gives their shared edges to a live
+///   neighbor; this class would supply that list. At that point the tile
+///   layout is recorded at decomposition time rather than derived from
+///   surviving box corners (the constructor's derived-origin consistency
+///   checks assume an unmasked grid).
 class Domain {
 public:
     /// @brief Build the domain and its horizontal decomposition.

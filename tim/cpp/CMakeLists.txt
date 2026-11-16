@@ -68,9 +68,14 @@ if(TIM_ENABLE_IO)
   # find_package(PIO) or FetchContent pio2_6_8 -> PIO::PIO_C
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindOrFetchPIO.cmake)
 
-  add_library(tim_io INTERFACE)
+  add_library(tim_io STATIC
+      io/tim_io_decomp.cpp
+  )
   add_library(TIM::tim_io ALIAS tim_io)
-  target_link_libraries(tim_io INTERFACE tim_base PIO::PIO_C)
+
+  # tim_base supplies MPI, the include path and the C++20 requirement.
+  target_link_libraries(tim_io PUBLIC tim_base PIO::PIO_C ${_tim_cxx_runtime})
+  set_target_properties(tim_io PROPERTIES CXX_EXTENSIONS OFF)
 endif()
 
 # --- tim -----------------------------------------------------------------------
@@ -134,4 +139,9 @@ if(TIM_CPP_INSTALL)
       core/tim_stagger.hpp
       core/tim_time.hpp
       DESTINATION include/tim/core)
+  if(TIM_ENABLE_IO)
+    install(FILES
+        io/tim_io_decomp.hpp
+        DESTINATION include/tim/io)
+  endif()
 endif()

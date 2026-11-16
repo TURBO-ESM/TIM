@@ -78,6 +78,10 @@ add_executable(test_tim_io_smoke
   io/test_tim_io_smoke.cpp
 )
 
+add_executable(test_tim_io_decomp
+  io/test_tim_io_decomp.cpp
+)
+
 add_executable(test_tim_runtime_owner
   runtime/test_runtime_owner.cpp
 )
@@ -105,10 +109,16 @@ target_link_libraries(test_tim_smoke
   tim
 )
 
-# The AMReX-free layers link nothing above them: test_tim_io_smoke and
-# test_tim_time are built without AMReX on their link or include lines.
+# The AMReX-free layers link nothing above them: test_tim_io_smoke,
+# test_tim_io_decomp and test_tim_time are built without AMReX on their link or
+# include lines.
 target_link_libraries(test_tim_io_smoke
   GTest::gtest
+  tim_io
+)
+
+target_link_libraries(test_tim_io_decomp
+  GTest::gtest_main
   tim_io
 )
 
@@ -136,6 +146,10 @@ gtest_discover_tests(test_tim_smoke
   PROPERTIES LABELS "unit")
 
 gtest_discover_tests(test_tim_io_smoke
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES LABELS "unit")
+
+gtest_discover_tests(test_tim_io_decomp
   DISCOVERY_MODE PRE_TEST
   PROPERTIES LABELS "unit")
 
